@@ -13,6 +13,26 @@ const part = (html, title) => html.split(new RegExp(`<h2[^>]*>${title}</h2>`))[1
 const top = (html) => html.split("<h2")[0];
 const haengt = (n) => ({ id: `H-${n}`, what: `What ${n}`, who: "du", change: `Change ${n}`, when: `When ${n}`, where: `PLAN:${n}`, blocker: false });
 
+test("freshly generated pages warn about stale or unknown source fetches", () => {
+  const stand = { generatedAt: "2031-02-03T12:00:00Z", mainSha: "feedbee", planRef: "origin/main" };
+  const page = (fetchedAt, now = stand.generatedAt) => top(render(data({ stand: { ...stand, fetchedAt }, packages: [pkg("A-1")] }), { now }));
+  const stale = page("2031-02-02T12:00:00Z");
+  for (const s of ["Quelle", "docs/PLAN.md", "origin/main", "feedbee", "24 Stunden", "Quelle veraltet"]) assert.ok(stale.includes(s), s);
+  assert.doesNotMatch(page("2031-02-03T00:00:00Z"), /Quelle veraltet/);
+  assert.match(page("2031-02-03T00:00:00Z", "2031-02-03T12:00:01Z"), /Quelle veraltet/);
+  for (const value of [undefined, "garbage", "2031-02-04T12:00:00Z"]) assert.match(page(value), /Fetch-Zeit.*unbekannt/);
+});
+
+test("plan check omissions remain visible and missing scope stays unknown", () => {
+  const section = (options) => part(render(data(), { findings: [], ...options }), "Plan-Mängel");
+  assert.match(section({ notChecked: [EVIL, "Jobs unavailable"] }), /Nicht geprüft/);
+  assert.match(section({ notChecked: [EVIL, "Jobs unavailable"] }), /Jobs unavailable/);
+  assert.match(section({ notChecked: [EVIL] }), /&lt;\/script&gt;/);
+  assert.ok(!section({ notChecked: [EVIL] }).includes(EVIL));
+  for (const notChecked of [undefined, null, "invalid"]) assert.match(section({ notChecked }), /Prüfumfang unbekannt/);
+  assert.match(section({ notChecked: [] }), /keine Auslassungen gemeldet/);
+});
+
 test("hostile strings from every input stay inert text", () => {
   const e = EVIL, line = EVIL;
   const html = render(data({ stand: { generatedAt: e, mainSha: e }, haengt: [{ id: e, what: e, who: e, change: e, when: e, where: e, blocker: true }],

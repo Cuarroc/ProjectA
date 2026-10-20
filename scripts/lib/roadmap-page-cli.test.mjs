@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeRunner } from "./dev-tools.mjs";
@@ -136,4 +136,41 @@ test("page and stdout together print html and write no file", async () => {
     assert.match(out, /^<!doctype html>/);
     assert.equal(existsSync(join(dir, ".pa")), false);
   });
+});
+
+test("page preserves the plan check notChecked list alongside findings", async () => {
+  const notChecked = ["GitHub unavailable", "Jobs not observed", "<img src=x>"];
+  const planCheck = async (_argv, io) => { io.out(JSON.stringify({ findings: [], notChecked })); return 0; };
+  await inRepo({ args: ["--page", "--stdout"], planCheck }, ({ code, out }) => {
+    assert.equal(code, 0);
+    assert.match(out, /Nicht geprüft/);
+    for (const text of ["GitHub unavailable", "Jobs not observed", "&lt;img src=x&gt;"]) assert.ok(out.includes(text), text);
+    assert.ok(!out.includes("<img src=x>"));
+  });
+});
+
+test("CLI records fetch time only for the matching origin main FETCH_HEAD", async () => {
+  for (const mode of ["fresh", "old", "missing", "wrong-sha", "wrong-remote", "wrong-branch", "future"]) {
+    const setup = (dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".");
+      if (mode === "missing") return;
+      git("fetch", "-q", "origin", "main");
+      const file = join(dir, ".git/FETCH_HEAD");
+      let text = readFileSync(file, "utf8");
+      if (mode === "wrong-sha") text = text.replace(/^[a-f0-9]+/, "0".repeat(40));
+      if (mode === "wrong-remote") text = text.replace("of .", "of other");
+      if (mode === "wrong-branch") text = text.replace("'main'", "'other'");
+      writeFileSync(file, text);
+      const time = new Date(mode === "old" ? "2026-10-14T12:00:00Z" : mode === "future" ? "2026-10-16T12:00:00Z" : now);
+      utimesSync(file, time, time);
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out }) => {
+      assert.equal(code, 0, mode);
+      const { stand } = JSON.parse(out);
+      assert.match(stand.mainSha, /^[a-f0-9]{40}$/);
+      assert.equal(stand.planRef, "origin/main");
+      assert.equal(stand.fetchAgeMs, mode === "fresh" ? 0 : mode === "old" ? 86400000 : null, mode);
+      assert.equal(stand.fetchedAt, mode === "fresh" ? "2026-10-15T12:00:00.000Z" : mode === "old" ? "2026-10-14T12:00:00.000Z" : null, mode);
+    });
+  }
 });
