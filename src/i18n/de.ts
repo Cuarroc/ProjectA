@@ -97,6 +97,7 @@ export const de = {
   "shell.search": "Suchen oder Befehl eingeben",
   "shell.searchPlaceholder": "Agenten, PRs, Ideen, Befehle",
   "shell.estop": "Not-Aus",
+  "shell.estopLocation": "Der Not-Aus befindet sich oben rechts.",
   "shell.estopHint": "stoppt alles in 10 s",
   "shell.resume": "Fortsetzen",
   "shell.projectSwitch": "Projekt wechseln",

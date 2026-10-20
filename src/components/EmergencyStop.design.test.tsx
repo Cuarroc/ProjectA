@@ -23,6 +23,7 @@ it("uses design controls and confirms one stop IPC only after completion", async
   expect(raise).toHaveFocus();
   call.mockClear();
   fireEvent.click(raise);
+  fireEvent.click(screen.getByRole("button", { name: "Ja, alles anhalten" }));
   expect(raise).toBeDisabled();
   expect(screen.getByRole("status")).not.toHaveTextContent("alle Agenten sind beendet");
   fireEvent.click(raise);

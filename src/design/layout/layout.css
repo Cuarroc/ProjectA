@@ -11,7 +11,7 @@
   font: 500 12px/1 var(--g-font-sans); color: var(--g-ink2); cursor: pointer;
   transition: background-color var(--g-dur-1, 120ms) var(--g-ease, ease-out), transform var(--g-dur-1, 120ms) var(--g-ease, ease-out);
 }
-.g-tabs button:active { transform: scale(.97); }
+.g-tabs button:active { transform: scale(var(--g-press-scale, .98)); }
 .g-tabs button[aria-selected="true"] { background: var(--g-tint-hi); border-color: var(--g-line); color: var(--g-ink); }
 .g-tabpanel { animation: g-fade var(--g-dur-2, 200ms) var(--g-ease, ease-out); }
 
