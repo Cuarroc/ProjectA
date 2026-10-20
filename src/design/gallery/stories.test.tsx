@@ -8,7 +8,7 @@ import { Gallery } from "./Gallery";
 
 afterEach(cleanup);
 
-it("every interactive CSS selector has its forced-state twin in the same rule", () => {
+it("every interactive CSS selector has its forced-state twin in the same rule or an identical adjacent rule", () => {
   const states: Record<string, string> = { ":hover": "hover", ":active": "active", ":focus-visible": "focus", ":disabled": "disabled" };
   // Segmented previews target its selected tab stop; the real selector covers all options.
   const normalize = (selector: string) => selector.replaceAll('[tabindex="0"]', "").replace(/\s/g, "");
@@ -25,9 +25,15 @@ it("every interactive CSS selector has its forced-state twin in the same rule", 
     const css = parse(readFileSync(join(__dirname, `../${family}/${family}.css`), "utf8"));
     let checked = 0;
     css.walkRules((rule) => {
-      check(rule.selectors);
-      for (const twin of rule.selectors.filter((s) => s.includes("data-force-state"))) {
-        expect(() => check(rule.selectors.filter((s) => s !== twin)), twin).toThrow();
+      if (rule.selectors.every((s) => s.includes("data-force-state"))) return;
+      // Main keeps press-token rules separate; twins must match the declarations and media context.
+      const next = rule.next();
+      const body = rule.nodes.map((node) => node.toString()).join(";");
+      const selectors = next?.type === "rule" && next.nodes.map((node) => node.toString()).join(";") === body
+        ? [...rule.selectors, ...next.selectors] : rule.selectors;
+      check(selectors);
+      for (const twin of selectors.filter((s) => s.includes("data-force-state"))) {
+        expect(() => check(selectors.filter((s) => s !== twin)), twin).toThrow();
         checked++;
       }
     });

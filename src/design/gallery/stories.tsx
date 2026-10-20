@@ -3,6 +3,7 @@ import { de } from "../../i18n/de";
 import { Button, ButtonGroup } from "../controls/Button";
 import { Chip } from "../controls/Chip";
 import { FilterChip } from "../controls/FilterChip";
+import { IconButton } from "../controls/IconButton";
 import { Segmented } from "../controls/Segmented";
 import { Switch } from "../controls/Switch";
 import { Avatar } from "../inputs/Avatar";
@@ -11,6 +12,7 @@ import { Kbd } from "../inputs/Kbd";
 import { Lamp } from "../inputs/Lamp";
 import { Meter } from "../inputs/Meter";
 import { Select } from "../inputs/Select";
+import { Icon } from "../icons/Icon";
 import { COMPONENT_REGISTRY, type ComponentFamily } from "../registry";
 
 const STATES = ["default", "hover", "focus", "active", "disabled", "loading", "error"] as const;
@@ -29,6 +31,7 @@ const inputProps = (state: State, name: string) => ({ ...sampleProps(state, name
 // Only the components' existing states are shown; this is fixture data, never app state.
 const stories: Record<string, Story> = {
   Button: { states: PRESS, render: (s, name) => (s === "default" ? buttonVariants : buttonVariants.slice(0, 1)).map((variant) => <Button key={variant} {...sampleProps(s, name)} variant={variant} disabled={s === "disabled"}>{sample}</Button>) },
+  IconButton: { states: [...PRESS, "loading"], render: (s, name) => <IconButton {...sampleProps(s, name)} aria-label={`${name} ${de[`gallery.state.${s}`]}`} disabled={s === "disabled"} loading={s === "loading"}><Icon name="check" /></IconButton> },
   ButtonGroup: { states: STATIC, render: (s, name) => <ButtonGroup {...sampleProps(s, name)}><Button>{options[0].label}</Button><Button>{options[1].label}</Button></ButtonGroup> },
   Chip: { states: STATIC, render: (s, name) => <Chip {...sampleProps(s, name)}>{sample}</Chip> },
   FilterChip: { states: PRESS, render: (s, name) => (s === "default" ? [false, true] : [false]).map((pressed) => <FilterChip key={String(pressed)} {...sampleProps(s, name)} pressed={pressed} count={2} disabled={s === "disabled"}>{sample}</FilterChip>) },
