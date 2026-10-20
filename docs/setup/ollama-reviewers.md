@@ -2,9 +2,12 @@
 
 Rolle: das Alltags-Reviewerpaar für Pläne und Diffs. Die Stufen stehen in
 `AGENTS.md`, Regel 5: Nahtstelle, Security, Nebenläufigkeit, PTY oder Datenbank
-→ zwei Reviewer anderer Anbieter; andere Rust-/TS-Pakete → ein Reviewer, der
-nicht die Modellfamilie des Autors ist; Doku, Tests, Snapshots und Konfiguration
-→ die Gates genügen.
+→ zwei verschiedene Nicht-Autorenfamilien; andere Rust-/TS-Pakete (B) ebenso,
+regulär Abo + OpenRouter aus vorhandenem Guthaben. E1 (Elias, 20.10.2026): bei
+OpenRouter-Guthaben <= 0 auch zwei Abo-Familien; kein Kauf, kostenlose Modelle
+zählen nie als Pflichtreviewer. Doku, Tests, Snapshots und Konfiguration ohne
+Laufzeitwirkung (C) → Gates; C+ (Skip/Timeout/Retry oder schwächere Assertions
+in Tests) → ein Fremdreview. Ollama zählt nur über einen berechtigten Abo-Pfad.
 Zurück zur Übersicht: [README.md](README.md).
 
 ## Voraussetzungen
@@ -120,4 +123,5 @@ der Kandidat danach, wird das Delta erneut geprüft.
 Das Ollama-Paar prüft Diffs und Pläne im Alltag. Für harte Entscheidungen und
 Abschlussreviews gilt das Advisor-Paar Fable 5.1 + GPT-6 Astra (siehe
 [README.md](README.md#advisors)). Der frühere Workflow `.github/workflows/review.yml` (OpenRouter) ist am
-25.09.2026 gelöscht (PLAN-01); OpenRouter wird nicht mehr benutzt.
+25.09.2026 gelöscht (PLAN-01); OpenRouter-Reviews sind aus vorhandenem Guthaben
+erlaubt, ohne Kauf oder Auto-Reload (AGENTS.md, Regel 5 und E1).

@@ -2147,3 +2147,15 @@ may be lost. This contract itself starts, migrates, exposes or retires nothing.
 - **What / source:** the user in the Root chat on 2026-10-16 (E-1 about 03:30 CEST; the two navigation questions about 12:15 CEST, as relayed by Root; answers "Navigation gleich umbenennen", "Drei (Empfehlung)" and "„Linie“ jetzt (Empfehlung)"). (1) E-1 B: the navigation is renamed now to Fabrik / Aufträge / Beweise / Betrieb / Wissen / Einstellungen; this replaces point 5 of "2026-10-15 - The user answers seven questions" ("Fabrik is a tab in the Leitstand") for the navigation. (2) Rooms as navigation (option C of the blueprint) is **not** decided; the hall stays a view inside the area Fabrik. (3) The v2.0 sidebar shows three areas: Fabrik, Betrieb, Einstellungen. This replaces the scope decision of 2026-10-15 ("only Leitstand and Einstellungen"); Aufträge, Beweise and Wissen appear when their screen is connected, earlier behind the switch "Weitere Bereiche". Betrieb shows what the Leitstand tab "Betrieb" shows today (queue, start check, watchdog). (4) The tab that is called "Fabrik" today inside the area Fabrik is named "Linie" now and "Halle" after the user has accepted the probe hall (DS-H-07). (5) Route IDs and paths do not change; only labels and the grouping of the sidebar do (the Betrieb panel moves to `/betrieb` with an alias for the old path). Packages: NAV-0 (this entry, `docs/plan/v2.0/ia.md`, `docs/PLAN.md`), NAV-1a, NAV-2a, NAV-2b; cut report NAV-CUT of 2026-10-16 (outside the repo).
 - **Why:** the user's design review wants the new names visible from the start; keeping the IDs means no screen, test path, deep link, `pa` command or HQ reader breaks; showing three areas avoids empty pages in v2.0 while the new order is visible; "Linie" says honestly what the tab shows today (the agent graph), and the later rename is one value.
 - **Reverse when:** the user changes an answer. Undo the rename by restoring the label values; route IDs never changed, so nothing else moves. Point 5 of 2026-10-15 stays superseded only for the navigation.
+
+## 2026-10-20 E1 - subscription alternative for the second tier-B reviewer
+
+- **What / source:** Elias answered "ja" in the Root chat on 2026-10-20 about
+  17:00Z (RULE5-E1 brief). While OpenRouter credit is <= 0, the second tier-B
+  reviewer may be a second subscription family, e.g. Codex + Kimi or Claude +
+  Codex when the author is a third family. Both reviewers must be from different
+  non-author families. Free models never count as required reviewers.
+- **Why:** OpenRouter credit is exhausted and no purchase is allowed; keep the
+  two independent reviews using subscriptions. No purchase or auto-reload.
+- **Reverse when:** credit returns or Elias changes the decision; then apply
+  the regular rule 5 pair (subscription + OpenRouter).
