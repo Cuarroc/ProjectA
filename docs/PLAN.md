@@ -291,6 +291,42 @@ vor Nutzung muss Auto-Top-up aus sein und der Nutzer den Schlüssel selbst im Va
 hinterlegen. OpenCode Zen ist nicht freigegeben.
 
 
+### DOC und Hook-Pakete — Nachtrag 20.10.2026
+
+Teilstand DOC-8, kein neuer Gesamtstand: Git/PR/CI am 20.10.2026 23:26–23:30 UTC per
+`git fetch origin`, `git log origin/main -1` und `gh pr view` geprüft:
+main `653db649`; alle sechs unten nummerierten PRs OPEN/Draft, Linux/Windows/red-first
+SKIPPED, kein Mergebeleg. Lokal vorbereitete Arbeit ist nicht gepusht oder abgenommen.
+Ticket-/Nicht-Git-Stände: Root-Auftrag 23:21 UTC; `lage-jetzt` hier nicht verfügbar,
+Speicherinhalte daher nicht unabhängig geprüft. „Angenommen“ ist keine App-Laufzeitabnahme.
+Chief koordiniert, Root nimmt ab und besitzt Ready/Labels/Mergify; der gestoppte
+Planer bleibt gestoppt. Nutzerentscheidungen bleiben erhalten. Diese Zeilen erteilen
+keinen neuen Startauftrag. Je Paket gelten Größenlimit, eigene prepush und Root-Abnahme;
+Code benötigt Rot→Grün und kandidatgebundene Reviews, Dokumentation Leser-/Linkbelege.
+„Danach“ in Abnahme nennt den nächsten Schritt und das Ergebnis nach Integration.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| DOC-1 | PLAN archivieren, Leser erhalten | srv-doc-1-plan-archive | – | Server | C | In Prüfung: #1760 `f25d05f8`; Root-Abnahme ausstehend | aktive Pflichten/IDs und native Leser erhalten; danach Root prüft/integriert Archiv | 148253cc |
+| DOC-2 | Entscheidungsindex mit vollständigem Journal | srv-doc-2-decisions-index | – | Server | C | In Prüfung: #1761 `177be650`; Root-Abnahme ausstehend | Quellen/Anker und Journal erhalten; danach Root prüft/integriert Index | 9f78f652 |
+| DOC-3 | Rest des v2-Detailplans vereinfachen | Chief benennt Restowner | DOC-3a | Server | C | Geplant: Restschnitt offen; kein eigener PR | Restumfang/Owner/Leserbelege vor Start festlegen; DOC-3a beendet nicht DOC-3 | unbekannt |
+| DOC-3a | Größenregel-Vorschlag bytegleich auslagern | srv-doc-3a-v2-slice | – | Server | C | In Arbeit: zugewiesen; kein PR | v2-Zellen/Zeilenversatz erhalten, native Tests; danach Root prüft ersten Schnitt | 3f7748a1 |
+| DOC-4 | Betriebsregeln widerspruchsfrei halten | srv-doc-4-rules-reconcile | – | Server | C | In Prüfung: #1759 `6b9d63a4`; Root-Abnahme ausstehend | Kernregeln/Rechte/Limits erhalten; danach Root prüft/integriert Abgleich | 90435bab |
+| DOC-5 | Begrenztes Speicherpaket liefern | bestehender Speicherowner; Root | – | egal | C | Angenommen: Root laut Auftrag 20.10. 23:07:57Z, D24; Nicht-Git | gemeldet: 31633 Bytes/178 Zeilen; Laufzeit, automatische Kontext-/UI-/Tokenlimits separat; GPT-1M-Pflicht entfällt allein; danach Root belegt Restgrenzen | 252b26ed |
+| DOC-6 | Roadmap zeigt Quelle/Alter/Prüflücken | srv-doc-6-roadmap-honest | – | Server | B | In Prüfung: #1758 `c05e6c6b`; Root-Abnahme ausstehend | unbekannte/alte Daten sichtbar; danach Root prüft/integriert Anzeige, kein Laufzeitbeleg | e9df1aff |
+| DOC-7 | Vorbereiteten Dokumentationsschnitt validieren | bestehender Owner j4tybd | Detail unbekannt | egal | unbekannt | Blockiert: laut Auftrag 171 ALL im Index, uncommittet; kein PR | Abhängigkeits-/Werkzeugausgabenvalidierung und volle Gates fehlen; Detailquelle unbekannt; danach Owner belegt Stufe/Schnitt, Root nimmt ab | 69c96921 |
+| DOC-8 | Eine kanonische Zeile je DOC-/Hook-Paket | srv-doc-8-plan-rows; Chief koordiniert | DOC-1 | Server | C | In Prüfung: gestapelter Kandidat auf `f25d05f8`; Elternabnahme ausstehend | Leser/Plancheck/HQ/Links/prepush grün; danach Root integriert Zeilen erst nach Elternabnahme/-merge und retargetet Draft auf main | a40db352 |
+| DOC-9 | Abschlussbericht mit getrennten Lieferständen | Root berichtet; Chief belegt | DOC-1, DOC-2, DOC-3a, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8 | egal | C | Blockiert: Bericht ausstehend; Endabnahme wartet auf DOC-1–8 | Root prüft Gesamtquellen, Rest DOC-3 und Beleglücken; danach Abschlussbericht statt zweiter Roadmap | 566e3f2f |
+| DOC-CTRL1 | Dokumentationsarbeit beaufsichtigen | Chief; Root nimmt ab | – | egal | C | In Arbeit: laut Auftrag Koordinationsowner; native Lage unbekannt | Aufträge/Überlappung/Restpflichten abgleichen; danach Chief liefert belegte Übergabe an Root | b3d2f947 |
+| PA-HOOKS-2a | C2-7/8: Startdialog trotz Auftragsecho erkennen | srv-pa-hooks-2a, gleiche Fix-Lane | – | Server | A | In Prüfung: #1756 `e0cacb41`; Fixrunde gepusht, keine Root-Abnahme belegt | Kandidatgebundene Fixreview offen; danach Dialog sperrt Enter; Root integriert, DOC-8-Zeile vorher abgleichen | e9f093c8 |
+| PA-HOOKS-2b | C2-6/10: historische Titel/Trust/Blockgrund | Root bindet einen Owner | PA-HOOKS-2a | Server | A | Blockiert: erst nach Merge #1756; kein PR | Rot→Grün, legitimen Trust erhalten, Blockgrund bei Ablauf; danach Root prüft/integriert; kein blindes Enter | unbekannt |
+| PA-HOOKS-2c | C2-9: benannte Blockade bis Erholung erhalten | srv-pa-hooks-2c, gleiche Fix-Lane | – | Server | A | In Prüfung: #1757 `2f4cc8a1`; Runde 2 laut Auftrag zugewiesen | geteilter Neuzeichnungsfall/Gates/Reviews offen; danach nur belegte Erholung hebt Blockade auf; Root integriert | 0bf0a005 |
+| PA-HOOKS-2d | Nur P9: belegter Folgeauftrag im ruhenden Terminal | Root bindet einen Owner | PA-HOOKS-2b | Server | A | Blockiert: Fehlerzeit-Capture/Ursache fehlen; kein PR | Capture mit effektivem Marker, Rot→Grün/PTY, Busy-/Modal-Gegenfälle; danach Root prüft; entfällt als Duplikat, falls 2b P9 belegt löst | unbekannt |
+
+DOC-8 übernimmt die fehlenden Zeilen aus R1756-G2/A2 und R1757-A3/G2.
+Die Befunde sind damit im Kandidaten adressiert; Root muss die Integration vor
+`review-ok` belegen. Hook-Codebefunde und PR-Berichtskorrekturen bleiben bei ihren Ownern.
+
 ### CI und Durchlauf — Nachtrag 15.10.2026
 
 Quelle: `opt-ci-merge-20261015.md` (pa-orch); Dispatch laut Root, Ereignisse 16:12 MESZ nachgeprüft. Root nimmt ab; kein Merge-Sicherheitsentscheid durch diesen Eintrag.
