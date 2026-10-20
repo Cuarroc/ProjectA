@@ -293,9 +293,9 @@ hinterlegen. OpenCode Zen ist nicht freigegeben.
 
 ### DOC und Hook-Pakete — Nachtrag 20.10.2026
 
-Teilstand DOC-8, kein neuer Gesamtstand: Git/PR/CI am 20.10.2026 23:26–23:49 UTC per
+Teilstand DOC-8, kein neuer Gesamtstand: Git/PR/CI am 20.10.2026 23:26–23:57 UTC per
 `git fetch origin`, `git log origin/main -1`, `git ls-remote` und `gh pr view` geprüft:
-main `653db649`; alle sechs unten nummerierten PRs OPEN/Draft, Linux/Windows/red-first
+main `653db649`; alle sieben unten nummerierten PRs OPEN/Draft, Linux/Windows/red-first
 SKIPPED, kein Mergebeleg. Lokal vorbereitete Arbeit ist nicht gepusht oder abgenommen.
 Ticket-/Nicht-Git-Stände: Root-Auftrag 23:21 UTC; `lage-jetzt` hier nicht verfügbar,
 Speicherinhalte daher nicht unabhängig geprüft. „Angenommen“ ist keine App-Laufzeitabnahme.
@@ -310,7 +310,7 @@ Code benötigt Rot→Grün und kandidatgebundene Reviews, Dokumentation Leser-/L
 | DOC-1 | PLAN archivieren, Leser erhalten | srv-doc-1-plan-archive | – | Server | C | In Prüfung: #1760 `f25d05f8`; Root-Abnahme ausstehend | aktive Pflichten/IDs und native Leser erhalten; danach Root prüft/integriert Archiv | 148253cc |
 | DOC-2 | Entscheidungsindex mit vollständigem Journal | srv-doc-2-decisions-index | – | Server | C | In Prüfung: #1761 `177be650`; Root-Abnahme ausstehend | Quellen/Anker und Journal erhalten; danach Root prüft/integriert Index | 9f78f652 |
 | DOC-3 | Rest des v2-Detailplans vereinfachen | Chief benennt Restowner | DOC-3a | Server | C | Geplant: Restschnitt offen; kein eigener PR | Restumfang/Owner/Leserbelege vor Start festlegen; DOC-3a beendet nicht DOC-3 | unbekannt |
-| DOC-3a | Größenregel-Vorschlag bytegleich auslagern | srv-doc-3a-v2-slice | – | Server | C | In Arbeit: zugewiesen; kein PR | v2-Zellen/Zeilenversatz erhalten, native Tests; danach Root prüft ersten Schnitt | 3f7748a1 |
+| DOC-3a | Größenregel-Vorschlag bytegleich auslagern | srv-doc-3a-v2-slice | – | Server | C | In Prüfung: #1762 `67a51691`; Root-Abnahme ausstehend | v2-Zellen/Zeilenversatz erhalten, native Tests; danach Root prüft/integriert ersten Schnitt; Rest DOC-3 bleibt offen | 3f7748a1 |
 | DOC-4 | Betriebsregeln widerspruchsfrei halten | srv-doc-4-rules-reconcile | – | Server | C | In Prüfung: #1759 `6b9d63a4`; Root-Abnahme ausstehend | Kernregeln/Rechte/Limits erhalten; danach Root prüft/integriert Abgleich | 90435bab |
 | DOC-5 | Begrenztes Speicherpaket liefern | bestehender Speicherowner; Root | – | egal | C | Angenommen: Root laut Auftrag 20.10. 23:07:57Z, D24; Nicht-Git | gemeldet: 31633 Bytes/178 Zeilen; Laufzeit, automatische Kontext-/UI-/Tokenlimits separat; GPT-1M-Pflicht entfällt allein; danach Root belegt Restgrenzen | 252b26ed |
 | DOC-6 | Roadmap zeigt Quelle/Alter/Prüflücken | srv-doc-6-roadmap-honest | – | Server | B | In Prüfung: #1758 `c05e6c6b`; Root-Abnahme ausstehend | unbekannte/alte Daten sichtbar; danach Root prüft/integriert Anzeige, kein Laufzeitbeleg | e9df1aff |
