@@ -785,9 +785,7 @@ pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
     let claude_move = claude.filter(|_| claude_confirm.is_none());
     let codex_trust = window.rfind("Do you trust the contents of this directory");
     let codex_hooks = window.rfind("Hooks need review");
-    let codex_update = window
-        .rfind("Update available")
-        .filter(|_| window.contains("Update now") && window.contains("Skip until next version"));
+    let codex_update = window.rfind("Update available");
     let kimi = window.rfind("Trust this folder");
     // Codex's billing notice ("Add Credits" / "Continue with Luna Reserve")
     // is deliberately absent: a capped account must surface as an honest
@@ -1015,6 +1013,7 @@ mod tests {
 
     #[test]
     fn codex_update_startup_modal_blocks_delivery() {
+        assert_startup_modal_blocks("Update available · 0.162.1 -> 0.163.0");
         assert_startup_modal_blocks("Update available · 0.162.1 -> 0.163.0\n> 1. Update now (runs `npm install -g @openai/codex`)\n2. Skip\n3. Skip until next version\nenter continue · esc skip");
     }
     const CLAUDE_DIALOG: &str = "Accessing workspace: Quick safety check: Is this a project you created or one you trust? No, exit > Yes, I trust this folder Enter to confirm - Esc to cancel";
