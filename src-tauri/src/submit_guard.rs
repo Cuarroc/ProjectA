@@ -955,6 +955,53 @@ mod tests {
     }
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
+
+    fn assert_startup_modal_blocks(screen: &str) {
+        for stage in 0..=4 {
+            let start = Instant::now();
+            let mut guard =
+                SubmitGuard::new(start, TASK).with_readiness_marker("Ask Codex to do anything");
+            let ready = "Ask Codex to do anything";
+            if stage >= 2 {
+                assert_eq!(
+                    guard.tick(&obs(start, 1, 100, Some(1), ready)),
+                    Some(SubmitAction::WriteTask { write: 1 })
+                );
+            }
+            if stage >= 3 {
+                assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
+            }
+            if stage == 4 {
+                assert_eq!(
+                    guard.tick(&obs(start, 3, 200, Some(2), TASK)),
+                    Some(SubmitAction::SendEnter { attempt: 0 })
+                );
+            }
+            let full = normalize_tui_output(&format!("{ready}\n{screen}\n{TASK}"));
+            // Stage 0 starts on an already-visible modal, before the baseline.
+            let since = if stage == 0 { "" } else { full.as_str() };
+            let mut snapshot = obs_since(start, 40, 500, Some(5), &full, since);
+            snapshot.write_window_overflowed = stage == 4;
+            assert_eq!(
+                guard.tick(&snapshot),
+                Some(SubmitAction::Escalate),
+                "startup modal must win over readiness, echo and output (stage {stage})"
+            );
+            assert!(!guard.is_delivered());
+            assert!(!guard.is_confirmed());
+            assert_eq!(guard.tick(&snapshot), None);
+        }
+    }
+
+    #[test]
+    fn codex_hooks_startup_modal_blocks_delivery() {
+        assert_startup_modal_blocks("Hooks need review\n2 hooks are new or changed\n> 1. Review hooks\n2. Trust all and continue\n3. Continue without trusting");
+    }
+
+    #[test]
+    fn codex_update_startup_modal_blocks_delivery() {
+        assert_startup_modal_blocks("Update available · 0.162.1 -> 0.163.0\n> 1. Update now (runs `npm install -g @openai/codex`)\n2. Skip\n3. Skip until next version\nenter continue · esc skip");
+    }
     const CLAUDE_DIALOG: &str = "Accessing workspace: Quick safety check: Is this a project you created or one you trust? No, exit > Yes, I trust this folder Enter to confirm - Esc to cancel";
 
     #[test]
