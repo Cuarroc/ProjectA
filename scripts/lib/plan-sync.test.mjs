@@ -10,6 +10,25 @@ import { main } from "../plan-sync.mjs";
 const table = (rows) => `| ID | Ziel | Status |\n|---|---|---|\n${rows}\n`;
 const merged = { number: 42, state: "MERGED", mergedAt: "2026-10-18T17:00:00Z" };
 
+test("a dependency PR in another column is neither listed nor required", () => {
+  const md = "| ID | Ziel | Hängt ab von | Status |\n|---|---|---|---|\n| AUTO-1 | Sync | AUTO-2 #43 | In Arbeit #42 |\n";
+  for (const dependency of [[], [{ number: 43, state: "OPEN" }], [{ number: 43, state: "CLOSED" }], [{ ...merged, number: 43 }]]) {
+    const result = syncPlan(md, [merged, ...dependency]);
+    assert.equal(result.markdown, md.replace("In Arbeit #42", "Erledigt: #42 (merged 2026-10-18); ursprünglich: In Arbeit #42"));
+    assert.equal(result.changes.length, 1);
+    assert.deepEqual(result.skipped, []);
+  }
+});
+
+test("a status cell that already starts with Erledigt is left unchanged", () => {
+  for (const status of ["Erledigt #42 (merged 2026-10-18); zip-Entscheidung offen", "**Erledigt** #42; Rest ausstehend"]) {
+    const md = table(`| SEC-01b | Sync | ${status} |`);
+    const result = syncPlan(md, [merged]);
+    assert.equal(result.markdown, md);
+    assert.deepEqual(result.changes, []);
+  }
+});
+
 test("synchronized rows are done for existing PLAN consumers", () => {
   const result = syncPlan(table("| AUTO-1 | Sync | In Arbeit #42 |"), [merged]);
   const model = parsePlan(result.markdown);
