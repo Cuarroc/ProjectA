@@ -1,6 +1,7 @@
 # Ollama-Reviewerpaar (kimi-k3 + glm-5.2)
 
-Rolle: das Alltags-Reviewerpaar für Pläne und Diffs. Die Stufen stehen in
+Transportbeispiel vom 25.09.–04.10.2026, kein festes Pflichtpaar oder heutiger
+Zugangsbeleg. Aktuelle Reviewer: privater Koordinatornachweis. Die Stufen stehen in
 `AGENTS.md`, Regel 5: Nahtstelle, Security, Nebenläufigkeit, PTY oder Datenbank
 → zwei verschiedene Nicht-Autorenfamilien; andere Rust-/TS-Pakete (B) ebenso,
 regulär Abo + OpenRouter aus vorhandenem Guthaben. E1 (Elias, 20.10.2026): bei
@@ -15,33 +16,33 @@ Zurück zur Übersicht: [README.md](README.md).
 - Ollama läuft lokal (`http://127.0.0.1:11434`), angemeldet bei Ollama Cloud:
   `ollama signin`.
 - Die beiden Modelle sind vorhanden: `ollama list` zeigt `kimi-k3:cloud` und
-  `glm-5.2:cloud` (sonst `ollama pull <modell>`). `npm run dev:agent-check`
-  prüft das.
+  `glm-5.2:cloud`; `npm run dev:agent-check` prüft diese historischen Defaults.
+  Fehlende Modelle sind keine Installationsfreigabe; keine Downloads ohne gültige Erlaubnis.
 - `python` (3.x) für `.pa/review_transport.py`.
 - Kein Key: der lokale Ollama-Endpunkt braucht keinen `REVIEWER_n_KEY`.
 
 ## Aufruf
 
 `.pa/review_transport.py` wird nur über Umgebungsvariablen konfiguriert
-(`REVIEWER_<n>_NAME`, `_KIND`, `_URL`, `_MODEL`, optional `_KEY`):
+(`REVIEWER_<n>_NAME`, `_KIND`, `_URL`, `_MODEL`, optional `_KEY`).
+`REVIEW_DIR` bezeichnet ein privates Verzeichnis außerhalb des Repos:
 
 ```sh
 export REVIEWER_1_NAME=kimi-k3 REVIEWER_1_KIND=ollama \
        REVIEWER_1_URL=http://127.0.0.1:11434/api/generate REVIEWER_1_MODEL=kimi-k3:cloud
 export REVIEWER_2_NAME=glm-5.2 REVIEWER_2_KIND=ollama \
        REVIEWER_2_URL=http://127.0.0.1:11434/api/generate REVIEWER_2_MODEL=glm-5.2:cloud
-python .pa/review_transport.py .pa/review_prompt_<label>.md .pa <label> --author "<Instanz>"
+python .pa/review_transport.py "$REVIEW_DIR/review_prompt_<label>.md" "$REVIEW_DIR" <label> --author "<Instanz>"
 ```
 
-- Ergebnis: `.pa/review_<label>_kimi-k3.md` und `.pa/review_<label>_glm-5.2.md`.
+- Ergebnis im privaten Verzeichnis: `review_<label>_kimi-k3.md` und `review_<label>_glm-5.2.md`.
 - **Exit 0 nur, wenn jeder Reviewer geantwortet hat.** Exit 1 = mindestens ein
-  Reviewer ohne Urteil; das Protokoll hält den Ausfall fest. Nochmals laufen
-  lassen, nicht als Review werten.
+  Reviewer ohne Urteil; Ausfall erst untersuchen, nicht als Review werten.
 
 ## Prompt
 
 Ollama-Reviewer lesen **kein** `AGENTS.md` und keinen Code außerhalb des
-Prompts. Die Prompt-Datei `.pa/review_prompt_<label>.md` muss deshalb alles
+Prompts. Die uncommittete Prompt-Datei außerhalb des Repos muss deshalb alles
 enthalten:
 
 1. Auftrag und Paket-ID, Kandidat-Commit.
@@ -63,10 +64,10 @@ Frage erkannt" sind kein Review.
 beschriebenen `.pa/review_transport.py` auf, statt ihn nachzubauen.
 
 ```sh
-bash scripts/review/run-local.sh 42                  # PR #42 (origin pull/42/head) gegen origin/main
-bash scripts/review/run-local.sh                     # aktueller Branch gegen origin/main
-bash scripts/review/run-local.sh 42 --via kilo       # kostenlose Modelle ueber die kilo-CLI
-bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nichts senden
+bash scripts/review/run-local.sh 42 --out-dir "$REVIEW_DIR"       # PR #42 gegen origin/main
+bash scripts/review/run-local.sh --out-dir "$REVIEW_DIR"          # aktueller Branch
+bash scripts/review/run-local.sh 42 --via kilo --out-dir "$REVIEW_DIR" # nur ergänzend, kostenlos
+bash scripts/review/run-local.sh --dry-run --out-dir "$REVIEW_DIR" # nichts senden
 ```
 
 - `--via ollama` (Standard): die Modelle stehen in `REVIEWER_MODELS` in
@@ -86,11 +87,11 @@ bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nic
   (Standard 900 s, 0 = keins). Der Diff ist Eingabe eines Agenten mit
   Lesewerkzeugen: PRs unbekannter Herkunft nicht ueber `--via kilo` pruefen,
   dort ist der Ollama-Weg (reine Textanfrage, keine Werkzeuge) der sichere.
-- Ergebnis: `.pa/review_prompt_<label>.md` und `.pa/review_<label>_<modell>.md`,
-  `<label>` = `pr<N>` oder der Branchname (`/` wird `-`). Mit `--out-dir` und
-  `--label` umlenkbar.
+- Ohne `--out-dir` schreibt das Skript nach `.pa/`; deshalb immer ein privates
+  Verzeichnis außerhalb des Repos angeben. Prompt/Antworten nicht committen.
+  `<label>` = `pr<N>` oder Branchname (`/` wird `-`), mit `--label` umlenkbar.
 - Exit 0 nur, wenn jeder Reviewer Text geliefert hat; Exit 1 bei leerer oder
-  fehlerhafter Antwort (Protokoll `Status: failed`, nochmals laufen lassen);
+  fehlerhafter Antwort (Protokoll `Status: failed`, Ursache untersuchen);
   Exit 2 bei Aufruf- oder Voraussetzungsfehlern (fehlendes Ollama, kilo oder
   Key, unbekannter PR, kein Diff, Diff ueber `REVIEW_MAX_DIFF_CHARS`, zwei
   Modelle mit demselben Protokollnamen). Ein abgeschnittener Diff waere kein
@@ -113,15 +114,17 @@ bash scripts/review/run-local.sh --dry-run           # nur den Prompt bauen, nic
 
 ## Disposition
 
-Jeder Befund bekommt eine Zeile in `.pa/review_<label>_disposition.md`:
+Jeder Befund bekommt eine Zeile im PR-Text (AGENTS.md Regel 7):
 ID, Quelle, Schwere, Befund, Disposition (angenommen mit Commit / abgelehnt mit
-Grund / Folgearbeit). Vorlage: `.pa/review_setup-09_disposition.md`. Ändert sich
+Grund / Folgearbeit). Historische Vorlage: `.pa/review_setup-09_disposition.md`. Ändert sich
 der Kandidat danach, wird das Delta erneut geprüft.
 
 ## Reviewer oder Advisor?
 
-Das Ollama-Paar prüft Diffs und Pläne im Alltag. Für harte Entscheidungen und
-Abschlussreviews gilt das Advisor-Paar Fable 5.1 + GPT-6 Astra (siehe
+Ollama ist ein möglicher Transport, keine Review-Zulassung. Textlieferung und
+`accept-check.mjs` beweisen weder B=2/C+=1 noch Autoren-/Zahlungsberechtigung;
+der Koordinator prüft diese Regeln zusätzlich, bis die Checker-Lücken behoben sind.
+Für harte Entscheidungen und Abschlussreviews gelten die Advisor-Regeln (siehe
 [README.md](README.md#advisors)). Der frühere Workflow `.github/workflows/review.yml` (OpenRouter) ist am
 25.09.2026 gelöscht (PLAN-01); OpenRouter-Reviews sind aus vorhandenem Guthaben
 erlaubt, ohne Kauf oder Auto-Reload (AGENTS.md, Regel 5 und E1).

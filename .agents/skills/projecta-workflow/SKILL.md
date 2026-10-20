@@ -42,8 +42,8 @@ per provider: `docs/setup/README.md`. Check your machine with
 ## 2. Build and gates
 
 - The gate list lives only in `scripts/ci/gates.sh`. Run
-  `bash scripts/ci/gates.sh lane prepush` before pushing; `npm ci` first when
-  `node_modules` is missing or stale.
+  `bash scripts/ci/gates.sh lane prepush` before pushing; `npm ci` for missing
+  dependencies only within valid user authorization (AGENTS.md rule 10).
 - Every gate run ends with a `NICHT ABGEDECKT` block; put it in the PR text.
 - Worktrees under `.claude/worktrees/` have no `target/`. Point cargo at a
   build slot: `export CARGO_TARGET_DIR=$HOME/cargo-targets/projecta-<a|b|c>`
@@ -98,6 +98,7 @@ test first, then the fix.
   After round two Root decides merge, split or drop, records it in the PR
   report and informs the user. Review-forced fixes may reach 400 diff lines
   (initial dispatch: 300); record the overrun and forcing finding IDs.
+  Count added + deleted lines and exceptions only as AGENTS.md „Ownership and proof“ defines.
   Current eligible reviewers and credit limits: coordinator's private record;
   follow AGENTS.md's recorded exceptions, never infer live availability.
 - Every review checks `docs/PLAN.md` at the head: the PR's `Plan-ID:` row must

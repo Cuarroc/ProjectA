@@ -8,10 +8,12 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 ## Wie die Queue arbeitet
 
 - **Branch-Schutz:** Pflicht-Checks `gates (linux)`, `gates (windows)`,
-  `red-first`; „strict up-to-date" ist **aus**.
+  `red-first` und `Mergify Merge Protections` gemäß AGENTS.md; „strict up-to-date" ist **aus**.
+  Die drei CI-Prädikate in `.mergify.yml` ersetzen nicht die separate Merge-Protection;
+  die wirksamen GitHub-Schutzeinstellungen vor Aussagen darüber frisch per API prüfen.
 - **Aufnahmefähig** ist jeder PR auf `main`, der kein Draft ist, keinen
   Konflikt hat, kein `do-not-merge` trägt, das Label `review-ok` trägt und
-  dessen drei Checks grün sind.
+  dessen vier Pflicht-Checks grün sind.
 - **`review-ok` ist Pflicht** (CI-HARDEN-02, fail-closed): Das Label setzt die
   Orchestrator-Pipeline erst, wenn die Review-Entscheidung vollständig ist und
   kein High-Befund offen steht. Reviewer reihen nie selbst ein. Wer das Label
@@ -25,9 +27,9 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
   `@Mergifyio queue` (bzw. `requeue`) vom Koordinator. Ablauf:
   `gh pr checks <n>` prüfen; sind alle Pflicht-Checks grün, kommentiert der
   Koordinator `@Mergifyio queue` auf dem PR
-  (`gh pr comment <n> --body "@Mergifyio queue"`). Warum die automatische
-  Aufnahme nicht greift, ist **ungeklärt** — es gibt nur Hypothesen, keinen
-  Beleg. Der Queue-Lauf auf `main` wird weiterhin von Mergify geprüft.
+  (`gh pr comment <n> --body "@Mergifyio queue"`). Der damalige Befund beweist
+  keinen heutigen Ausfall; bis zu einem frischen Gegenbeleg bleibt das explizite
+  Einreihen bestehen. Der Queue-Lauf wird weiterhin von Mergify geprüft.
 - Die Queue (`mode: serial`, Bündel bis zu vier PRs) testet die
   Kandidaten gegen den aktuellen `main` und merged mit Merge-Commit — die
   Test-First-Commits bleiben in der Historie sichtbar.
@@ -48,9 +50,10 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 
 ## Arbeitsweise im Paket
 
-- **Ein PR je Paket, erst am Ende.** Im eigenen Worktree arbeiten,
-  `bash scripts/ci/gates.sh lane prepush` lokal fahren, dann einmal pushen und
-  den PR öffnen. Jeder Push auf einen offenen, fertigen PR kostet einen CI-Lauf
+- **Ein Draft-PR je Paket, früh sichern.** Im eigenen Worktree arbeiten,
+  `bash scripts/ci/gates.sh lane prepush` lokal fahren, jeden grünen Schritt committen,
+  pushen und mit `git ls-remote` prüfen (AGENTS.md Regel 4).
+  Jeder Push auf einen offenen, fertigen PR startet einen CI-Lauf
   (Linux; die Windows-Lane läuft erst in der Queue).
 - **Draft = nicht fertig.** Draft-PRs bekommen keine CI und kommen nicht in die
   Queue. Als Draft öffnen, solange Bericht, Review-Disposition oder der
@@ -101,7 +104,8 @@ Review-Disposition prüft Mergify **nicht** — sie gehört nach `AGENTS.md`
 ## Freeze, Retry
 
 - **Freeze** nur manuell, nur für ein Release, nur durch den Nutzer
-  (Mergify-Dashboard). `.mergify.yml` konfiguriert keinen Freeze.
+  (Mergify-Dashboard). Davon getrennt: CI-04s `scripts/ci/main-red-guard.sh`
+  schützt rotes `main`; Implementierung beweist keine wirksamen Zugangsdaten.
 - **Automatische Wiederholung** flakiger Jobs ist in `.mergify.yml` nicht
   konfiguriert. Ein roter Lauf bleibt rot: erst untersuchen (bekannte Flakes:
   `STAND.md`, `KNOWN_ISSUES.md`), dann neu anstoßen.

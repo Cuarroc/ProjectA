@@ -1,11 +1,11 @@
 # Kimi Code CLI (Kimi K3)
 
-> **Stand 02.10.2026: Das Kimi-Code-Abo ist abgelaufen.** Kimi ist kein Worker
-> mehr; diese Seite gilt erst wieder, wenn der Nutzer ein neues Abo abschließt.
-> Das Review-Modell `kimi-k3:cloud` läuft über Ollama Cloud und ist davon nicht
-> betroffen ([ollama-reviewers.md](ollama-reviewers.md)).
+> Historischer Befund 02.10.2026: Kimi-Code-Abo abgelaufen; als dauerhafte
+> Sperre am 14.10.2026 ausdrücklich überholt ([providers.md](providers.md)).
+> Vor Einsatz Zugang und Limit frisch prüfen; keine Verfügbarkeit oder neue
+> Kaufbefugnis ableiten. Ollama-Zugang separat prüfen ([ollama-reviewers.md](ollama-reviewers.md)).
 
-Rolle: früherer Frontend-/HQ-Worker. Zurück zur Übersicht: [README.md](README.md).
+Rollenbeispiel von 2026: Frontend-/HQ-Worker; aktuelles Routing: AGENTS.md. Zurück: [README.md](README.md).
 
 ## Welche Harness
 
@@ -61,6 +61,9 @@ Key stünde also trotzdem im Klartext in der Datei.
 | `anthropic` | — | Key geleert (nach „nur Abos" ungenutzt) |
 | `openrouter` | — | Key geleert (kein OpenRouter) |
 | `opencode` | literaler `api_key` | bleibt bewusst: ein globales `OPENAI_API_KEY` würde Codex auf API-Abrechnung umstellen (Regel „nur Abos") |
+
+Die Tabelle ist Historie, kein heutiges API-Verbot und keine Erlaubnis zur
+Key-Ablage. Es gelten nur die engen Kreditausnahmen und Secret-Regeln in AGENTS.md.
 
 Die Sicherung vor dem Leeren liegt neben `config.toml`.
 

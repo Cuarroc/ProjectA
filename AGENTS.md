@@ -82,15 +82,22 @@ Use the DevHQ website (`npm run hq:live`) for the human cockpit. Agents use the
 same backend through `pa hq runtime` and `pa hq context --project <id>`; do not
 scrape HTML. If the running app lacks HQ v1, report that limitation.
 
-Setup per provider (which instruction file each harness reads, config names,
-reviewer models) lives in `docs/setup/`; check a machine with
-`npm run dev:agent-check`. The repo skill `projecta-workflow`
-(`.agents/skills/`, copy in `.claude/skills/`) is a short checklist of this
-file; where they disagree, this file wins. `npm run dev:doctor -- --json` is
-read-only; `npm run dev:setup` sets clone-local hooks and creates
-`.pa/HQ-START.md`. None of these enables automation.
+Harness instruction/config recipes: `docs/setup/`; check with
+`npm run dev:agent-check`. The `projecta-workflow` skill (`.agents/skills/`,
+copy in `.claude/skills/`) summarizes this file, which wins on disagreement.
+`npm run dev:doctor -- --json` is read-only; `npm run dev:setup` sets clone-local
+hooks and creates `.pa/HQ-START.md`. None enables automation.
 
 ## Ownership and proof
+
+Size means added + deleted lines against the PR merge-base, including tests,
+support files and lockfiles. Rule 1 keeps 300 initially and 400 for review-forced
+fixes. Existing exceptions: generated `docs/dev-hq/data.js|json` on coordinator
+snapshot branches are excluded (user, 2026-10-16); named grants #1293/#1312 and
+SLIM moves #1451/#1456/#1457/#1459 ended with their delivery, not a general waiver.
+The 2026-10-20 documentation order additionally permits byte-identical archive
+moves with block/ID/link proof; all non-move edits still count toward 300.
+No other exclusion or higher cap follows from a checker's counting behavior.
 
 Only one implementation lane may edit a seam at a time (rule 6). Claude Code
 denies Write, Edit, MultiEdit, and NotebookEdit on a seam file unless
@@ -106,20 +113,18 @@ fixing a bug and consider a lint/gate for the error class.
 ## Reviews and advisors
 
 The tier (rule 5) follows the changed files: any seam, security-relevant code,
-concurrency, PTY or database/migration change makes it tier A. Tier A requires
-two different non-author families; tier B requires two non-author families
-(one subscription reviewer plus one OpenRouter reviewer, or two subscription
-families under E1 in rule 5). Tier C needs only
-gates, except C+: tests adding skip/timeout/retry or weakening assertions need
-one outside reviewer. A fix-round delta needs one non-author reviewer, or two
-when it touches tier-A files. Never let the author's model family judge its
-own candidate. Record every finding and its
-disposition (accepted with commit, rejected with reason, follow-up) in the PR
-text. A second round only when round one had a high-severity finding; after
-round two the coordinator (Root) decides merge, split or drop and records it in
-the PR report; no third review round. Evidence is bound to the actual candidate; later
-changes invalidate the affected evidence, so review the delta again. A finding
-without `file:line` counts as unproven.
+concurrency, PTY or database/migration change makes it tier A. Counts,
+non-author families, E1, C+ and fix-round delta requirements follow rule 5.
+Record every finding and disposition (accepted with commit, rejected with reason,
+follow-up) in the PR. Round two requires a high-severity round-one finding;
+Root then records merge/split/drop and informs the user; no third round.
+Evidence binds to the candidate: later changes require affected delta review.
+A finding without `file:line` counts as unproven.
+
+Scoped user order 2026-10-20, documentation mission only: central orchestrator
+uses Claude; delegated Chiefs, workers and independent reviewers use GPT 6.1/high.
+Separate agents/observations replace cross-family selection only for this mission,
+until its completion or a newer user order; general rule 5 remains unchanged.
 
 Every review checks `docs/PLAN.md` at the head: the PR's own row (identified by `Plan-ID:`) states what is true after merge, and changes in the PR leave no other row, the user section or decision inbox stale; cross-check against `gh`. A mismatch is a medium finding, or high if the user section asks for something already done, and must be fixed in the same PR before `review-ok` (user order 2026-10-15: the plan must never be stale).
 
@@ -156,18 +161,12 @@ spend limit, no payment method, purchased credits or auto-reload; exhaustion
 returns work to subscriptions. Keys stay in the user's vault/secret store,
 never in files, logs, commands or PR text.
 
-The user's 2026-10-14 decision also permits existing OpenRouter credit only:
-no purchase or auto-reload. Reviews run from the PC using the coordinator's
-OpenRouter review script outside the repo. Its key stays only in the user's
-environment/vault, never in files, logs, commands or PR text. Root's privately
-recorded floor applies: below it, free reviewers are supplementary; they never
-count as required reviewers. A missing required family means waiting for an
-eligible reviewer, not reducing the count. This supersedes the old OpenRouter
-ban in the 2026-10-09 credit decision. E1 (Elias, 2026-10-20) permits a second
-subscription family for tier B while OpenRouter credit is <= 0, with no purchase;
-both reviewers remain from different non-author families. Free models never count.
-For example: Codex + Kimi, or Claude + Codex when the author is a third family.
-E1 ends when credit returns or Elias changes it; no current balance is asserted.
+The 2026-10-14 OpenRouter exception supersedes the 2026-10-09 ban: existing
+credit only, no purchase or auto-reload. Reviews use the coordinator's external
+PC script; keys stay in the user's environment/vault, never files, logs,
+commands or PR text. The privately recorded floor applies; free feedback never
+counts. Missing eligible families mean waiting, not fewer reviews. Rule 5's E1
+ends when credit returns or the user changes it; no live balance is asserted.
 
 ## Bounded goals and approved adaptation
 
@@ -224,11 +223,9 @@ accepted.
 
 ## Checks
 
-The gate list lives in exactly one place: `scripts/ci/gates.sh`. Until
-2026-09-09 it stood five times over — both hooks, `ci.yml`, `release.yml` and as
-prose here — and it drifted (`pre-push` ran `cargo test`, CI ran
-`cargo nextest run --profile ci`). A sixth copy in this file would be the same
-mistake, so this section names commands, not gates:
+The sole gate list is `scripts/ci/gates.sh`. Before consolidation on 2026-09-09,
+both hooks, `ci.yml`, `release.yml` and this prose drifted: pre-push used
+`cargo test`, CI `cargo nextest run --profile ci`. Commands, not a sixth list:
 
 ```sh
 bash scripts/ci/doctor.sh              # what can this machine prove?
@@ -314,9 +311,9 @@ becomes the bottleneck, ask the user.
 
 ## Routing: task type to profile (AP-6a)
 
-Profile ids come from `src-tauri/resources/agent-defaults.json`; models and
-effort per profile live only in `docs/setup/providers.md` (single routing
-source, not repeated here). A profile that is not in the repo is marked
+This section is the routing contract; setup pages contain dated recipes, not
+dispatch authority. Profile ids come from `src-tauri/resources/agent-defaults.json`;
+observe model/effort and access before use. A profile not in the repo is marked
 "profile pending CLI check": do not dispatch to it until a CLI probe exists.
 The choice among eligible families is only the usage rule below the table;
 no family is preferred or excluded by a fixed rule (user decision 2026-10-07).
@@ -351,8 +348,8 @@ tests it on top of the current `main` and merges it with a merge commit.
 up on their own - each of the last 14 merged PRs (#240-#266) and the open
 #274/#275 carry an explicit `@Mergifyio queue` comment. So once
 `gh pr checks <n>` is green, the coordinator comments `@Mergifyio queue` on
-the PR. Why automatic enqueueing does not take effect is unresolved (only
-hypotheses); the queue run on `main` is still checked by Mergify. Merge
+the PR. That dated observation does not prove today's auto-enqueue behavior;
+keep explicit enqueueing until fresh evidence resolves it. Merge
 `main` into your branch only to resolve a real conflict (Mergify labels
 those `conflict`): merge, never rebase or force-push.
 
@@ -371,14 +368,14 @@ those `conflict`): merge, never rebase or force-push.
   hook or gate fix that protects everyone goes alone as a hotfix, never bundled
   into a large PR.
 - **Package PRs carry their report in the PR text.** A branch is a package
-  branch when it matches `^(claude|codex|kimi|opencode|glm)/(w<N>-|df<N>|ki-<N>|hq2-)`
+  branch when it matches `^(claude|codex|kimi|opencode|glm|cursor)/(w<N>-|df<N>|ki-<N>|hq2-|dr-|z<N>-)`
   (case-insensitive), e.g. `claude/w2-07-credential-acl`. Its PR body must
   contain a line starting with `## Report`, or the `Mergify Merge Protections`
   check stays red. There is no transition: a `.pa/report_*.md` file no longer
   satisfies the check, so an open package PR must add the section.
   Docs/infra branches (`claude/plan-01-…`, `claude/ci-03-…`)
   are not packages but use the same PR shape.
-- **Red `main`:** the queue stops (until CI-04 automates it); the coordinator puts `do-not-merge` on
+- **Red `main`:** CI-04 has an implementation, not proof of effective operation; the coordinator verifies the stop and puts `do-not-merge` on
   queued PRs, records the run ID in `KNOWN_ISSUES.md` and fixes `main` first.
 - `gates (windows)` never runs its lane on an ordinary PR (CI-03): it reports a
   stub success; the first Windows verdict is the merge-queue run. Never merge

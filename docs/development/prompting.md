@@ -22,7 +22,7 @@ einschränken; keine zusätzlichen QA-Bots, Testagenten oder Benchmarks.
 1. Materielle Aussagen haben aktuelle Werkzeug-/Source-/SHA-Belege mit geprüftem Umfang; sonst steht „unbelegt“ oder „prüfen“ da.
 2. Das Paket ist nicht schon erledigt (`git log --grep`, `gh pr list --search`).
 3. Lane und Naht stehen fest; der Auftrag wartet auf den Vorgänger an derselben Naht oder Datei und fasst keine Datei eines offenen PRs an.
-4. Höchstens 300 Diffzeilen, sonst vorher schneiden.
+4. Größe nach AGENTS.md „Ownership and proof“: 300 initial, 400 bei erzwungener Review-Nacharbeit; nur die dort belegten Ausnahmen.
 5. Die Abnahme hat Befehl und Exit-Code; der rote Test ist als `Test-First: <Pfad>::<Test>` benannt.
 6. Eine nötige Nutzerentscheidung steht schon in `docs/PLAN.md`.
 7. Der Ort passt zur Umgebung (Abhängigkeiten, Build-Slot, Windows).
@@ -34,7 +34,7 @@ einschränken; keine zusätzlichen QA-Bots, Testagenten oder Benchmarks.
 
 Der Autor prüft die erforderlichen Abnahmebelege vor dem Push. Diese regulären Gates werden nicht ohne konkreten Anlass als zusätzliche Rekursionsrunden wiederholt. Befehle, Ausgabe und Exit-Code gehören in den PR-Text:
 
-1. **Größe (4):** `git diff --shortstat origin/main...HEAD` zeigt höchstens 300 Zeilen einschließlich Tests; sonst vor dem Push schneiden.
+1. **Größe (4):** `git diff --numstat <PR-base>...HEAD`: Additionen + Löschungen nach AGENTS.md zählen, einschließlich Tests und Hilfsdateien; Ausnahmen und erzwungene Nacharbeit im PR belegen.
 2. **Abnahme und Trailer (5):** der Abnahmebefehl aus dem Auftrag läuft mit Exit 0; jede Commit-Nachricht trägt `Test-First: <Pfad>::<Test>`, `Regression-For:` oder `No-Test: <Grund>`; Code-PRs: `bash scripts/ci/red-first.sh --plan`. Nach dem Commit `git log -1 --format=%s%n%b` lesen, nicht durch `tail` oder `head` leiten.
 3. **Allein verständlich (9):** der PR-Text nennt Basis-SHA, drei deutsche Sätze, `## Report`, `NICHT ABGEDECKT`; einen Prompt-Log, wenn eine Zusatzprüfung sinnvoll war.
 4. **Sicherheit:** Secret-Scan vor jedem Commit; nichts Persönliches (Namen, E-Mails außer noreply, Pfade mit Benutzernamen, Kosten).
@@ -49,7 +49,7 @@ Ist nach dem Push Nacharbeit nötig (Review-Befund, rote Prüfung), gilt:
 - **Begrenzter Fix auf demselben Branch.** Normaler Commit (kein Force-Push/Rebase), eigenes `prepush`, Push und Remote-Beleg; betroffene Kandidatenevidenz erneuern.
 - Jeder Befund steht im PR-Text unter `### Nacharbeit` als `Datei:Zeile` mit Befehl und Exit-Code. Ein Befund ohne `Datei:Zeile` zählt als unbelegt.
 - Die Runde behebt nur die genannten Befunde; Neues kommt in ein eigenes Paket.
-- Die unabhängigen Reviewrunden bleiben nach AGENTS.md Regel 5 begrenzt: zweite nur bei hohem Befund, danach entscheidet der Nutzer. Selbstprüfungsrunden erlauben keine zusätzliche Fremdreviewrunde oder neue Freigabe.
+- Die unabhängigen Reviewrunden bleiben nach AGENTS.md Regel 5 begrenzt: zweite nur bei hohem Befund, danach entscheidet Root über Merge, Aufteilen oder Verwerfen und informiert den Nutzer. Selbstprüfungsrunden erlauben keine zusätzliche Fremdreviewrunde oder neue Freigabe.
 - FLOW-05 zählt die Fixrunden je PR.
 
 ## Vorlagen
