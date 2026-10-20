@@ -1571,6 +1571,17 @@ impl StatusEngine {
         });
     }
 
+    /// Startup failure detail in the transient guard slot; recovery clears it.
+    pub fn note_submit_guard(&self, worker_id: &str, detail: Option<&str>) {
+        self.update(worker_id, |state| {
+            if state.status == STATUS_RUNNING {
+                state.submit_guard = detail.map(|text| {
+                    Verdict::coded_with(COL_NEEDS_YOU, ReasonCode::DeliveryFailed, text)
+                });
+            }
+        });
+    }
+
     /// A blocking decision is waiting for the human (Phase 21).
     ///
     /// `reason` ist der Beleg - "Entscheidung wartet: ..." -, gepraegt in

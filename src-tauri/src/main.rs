@@ -480,8 +480,7 @@ impl AgentControl for PtyWriter {
     ) -> Result<(), String> {
         let worker_id = worker_id.to_string();
         let app = self.app.clone();
-        // Fired at most once: Delivered and Escalated are the guard's
-        // terminal events - the PTY layer returns right after emitting them.
+        // One outcome: Delivered, Escalated or StartupBlocked ends the guard.
         let on_outcome = Mutex::new(on_outcome);
         self.app.state::<PtyManager>().start_submit_guard(
             session_id,
@@ -518,7 +517,8 @@ impl AgentControl for PtyWriter {
 
 /// The user-facing reading of one delivery's guard events (F-CORE-3 B.2).
 ///
-/// Startup modals carry their own reason; other failures use delivery progress.
+/// Startup modals carry their reason; generic escalation uses delivery progress:
+/// before write, no readiness; before Enter, no echo; after Enter, no answer.
 #[derive(Default)]
 struct GuardNarrative {
     /// W1-03d: the guard stopped before typing because an earlier task
@@ -605,9 +605,10 @@ impl GuardNarrative {
 fn note_guard_status(engine: &StatusEngine, worker_id: &str, event: &SubmitGuardEvent) {
     match event {
         SubmitGuardEvent::StartupBlocked(dialog) => {
-            engine.note_hook(worker_id, "Notification", Some(dialog.blocked_message()))
+            engine.note_submit_guard(worker_id, Some(dialog.blocked_message()))
         }
         SubmitGuardEvent::Escalated => engine.note_submit_guard_failed(worker_id),
+        SubmitGuardEvent::Delivered => engine.note_submit_guard(worker_id, None),
         _ => {}
     }
 }
@@ -677,8 +678,7 @@ impl AgentControl for PtyAgents<'_> {
         let readiness_marker = readiness_marker.map(str::to_string);
         let store = self.store.clone();
         let engine = Arc::clone(&self.engine);
-        // Fired at most once: Delivered and Escalated are the guard's
-        // terminal events - the PTY layer returns right after emitting them.
+        // One outcome: Delivered, Escalated or StartupBlocked ends the guard.
         let on_outcome = Mutex::new(on_outcome);
         let narrative = Mutex::new(GuardNarrative::default());
         self.manager.start_submit_guard(
