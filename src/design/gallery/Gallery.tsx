@@ -10,6 +10,7 @@ import { EMPTY_HALL, SAMPLE_HALL, type HallScene } from "../hall/fixtures";
 import { motionDuration } from "../motion/tokens";
 import { MOTION_MODES, useMotion, type MotionMode } from "../motion/motionMode";
 import { COMPONENT_REGISTRY, type ComponentFamily } from "../registry";
+import { renderStories } from "./stories";
 import "./gallery.css";
 
 // DS-X-15 (D6): read-only gallery of the design tokens. No IPC, no store: every value comes from tokens.css.
@@ -139,6 +140,8 @@ function Body({ page }: { page: Page }) {
       <ul className="g-gal-grid">{Object.keys(GLYPHS).map((n) => <li key={n} className="g-gal-icon"><Icon name={n as keyof typeof GLYPHS} /><code>{n}</code></li>)}</ul>
     );
     case "hall": return <ProbeHall />;
+    case "controls":
+    case "inputs": return renderStories(page);
     default: return (
       <>
         <p className="g-gal-note">{de["gallery.storiesLater"]}</p>

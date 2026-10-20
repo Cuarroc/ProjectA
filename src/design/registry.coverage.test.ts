@@ -2,6 +2,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { createElement } from "react";
+import { de } from "../i18n/de";
+import { Gallery } from "./gallery/Gallery";
 
 import { COMPONENT_REGISTRY } from "./registry";
 
@@ -113,4 +117,18 @@ describe("design component registry", () => {
     expect(familyOf("controls/deep/Nested.tsx")).toBe("controls");
     expect(familyOf("controls\\deep\\Nested.tsx")).toBe("controls");
   });
+});
+
+// Extend this family list for DS-X-17; assert rendered stories, not a second catalogue.
+it("every controls and inputs entry has a gallery story", () => {
+  render(createElement(Gallery));
+  try {
+    for (const family of ["controls", "inputs"] as const) {
+      fireEvent.click(screen.getByRole("button", { name: de[`gallery.family.${family}`] }));
+      for (const entry of COMPONENT_REGISTRY.filter((entry) => entry.family === family)) {
+        expect(screen.getAllByRole("article", { name: entry.name })).toHaveLength(1);
+      }
+      expect(screen.getByText(de["gallery.sample"])).toBeTruthy();
+    }
+  } finally { cleanup(); }
 });
