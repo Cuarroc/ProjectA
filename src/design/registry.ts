@@ -203,6 +203,12 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "Options from the caller.",
   },
   {
+    name: "Banner", family: "layout",
+    variants: ["kind info, ok, warn, bad"], states: ["bad is an alert, the others a polite status"],
+    a11y: "bad uses role=\"alert\", the others role=\"status\"; the kind is also a word, never colour alone.",
+    text: "src/i18n/de.ts banner.*; the message is the caller's.",
+  },
+  {
     name: "ConfirmDialog", family: "layout",
     variants: ["default", "danger"], states: ["open, closed; confirm fires once per opening"],
     a11y: "role=\"alertdialog\" aria-modal with aria-labelledby and aria-describedby; focus starts on Abbrechen, Esc cancels, a scrim click does not close.",
@@ -237,6 +243,12 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: [], states: ["active, hidden"],
     a11y: "role=\"tabpanel\" labelled by its tab; children render only while active.",
     text: "Children from the caller.",
+  },
+  {
+    name: "Tooltip", family: "layout",
+    variants: [], states: ["closed, open; flips above when there is no room below"],
+    a11y: "Keyboard focus opens it at once, hover after the --g-dur-4 delay; Esc, blur and leaving close it; the trigger gets aria-describedby while open; it never animates.",
+    text: "Content from the caller; short text only, the control keeps its own accessible name.",
   },
   {
     name: "ToastRegion", family: "layout",

@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { Button } from "../../design/controls/Button";
 import "../../design/inputs/inputs.css";
 import { Avatar } from "../../design/inputs/Avatar";
+import { Banner } from "../../design/layout/Banner";
 import { StateMark } from "../../design/state/StateMark";
 import { archiveWorker, respawnWorker } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
@@ -133,7 +134,7 @@ export function AgentCard({ card, name, now, onOpen, onChanged }: AgentCardProps
           </div>
         )
       )}
-      {failed !== null && <p className="ls-err" role="alert">{t(failed === "restart" ? "leitstand.restartFailed" : "leitstand.archiveFailed")}</p>}
+      {failed !== null && <Banner kind="bad">{t(failed === "restart" ? "leitstand.restartFailed" : "leitstand.archiveFailed")}</Banner>}
     </article>
   );
 }
