@@ -33,6 +33,23 @@ test("plan check omissions remain visible and missing scope stays unknown", () =
   assert.match(section({ notChecked: [] }), /keine Auslassungen gemeldet/);
 });
 
+test("plan check omissions use the findings inline limit without losing entries", () => {
+  const html = part(render(data(), { findings: [], notChecked: ["one", "two", "three", "four", EVIL] }), "Plan-Mängel");
+  const doc = new JSDOM(html).window.document;
+  assert.equal(doc.querySelectorAll("ul > li:not(details li)").length, 4);
+  assert.equal(doc.querySelector("details summary")?.textContent, "weitere 2 anzeigen");
+  assert.match(doc.querySelector("details")?.textContent ?? "", /four/);
+  assert.ok(doc.querySelector("details")?.textContent.includes(EVIL));
+  assert.equal(doc.querySelector("img"), null);
+});
+
+test("legacy roadmap stands render an unknown plan ref and fetch warning", () => {
+  const html = top(render(data({ packages: [pkg("A-1")] })));
+  assert.match(html, /aus <code>Unbekannt<\/code>/);
+  assert.match(html, /Fetch-Zeit.*unbekannt/);
+  assert.doesNotMatch(html, /undefined/);
+});
+
 test("hostile strings from every input stay inert text", () => {
   const e = EVIL, line = EVIL;
   const html = render(data({ stand: { generatedAt: e, mainSha: e }, haengt: [{ id: e, what: e, who: e, change: e, when: e, where: e, blocker: true }],
