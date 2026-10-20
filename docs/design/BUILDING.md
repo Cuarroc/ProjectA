@@ -89,9 +89,11 @@ It renders registered routes, mount-only routes and Settings tabs: 0/2/12 items,
 1920×1080, light/dark, reduced motion. Table, PNGs and detailed JSON go to `.pa/design-gate/`.
 The sweep waits for visible page text; unrendered lazy frames fail instead of yielding zero counts.
 Proposed thresholds (the user may change them): trailing vertical slack >120 px AND >35% of a
-box's height; box nesting depth >2; selected tabs with no meaningful content (including known
+box's height; box depth >2 counting the element itself as level 1; selected tabs with no meaningful content (including known
 placeholder components); uppercase leaf labels ≤14 px; equal computed grid tracks using `1fr`.
 Exit 1 means a per-case count rose or coverage changed. `npm run design:gate -- --update`
-initializes a missing baseline or lowers existing ceilings atomically; it never raises them.
+initializes a missing baseline or replaces it after validation; it accepts added/removed cases
+but never raises ceilings on retained cases. The file write is not atomic.
 This is a DOM heuristic, not a visual verdict; horizontal gaps, dialogs and legacy sub-tabs
-are not swept. The command is deliberately not wired into CI or `gates.sh` yet.
+are not swept. Route aliases may render the same screen and are counted separately.
+The command is deliberately not wired into CI or `gates.sh` yet.

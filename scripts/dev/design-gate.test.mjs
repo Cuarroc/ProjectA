@@ -42,6 +42,27 @@ test('uppercase eyebrows and equal fractional grids are reported', async () => {
   assert.equal(result.eyebrows.length, 1);
   assert.equal(result.grids.length, 1);
 });
+
+test('slack must exceed 120px even when its share exceeds 35 percent', async () => {
+  const result = await inspect('<section id="at" class="box" style="height:300px"><button style="height:180px">At</button></section><section id="over" class="box" style="height:300px"><button style="height:179px">Over</button></section>');
+  assert.deepEqual(result.slack, [{ element: '#over', height: 300, slack: 121, percent: 40 }]);
+});
+test('slack must exceed 35 percent even when it exceeds 120px', async () => {
+  const result = await inspect('<section id="at" class="box" style="height:400px"><button style="height:260px">At</button></section><section id="over" class="box" style="height:400px"><button style="height:259px">Over</button></section>');
+  assert.deepEqual(result.slack, [{ element: '#over', height: 400, slack: 141, percent: 35 }]);
+});
+test('nesting counts the element itself as the first box level', async () => {
+  const result = await inspect('<section class="box"><div class="box"><button id="third">Three</button></div></section>');
+  assert.deepEqual(result.nesting, [{ element: '#third', depth: 3 }]);
+});
+test('uppercase eyebrows include 14px but exclude 15px and mixed case', async () => {
+  const result = await inspect('<span id="at" style="font-size:14px">LABEL</span><span style="font-size:15px">LABEL</span><span style="font-size:14px">Label</span>');
+  assert.deepEqual(result.eyebrows, [{ element: '#at', text: 'LABEL' }]);
+});
+test('grids require equal tracks and an authored 1fr rule', async () => {
+  const result = await inspect('<div id="equal" style="display:grid;width:400px;grid-template-columns:1fr 1fr">Equal</div><div style="display:grid;width:400px;grid-template-columns:1fr 2fr">Unequal</div><div style="display:grid;grid-template-columns:200px 200px">Fixed</div>');
+  assert.deepEqual(result.grids, [{ element: '#equal', columns: 2 }]);
+});
 test('ratchet rejects rises and missing cases but accepts falls', () => {
   assert.equal(ratchet({ screen: [2, 0, 0, 0, 0] }, { screen: [1, 0, 0, 0, 0] }).length, 1);
   assert.deepEqual(ratchet({ screen: [0, 0, 0, 0, 0] }, { screen: [1, 0, 0, 0, 0] }), []);

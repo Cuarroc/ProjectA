@@ -69,14 +69,14 @@ export function measure() {
   return result;
 }
 
-export function ratchet(current, baseline) {
+export function ratchet(current, baseline, update = false) {
   for (const counts of [current, baseline]) {
     if (!counts || Array.isArray(counts) || typeof counts !== 'object' || Object.values(counts).some(row =>
       !Array.isArray(row) || row.length !== metrics.length || row.some(n => !Number.isSafeInteger(n) || n < 0))) throw new Error('invalid design counts');
   }
   const failures = [];
   for (const key of new Set([...Object.keys(current), ...Object.keys(baseline)])) {
-    if (!current[key] || !baseline[key]) failures.push(`${key}: missing current case or baseline`);
+    if (!current[key] || !baseline[key]) { if (!update) failures.push(`${key}: missing current case or baseline`); }
     else metrics.forEach((name, i) => { if (current[key][i] > baseline[key][i]) failures.push(`${key} ${name}: ${current[key][i]} > ${baseline[key][i]}`); });
   }
   return failures;
@@ -154,7 +154,7 @@ async function main() {
         console.log(`Rendered ${items} items / ${width}x${height} / ${theme}`);
       } finally { await context.close(); }
     }
-    const failures = baseline ? ratchet(counts, baseline) : [];
+    const failures = baseline ? ratchet(counts, baseline, values.update) : [];
     const table = ['| Screen (sum of 12 cases) | Slack | Depth>2 | Empty tabs | Eyebrows | 1fr grids |', '|---|---:|---:|---:|---:|---:|',
       ...Object.entries(summary).map(([route, row]) => `| ${route} | ${row.join(' | ')} |`)].join('\n');
     console.log(table);
