@@ -32,10 +32,10 @@ export default function EmergencyStop() {
     if (focusWasInside) trigger.current?.focus();
   }, []);
   useEffect(() => {
-    if (!active || !justEngaged.current) return;
+    if (!active || busy || !justEngaged.current) return;
     justEngaged.current = false;
     root.current?.querySelector("button")?.focus();
-  }, [active]);
+  }, [active, busy]);
 
   const refresh = useCallback(() => {
     const mine = ++request.current;
