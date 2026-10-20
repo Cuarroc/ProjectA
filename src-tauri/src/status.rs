@@ -1442,9 +1442,13 @@ impl StatusEngine {
                 if len > TAIL_CAPACITY {
                     *output = output.chars().skip(len - TAIL_CAPACITY).collect();
                 }
-                // Both named startup dialogs belong to Codex. A redraw is
-                // not recovery; its composer prompt must appear after the block.
-                if strip_ansi(output).contains("Ask Codex to do anything") {
+                // A redraw can include the old composer behind the modal.
+                let text = crate::submit_guard::normalize_tui_output(output);
+                let modal = text
+                    .rfind("Hooks need review")
+                    .max(text.rfind("Update available"))
+                    .unwrap_or(0);
+                if text[modal..].contains("Ask Codex to do anything") {
                     state.submit_guard = None;
                     state.startup_block_output = None;
                 }
