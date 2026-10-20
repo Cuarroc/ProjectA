@@ -1282,6 +1282,12 @@
                         "{dialog:?} must survive output {chunk:?} (delivered={delivered})",
                     );
                 }
+                // A full redraw may include the old composer behind the modal.
+                engine.note_output(
+                    "hooks-worker",
+                    &format!("Ask Codex to do anything\n{screen}"),
+                );
+                assert_eq!(engine.verdict_for("hooks-worker"), blocked);
 
                 if delivered {
                     super::note_guard_status(
