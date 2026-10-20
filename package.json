@@ -53,7 +53,8 @@
     "dev:bench-weekly": "node scripts/dev/bench-weekly.mjs",
     "dev:plan-lint": "node scripts/dev/plan-lint.mjs",
     "dev:mrp-count": "node scripts/dev/mrp-count.mjs",
-    "dev:shot": "node scripts/dev/shot.mjs"
+    "dev:shot": "node scripts/dev/shot.mjs",
+    "design:gate": "node scripts/dev/design-gate.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.0",

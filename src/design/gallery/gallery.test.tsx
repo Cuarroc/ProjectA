@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { de } from "../../i18n/de";
+import { GLYPHS } from "../icons/glyphs";
 import { COMPONENT_REGISTRY } from "../registry";
 import { Gallery } from "./Gallery";
 
@@ -39,6 +40,15 @@ describe("design gallery (DS-X-15)", () => {
     }
     fireEvent.click(within(nav).getByRole("button", { name: de["gallery.type"] }));
     expect(screen.getByText(de["gallery.sample"])).toBeTruthy();
+  });
+
+  it("the icons page lists every registered glyph", () => {
+    render(<Gallery />);
+    fireEvent.click(within(screen.getByRole("navigation", { name: de["gallery.nav"] })).getByRole("button", { name: de["gallery.family.icons"] }));
+    const cells = document.querySelectorAll(".g-gal-icon");
+    expect(cells.length).toBe(Object.keys(GLYPHS).length);
+    expect(cells.length).toBeGreaterThan(0);
+    for (const cell of cells) expect(cell.querySelector("svg")).not.toBeNull();
   });
 
   it("reduced motion stops the motion demo", () => {
