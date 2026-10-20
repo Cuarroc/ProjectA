@@ -19,7 +19,7 @@ holds the truth and, where one exists, the test that fails when it is broken. Vo
 | Enter or pick a value | `inputs/`: `Input`, `Textarea`, `Select`; `forms/`: `Field` (label, hint, error by id), `Checkbox`, `RadioGroup`, `SwitchField` |
 | Show a measure or identity | `inputs/`: `Lamp`, `Meter`, `Avatar`, `Kbd` |
 | Show a state | `state/`: `StateMark`, `StateGlyph`; `fabrik/`: `Orb` |
-| Show data, proof, "nothing here" | `data/`: `Table`, `KeyValue`, `ProofChip`, `HonestState`, `DevNote` |
+| Show data, proof, "nothing here" | `data/`: `Table`, `KeyValue`, `ProofChip`, `HonestState`, `DevNote`, `Sparkline`, `BarList`, `ChartFrame` |
 | Navigate, overlay, notify | `layout/`: `Tabs`, `TabPanel`, `Sheet`, `ToastRegion` |
 | Lists and labels | `surface/`: `ListRow`, `Separator`, `Badge` |
 | The Halle | `hall/` |
