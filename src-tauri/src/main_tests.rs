@@ -1253,6 +1253,57 @@
     }
 
     #[test]
+    fn startup_block_survives_modal_redraw_and_clears_on_recovery() {
+        use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
+
+        for (dialog, screen) in [
+            (CodexHooksReview, "Hooks need review\nTrust all and continue"),
+            (CodexUpdateAvailable, "Update available\nUpdate now\nSkip"),
+        ] {
+            for delivered in [false, true] {
+                let engine = crate::status::StatusEngine::default();
+                engine.set_override("hooks-worker", Some("done")).unwrap();
+                // A readiness marker from before the block is only history.
+                engine.note_output("hooks-worker", "Ask Codex to do anything\n");
+                super::note_guard_status(
+                    &engine,
+                    "hooks-worker",
+                    &super::SubmitGuardEvent::StartupBlocked(dialog),
+                );
+                let blocked = engine.verdict_for("hooks-worker");
+                assert_eq!(blocked.column, "needs_you");
+                assert!(blocked.reason.as_ref().unwrap().contains(screen.lines().next().unwrap()));
+
+                for chunk in ["", "\u{1b}[2J\u{1b}[H", screen, "\r\n", "redrawing..."] {
+                    engine.note_output("hooks-worker", chunk);
+                    assert_eq!(
+                        engine.verdict_for("hooks-worker"),
+                        blocked,
+                        "{dialog:?} must survive output {chunk:?} (delivered={delivered})",
+                    );
+                }
+
+                if delivered {
+                    super::note_guard_status(
+                        &engine,
+                        "hooks-worker",
+                        &super::SubmitGuardEvent::Delivered,
+                    );
+                } else {
+                    // A real prompt may arrive across PTY reads and ANSI spans.
+                    engine.note_output("hooks-worker", "\n\u{1b}[32mAsk Codex to ");
+                    assert_eq!(engine.verdict_for("hooks-worker"), blocked);
+                    engine.note_output("hooks-worker", "do anything\u{1b}[0m");
+                }
+                assert_eq!(engine.verdict_for("hooks-worker").column, "done");
+                assert!(engine.signals_for("hooks-worker").is_empty());
+                engine.note_output("hooks-worker", "\n");
+                assert_eq!(engine.verdict_for("hooks-worker").column, "done");
+            }
+        }
+    }
+
+    #[test]
     fn startup_block_clears_on_delivery_or_output_and_preserves_override() {
         for delivered in [false, true] {
             let engine = crate::status::StatusEngine::default();
