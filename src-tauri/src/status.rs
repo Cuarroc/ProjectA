@@ -882,9 +882,10 @@ struct WorkerState {
     gh: Option<Verdict>,
     pr_url: Option<String>,
     override_column: Option<&'static str>,
-    /// A task was pasted but the TUI never accepted it after three Enter
-    /// retries. Real output clears this immediately.
+    /// A delivery failed, or a startup modal needs the user.
     submit_guard: Option<Verdict>,
+    /// Output since a named startup block, excluding old readiness markers.
+    startup_block_output: Option<String>,
     /// This worker has a blocking decision waiting for the human (Phase 21).
     ///
     /// Set when the question is asked and cleared when it is closed - by a
@@ -940,6 +941,7 @@ impl Default for WorkerState {
             pr_url: None,
             override_column: None,
             submit_guard: None,
+            startup_block_output: None,
             question: None,
             tail: String::new(),
             last_output: None,
@@ -1383,6 +1385,7 @@ impl StatusEngine {
                 // Archiving is definitive; so is coming back to life.
                 state.override_column = None;
                 state.submit_guard = None;
+                state.startup_block_output = None;
                 if worker.status == STATUS_EXITED {
                     // Every hook describes an agent that is still alive; once
                     // the lifecycle says it is gone, a `SessionStart` from
@@ -1433,9 +1436,22 @@ impl StatusEngine {
         self.update(worker_id, |state| {
             state.push_output(chunk);
             state.last_output = Some(at);
-            // Any real terminal output after the guard escalated means the
-            // prompt did not stay stuck after all.
-            state.submit_guard = None;
+            if let Some(output) = &mut state.startup_block_output {
+                output.push_str(chunk);
+                let len = output.chars().count();
+                if len > TAIL_CAPACITY {
+                    *output = output.chars().skip(len - TAIL_CAPACITY).collect();
+                }
+                // Both named startup dialogs belong to Codex. A redraw is
+                // not recovery; its composer prompt must appear after the block.
+                if strip_ansi(output).contains("Ask Codex to do anything") {
+                    state.submit_guard = None;
+                    state.startup_block_output = None;
+                }
+            } else {
+                // Generic delivery failures still clear on new output.
+                state.submit_guard = None;
+            }
             // Same for the stuck verdict: it says nothing has happened, and
             // this is something happening. The tick puts it back if the
             // silence resumes for another full threshold.
@@ -1565,6 +1581,7 @@ impl StatusEngine {
     pub fn note_submit_guard_failed(&self, worker_id: &str) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
+                state.startup_block_output = None;
                 state.submit_guard =
                     Some(Verdict::coded(COL_NEEDS_YOU, ReasonCode::DeliveryFailed));
             }
@@ -1575,6 +1592,7 @@ impl StatusEngine {
     pub fn note_submit_guard(&self, worker_id: &str, detail: Option<&str>) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
+                state.startup_block_output = detail.map(|_| String::new());
                 state.submit_guard = detail.map(|text| {
                     Verdict::coded_with(COL_NEEDS_YOU, ReasonCode::DeliveryFailed, text)
                 });
