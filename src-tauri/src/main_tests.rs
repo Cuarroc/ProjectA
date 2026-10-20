@@ -1297,9 +1297,13 @@
                     );
                 } else {
                     // A real prompt may arrive across PTY reads and ANSI spans.
-                    engine.note_output("hooks-worker", "\n\u{1b}[32mAsk Codex to ");
+                    let at = std::time::Instant::now() + Duration::from_secs(4);
+                    engine.note_output_at("hooks-worker", "\n\u{1b}[32mAsk Codex to ", at);
                     assert_eq!(engine.verdict_for("hooks-worker"), blocked);
-                    engine.note_output("hooks-worker", "do anything\u{1b}[0m");
+                    engine.note_output_at("hooks-worker", "do anything\u{1b}[0m", at);
+                    engine.tick_at(at + Duration::from_secs(2));
+                    assert_eq!(engine.verdict_for("hooks-worker"), blocked);
+                    engine.tick_at(at + Duration::from_secs(3));
                 }
                 assert_eq!(engine.verdict_for("hooks-worker").column, "done");
                 assert!(engine.signals_for("hooks-worker").is_empty());
@@ -1310,7 +1314,7 @@
     }
 
     #[test]
-    fn startup_block_clears_on_delivery_or_output_and_preserves_override() {
+    fn startup_block_clears_on_delivery_or_verified_readiness_and_preserves_override() {
         for delivered in [false, true] {
             let engine = crate::status::StatusEngine::default();
             engine.set_override("hooks-worker", Some("done")).unwrap();
@@ -1319,7 +1323,10 @@
             if delivered {
                 super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::Delivered);
             } else {
-                engine.note_output("hooks-worker", "Ask Codex to do anything");
+                let at = std::time::Instant::now() + Duration::from_secs(4);
+                engine.note_output_at("hooks-worker", "Ask Codex to do anything", at);
+                assert_eq!(engine.verdict_for("hooks-worker").column, "needs_you");
+                engine.tick_at(at + Duration::from_secs(3));
             }
             assert_eq!(engine.verdict_for("hooks-worker").column, "done");
         }
@@ -1343,10 +1350,16 @@
         }
     }
 
-    fn startup_block_fixture(dialog: crate::submit_guard::BlockingDialog) -> crate::status::StatusEngine {
+    fn startup_block_fixture(
+        dialog: crate::submit_guard::BlockingDialog,
+    ) -> crate::status::StatusEngine {
         let engine = crate::status::StatusEngine::default();
         engine.set_override("hooks-worker", Some("done")).unwrap();
-        super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::StartupBlocked(dialog));
+        super::note_guard_status(
+            &engine,
+            "hooks-worker",
+            &super::SubmitGuardEvent::StartupBlocked(dialog),
+        );
         engine
     }
 
@@ -1356,20 +1369,38 @@
         let at = std::time::Instant::now();
         let mut lost = Vec::new();
         for (dialog, screen) in [
-            (CodexHooksReview, "Hooks need review\nTrust all and continue"),
+            (
+                CodexHooksReview,
+                "Hooks need review\nTrust all and continue",
+            ),
             (CodexUpdateAvailable, "Update available\nUpdate now\nSkip"),
         ] {
-            for redraw in [format!("Ask Codex to do anything\n{screen}"), format!("{screen}\nAsk Codex to do anything")] {
+            for redraw in [
+                format!("Ask Codex to do anything\n{screen}"),
+                format!("{screen}\nAsk Codex to do anything"),
+            ] {
                 for split in 0..=redraw.len() {
                     let engine = startup_block_fixture(dialog);
                     let blocked = engine.verdict_for("hooks-worker");
                     engine.note_output_at("hooks-worker", screen, at);
-                    engine.note_output_at("hooks-worker", &redraw[..split], at);
+                    engine.note_output_at(
+                        "hooks-worker",
+                        &redraw[..split],
+                        at + Duration::from_secs(4),
+                    );
                     // A candidate prompt alone must not publish recovery.
-                    if engine.verdict_for("hooks-worker") != blocked { lost.push((dialog, split, "first read")); }
-                    engine.note_output_at("hooks-worker", &redraw[split..], at);
-                    engine.tick_at(at + Duration::from_secs(3));
-                    if engine.verdict_for("hooks-worker") != blocked { lost.push((dialog, split, "settled redraw")); }
+                    if engine.verdict_for("hooks-worker") != blocked {
+                        lost.push((dialog, split, "first read"));
+                    }
+                    engine.note_output_at(
+                        "hooks-worker",
+                        &redraw[split..],
+                        at + Duration::from_secs(4),
+                    );
+                    engine.tick_at(at + Duration::from_secs(7));
+                    if engine.verdict_for("hooks-worker") != blocked {
+                        lost.push((dialog, split, "settled redraw"));
+                    }
                 }
             }
         }
@@ -1383,15 +1414,36 @@
         let overflow = "x".repeat(4096);
         let mut lost = Vec::new();
         for (dialog, screen) in [
-            (CodexHooksReview, "Hooks need review\nTrust all and continue"),
+            (
+                CodexHooksReview,
+                "Hooks need review\nTrust all and continue",
+            ),
             (CodexUpdateAvailable, "Update available\nUpdate now\nSkip"),
         ] {
-            for chunks in [vec![screen.to_string(), overflow.clone(), "Ask Codex to do anything".into()], vec![format!("{screen}\n{overflow}\nAsk Codex to do anything")]] {
-                let engine = startup_block_fixture(dialog);
-                let blocked = engine.verdict_for("hooks-worker");
-                for chunk in chunks { engine.note_output_at("hooks-worker", &chunk, at); }
-                engine.tick_at(at + Duration::from_secs(3));
-                if engine.verdict_for("hooks-worker") != blocked { lost.push(dialog); }
+            for gap in [0, 4] {
+                for chunks in [
+                    vec![
+                        screen.to_string(),
+                        overflow.clone(),
+                        "Ask Codex to do anything".into(),
+                    ],
+                    vec![format!("{screen}\n{overflow}\nAsk Codex to do anything")],
+                ] {
+                    let engine = startup_block_fixture(dialog);
+                    let blocked = engine.verdict_for("hooks-worker");
+                    engine.note_output_at("hooks-worker", screen, at);
+                    for chunk in chunks {
+                        engine.note_output_at(
+                            "hooks-worker",
+                            &chunk,
+                            at + Duration::from_secs(gap),
+                        );
+                    }
+                    engine.tick_at(at + Duration::from_secs(gap + 3));
+                    if engine.verdict_for("hooks-worker") != blocked {
+                        lost.push(dialog);
+                    }
+                }
             }
         }
         assert!(lost.is_empty(), "overflow lost modal blocks: {lost:?}");

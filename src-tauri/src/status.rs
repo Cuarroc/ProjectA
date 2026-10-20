@@ -869,6 +869,65 @@ fn parse_amount(text: &str) -> Option<u64> {
 
 // -- the engine ------------------------------------------------------------
 
+/// Recovery evidence for one known startup modal, grouped so clearing it drops the output too.
+struct StartupBlock {
+    dialog: crate::submit_guard::BlockingDialog,
+    readiness_marker: String,
+    output: String,
+    modal_seen: bool,
+    last_output: Instant,
+}
+
+impl StartupBlock {
+    fn new(detail: &str) -> Option<Self> {
+        use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
+        let dialog = [CodexHooksReview, CodexUpdateAvailable]
+            .into_iter()
+            .find(|dialog| dialog.blocked_message() == detail)?;
+        let readiness_marker = crate::profiles::default_profiles()
+            .into_iter()
+            .find(|profile| profile.id == "codex")?
+            .caps
+            .readiness_marker?;
+        Some(Self {
+            dialog,
+            readiness_marker,
+            output: String::new(),
+            modal_seen: true,
+            last_output: Instant::now(),
+        })
+    }
+
+    fn note_output(&mut self, chunk: &str, at: Instant) {
+        if at.saturating_duration_since(self.last_output) >= crate::submit_guard::READY_IDLE_AFTER {
+            self.output.clear();
+            self.modal_seen = false;
+        }
+        self.last_output = at;
+        self.output.push_str(chunk);
+        let text = crate::submit_guard::normalize_tui_output(&self.output);
+        // Inspect overlapping windows before trimming: a single read can exceed the tail capacity.
+        self.modal_seen |= text
+            .char_indices()
+            .step_by(TAIL_CAPACITY / 2)
+            .map(|(end, _)| &text[..end])
+            .chain(std::iter::once(text.as_str()))
+            .any(|window| crate::submit_guard::detect_blocking_dialog(window) == Some(self.dialog));
+        let len = self.output.chars().count();
+        if len > TAIL_CAPACITY {
+            self.output = self.output.chars().skip(len - TAIL_CAPACITY).collect();
+        }
+    }
+
+    fn ready_at(&self, now: Instant) -> bool {
+        !self.modal_seen
+            && now.saturating_duration_since(self.last_output)
+                >= crate::submit_guard::READY_IDLE_AFTER
+            && crate::submit_guard::normalize_tui_output(&self.output)
+                .contains(&self.readiness_marker)
+    }
+}
+
 /// Everything the engine remembers about one worker.
 struct WorkerState {
     profile_id: String,
@@ -884,8 +943,8 @@ struct WorkerState {
     override_column: Option<&'static str>,
     /// A delivery failed, or a startup modal needs the user.
     submit_guard: Option<Verdict>,
-    /// Output since a named startup block, excluding old readiness markers.
-    startup_block_output: Option<String>,
+    /// A known startup dialog and its current, not-yet-verified output burst.
+    startup_block: Option<StartupBlock>,
     /// This worker has a blocking decision waiting for the human (Phase 21).
     ///
     /// Set when the question is asked and cleared when it is closed - by a
@@ -941,7 +1000,7 @@ impl Default for WorkerState {
             pr_url: None,
             override_column: None,
             submit_guard: None,
-            startup_block_output: None,
+            startup_block: None,
             question: None,
             tail: String::new(),
             last_output: None,
@@ -1385,7 +1444,7 @@ impl StatusEngine {
                 // Archiving is definitive; so is coming back to life.
                 state.override_column = None;
                 state.submit_guard = None;
-                state.startup_block_output = None;
+                state.startup_block = None;
                 if worker.status == STATUS_EXITED {
                     // Every hook describes an agent that is still alive; once
                     // the lifecycle says it is gone, a `SessionStart` from
@@ -1436,22 +1495,8 @@ impl StatusEngine {
         self.update(worker_id, |state| {
             state.push_output(chunk);
             state.last_output = Some(at);
-            if let Some(output) = &mut state.startup_block_output {
-                output.push_str(chunk);
-                let len = output.chars().count();
-                if len > TAIL_CAPACITY {
-                    *output = output.chars().skip(len - TAIL_CAPACITY).collect();
-                }
-                // A redraw can include the old composer behind the modal.
-                let text = crate::submit_guard::normalize_tui_output(output);
-                let modal = text
-                    .rfind("Hooks need review")
-                    .max(text.rfind("Update available"))
-                    .unwrap_or(0);
-                if text[modal..].contains("Ask Codex to do anything") {
-                    state.submit_guard = None;
-                    state.startup_block_output = None;
-                }
+            if let Some(block) = &mut state.startup_block {
+                block.note_output(chunk, at);
             } else {
                 // Generic delivery failures still clear on new output.
                 state.submit_guard = None;
@@ -1584,8 +1629,7 @@ impl StatusEngine {
     /// heuristic, and stays until output, exit, or archive changes the facts.
     pub fn note_submit_guard_failed(&self, worker_id: &str) {
         self.update(worker_id, |state| {
-            if state.status == STATUS_RUNNING {
-                state.startup_block_output = None;
+            if state.status == STATUS_RUNNING && state.startup_block.is_none() {
                 state.submit_guard =
                     Some(Verdict::coded(COL_NEEDS_YOU, ReasonCode::DeliveryFailed));
             }
@@ -1596,7 +1640,7 @@ impl StatusEngine {
     pub fn note_submit_guard(&self, worker_id: &str, detail: Option<&str>) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
-                state.startup_block_output = detail.map(|_| String::new());
+                state.startup_block = detail.and_then(StartupBlock::new);
                 state.submit_guard = detail.map(|text| {
                     Verdict::coded_with(COL_NEEDS_YOU, ReasonCode::DeliveryFailed, text)
                 });
@@ -1743,6 +1787,14 @@ impl StatusEngine {
                 let quiet_for = |since: Option<Instant>, threshold: Duration| {
                     since.is_some_and(|last| now.saturating_duration_since(last) >= threshold)
                 };
+                if state
+                    .startup_block
+                    .as_ref()
+                    .is_some_and(|block| block.ready_at(now))
+                {
+                    state.submit_guard = None;
+                    state.startup_block = None;
+                }
                 let quiet = quiet_for(state.last_output, idle_after);
                 // A prompt that has been sitting there for a minute is still a
                 // prompt, and says more than "quiet".
@@ -2544,6 +2596,36 @@ mod tests {
             Some("Der Agent wartet auf deine Freigabe — bestätige die Rückfrage im Terminal")
         );
         assert_eq!(recorder.columns(), vec![COL_WORKING, COL_NEEDS_YOU]);
+    }
+
+    #[test]
+    fn startup_block_recovery_drops_output_on_delivery_readiness_and_restart() {
+        let dialog = crate::submit_guard::BlockingDialog::CodexHooksReview;
+        for recovery in ["delivery", "readiness", "restart"] {
+            let engine = StatusEngine::default();
+            let at = Instant::now() + Duration::from_secs(4);
+            engine.note_submit_guard("wk-1", Some(dialog.blocked_message()));
+            engine.note_output_at("wk-1", "Ask Codex to do anything", at);
+            match recovery {
+                "delivery" => engine.note_submit_guard("wk-1", None),
+                "readiness" => engine.tick_at(at + Duration::from_secs(3)),
+                _ => {
+                    engine.observe_worker(&worker("wk-1", STATUS_EXITED));
+                    engine.note_submit_guard_failed("wk-1");
+                    engine.note_submit_guard("wk-1", Some(dialog.blocked_message()));
+                    engine.observe_worker(&worker("wk-1", STATUS_RUNNING));
+                }
+            }
+            engine.set_override("wk-1", Some(COL_DONE)).unwrap();
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE, "{recovery}");
+            engine.note_submit_guard_failed("wk-1");
+            assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+            engine.note_output("wk-1", "ordinary output");
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE, "{recovery}");
+            engine.note_submit_guard("wk-1", Some(dialog.blocked_message()));
+            engine.tick_at(at + Duration::from_secs(10));
+            assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+        }
     }
 
     #[test]
