@@ -433,27 +433,25 @@ impl SubmitGuard {
         if self.is_done() {
             return None;
         }
-        // Only a modal drawn after the last echo and before submission is live.
+        // Exclude the task echo itself, keeping live modals on either side.
         // Agent output after submission must not trigger startup decisions.
         if !matches!(self.state, StateData::AwaitingWork { .. }) {
-            let tail = squash(last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS));
-            let echo_end = [&self.fragment, &self.tail_fragment, &self.task_end]
-                .into_iter()
-                .filter(|s| !s.is_empty())
-                .filter_map(|s| tail.rfind(s).map(|p| p + s.len()))
-                .max();
-            let after_echo = match self.state {
-                StateData::IdleWatching { .. } => tail.as_str(),
-                StateData::AwaitingEnter { .. } if echo_end.is_none() => "",
-                _ => &tail[echo_end.unwrap_or(0)..],
-            };
+            let mut tail = squash(last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS));
+            if !matches!(self.state, StateData::IdleWatching { .. }) {
+                let echo_spans = [&self.fragment, &self.tail_fragment, &self.task_end]
+                    .into_iter()
+                    .filter(|s| !s.is_empty())
+                    .filter_map(|s| tail.rfind(s).map(|p| (p, p + s.len())));
+                let echo_start = echo_spans.clone().map(|(start, _)| start).min();
+                let echo_end = echo_spans.map(|(_, end)| end).max();
+                if let (Some(start), Some(end)) = (echo_start, echo_end) {
+                    tail.replace_range(start..end, "");
+                }
+            }
             let visible = if self.readiness_marker.is_empty() {
-                after_echo
+                tail.as_str()
             } else {
-                after_echo
-                    .rsplit(&self.readiness_marker)
-                    .next()
-                    .unwrap_or(after_echo)
+                tail.rsplit(&self.readiness_marker).next().unwrap_or(&tail)
             };
             if let Some(dialog) = detect_blocking_dialog(visible).filter(|d| d.requires_user()) {
                 return self.escalate(EscalationReason::StartupDialog(dialog));
