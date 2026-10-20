@@ -248,6 +248,7 @@ export const de = {
   "gallery.hall.set.normal": "normal",
   "gallery.hall.set.empty": "leer",
   "gallery.hall.set.unread": "ungelesen",
+  "gallery.family.icons": "Symbole",
   "gallery.family.inputs": "Eingaben",
   "gallery.family.layout": "Layout",
   "gallery.family.state": "Zustand",
