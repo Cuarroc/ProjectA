@@ -480,8 +480,7 @@ impl AgentControl for PtyWriter {
     ) -> Result<(), String> {
         let worker_id = worker_id.to_string();
         let app = self.app.clone();
-        // Fired at most once: Delivered and Escalated are the guard's
-        // terminal events - the PTY layer returns right after emitting them.
+        // One outcome: Delivered, Escalated or StartupBlocked ends the guard.
         let on_outcome = Mutex::new(on_outcome);
         self.app.state::<PtyManager>().start_submit_guard(
             session_id,
@@ -491,14 +490,14 @@ impl AgentControl for PtyWriter {
                 // The sweep has no status-event wiring of its own; the answer
                 // itself is logged by questions.rs. An escalation still marks
                 // the worker as needing a human, once the engine is managed.
-                if event == SubmitGuardEvent::Escalated {
-                    if let Some(engine) = app.try_state::<Arc<StatusEngine>>() {
-                        engine.note_submit_guard_failed(&worker_id);
-                    }
+                if let Some(engine) = app.try_state::<Arc<StatusEngine>>() {
+                    note_guard_status(&engine, &worker_id, &event);
                 }
                 let outcome = match event {
                     SubmitGuardEvent::Delivered => Some(DeliveryOutcome::Delivered),
-                    SubmitGuardEvent::Escalated => Some(DeliveryOutcome::Escalated),
+                    SubmitGuardEvent::Escalated | SubmitGuardEvent::StartupBlocked(_) => {
+                        Some(DeliveryOutcome::Escalated)
+                    }
                     _ => None,
                 };
                 if let Some(outcome) = outcome {
@@ -518,19 +517,8 @@ impl AgentControl for PtyWriter {
 
 /// The user-facing reading of one delivery's guard events (F-CORE-3 B.2).
 ///
-/// `SubmitGuardEvent::Escalated` carries no reason - the PTY layer logs it to
-/// stderr - so the status text is read from how far the delivery got: an
-/// escalation before any write means the readiness marker never appeared and
-/// nothing was typed (C-5: "manual Enter required" would send the user
-/// pressing Enter into an empty prompt); after the write but before Enter the
-/// echo never came; after Enter either the retries ran out or the
-/// answer-marker cap did. A delivery stopped by an earlier task in the input
-/// line (`InputBlocked`, W1-03d) says so instead of blaming the marker.
-/// The one unreachable-in-production blur: with a
-/// configured answer marker the guard also escalates when the retries run
-/// out, and that path is reported as unanswered retries - no profile wires an
-/// answer marker into the guard yet, so the cap text cannot be reached
-/// through it today.
+/// Startup modals carry their reason; generic escalation uses delivery progress:
+/// before write, no readiness; before Enter, no echo; after Enter, no answer.
 #[derive(Default)]
 struct GuardNarrative {
     /// W1-03d: the guard stopped before typing because an earlier task
@@ -571,6 +559,7 @@ impl GuardNarrative {
             SubmitGuardEvent::DialogAnswered => {
                 "blocking dialog answered (workspace trust)".to_string()
             }
+            SubmitGuardEvent::StartupBlocked(dialog) => dialog.blocked_message().to_string(),
             SubmitGuardEvent::Delivered => {
                 // Byte-based progress, not a confirmed delivery: the guard's
                 // ConfirmDelivery is not distinguishable at this event
@@ -610,6 +599,17 @@ impl GuardNarrative {
                 }
             }
         }
+    }
+}
+
+fn note_guard_status(engine: &StatusEngine, worker_id: &str, event: &SubmitGuardEvent) {
+    match event {
+        SubmitGuardEvent::StartupBlocked(dialog) => {
+            engine.note_submit_guard(worker_id, Some(dialog.blocked_message()))
+        }
+        SubmitGuardEvent::Escalated => engine.note_submit_guard_failed(worker_id),
+        SubmitGuardEvent::Delivered => engine.note_submit_guard(worker_id, None),
+        _ => {}
     }
 }
 
@@ -678,8 +678,7 @@ impl AgentControl for PtyAgents<'_> {
         let readiness_marker = readiness_marker.map(str::to_string);
         let store = self.store.clone();
         let engine = Arc::clone(&self.engine);
-        // Fired at most once: Delivered and Escalated are the guard's
-        // terminal events - the PTY layer returns right after emitting them.
+        // One outcome: Delivered, Escalated or StartupBlocked ends the guard.
         let on_outcome = Mutex::new(on_outcome);
         let narrative = Mutex::new(GuardNarrative::default());
         self.manager.start_submit_guard(
@@ -689,7 +688,9 @@ impl AgentControl for PtyAgents<'_> {
             move |event| {
                 let outcome = match event {
                     SubmitGuardEvent::Delivered => Some(DeliveryOutcome::Delivered),
-                    SubmitGuardEvent::Escalated => Some(DeliveryOutcome::Escalated),
+                    SubmitGuardEvent::Escalated | SubmitGuardEvent::StartupBlocked(_) => {
+                        Some(DeliveryOutcome::Escalated)
+                    }
                     _ => None,
                 };
                 if let Some(outcome) = outcome {
@@ -697,9 +698,7 @@ impl AgentControl for PtyAgents<'_> {
                         callback(outcome);
                     }
                 }
-                if event == SubmitGuardEvent::Escalated {
-                    engine.note_submit_guard_failed(&worker_id);
-                }
+                note_guard_status(&engine, &worker_id, &event);
                 let detail = narrative.lock().unwrap().detail(&event);
                 let store = store.clone();
                 let worker_id = worker_id.clone();

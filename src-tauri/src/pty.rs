@@ -93,6 +93,8 @@ pub enum SubmitGuardEvent {
     Delivered,
     /// The TUI never accepted the task, so ProjectA asks the user to step in.
     Escalated,
+    /// A startup modal requires a human; terminal outcome without any keys.
+    StartupBlocked(crate::submit_guard::BlockingDialog),
     /// W1-03d: the delivery waits behind `ahead` earlier deliveries to the
     /// same session (C-3); it types once they have ended.
     Queued { ahead: usize },
@@ -1312,12 +1314,18 @@ impl PtyManager {
                         // Delivered event.
                     }
                     Some(SubmitAction::Escalate) => {
+                        let mut event = SubmitGuardEvent::Escalated;
                         if let Some(reason) = guard.escalation_reason() {
+                            if let crate::submit_guard::EscalationReason::StartupDialog(dialog) =
+                                reason
+                            {
+                                event = SubmitGuardEvent::StartupBlocked(dialog);
+                            }
                             eprintln!(
                                 "projecta: submit guard escalated ({session_id}): {reason:?}"
                             );
                         }
-                        on_event(SubmitGuardEvent::Escalated);
+                        on_event(event);
                         return;
                     }
                     None => {}

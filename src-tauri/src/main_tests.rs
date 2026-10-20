@@ -1251,3 +1251,37 @@
             "raising and clearing the stop must not overlap"
         );
     }
+
+    #[test]
+    fn startup_block_clears_on_delivery_or_output_and_preserves_override() {
+        for delivered in [false, true] {
+            let engine = crate::status::StatusEngine::default();
+            engine.set_override("hooks-worker", Some("done")).unwrap();
+            super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::StartupBlocked(crate::submit_guard::BlockingDialog::CodexHooksReview));
+            assert_eq!(engine.verdict_for("hooks-worker").column, "needs_you");
+            if delivered {
+                super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::Delivered);
+            } else {
+                engine.note_output("hooks-worker", "Ask Codex to do anything");
+            }
+            assert_eq!(engine.verdict_for("hooks-worker").column, "done");
+        }
+    }
+
+    #[test]
+    fn codex_startup_block_is_named_in_status_and_activity() {
+        use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
+        for (dialog, title) in [(CodexHooksReview, "Hooks need review"), (CodexUpdateAvailable, "Update available")] {
+            let engine = crate::status::StatusEngine::default();
+            let event = super::SubmitGuardEvent::StartupBlocked(dialog);
+            super::note_guard_status(&engine, "hooks-worker", &event);
+            let verdict = engine.verdict_for("hooks-worker");
+            assert_eq!(verdict.column, "needs_you");
+            let reason = verdict.reason.unwrap();
+            assert!(reason.contains(title), "{reason}");
+            assert!(!reason.contains("Enter"), "{reason}");
+            let detail = super::GuardNarrative::default().detail(&event);
+            assert!(detail.contains(title), "{detail}");
+            assert!(!detail.contains("echoed"), "{detail}");
+        }
+    }
