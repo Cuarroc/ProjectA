@@ -1075,6 +1075,80 @@ mod tests {
     }
 
     #[test]
+    fn long_task_modal_quotes_still_deliver() {
+        let task = format!(
+            "BEGIN-unique-task-fragment {} Explain Update available Update now Skip and Hooks need review Trust all and continue. END-unique-task-suffix",
+            "x".repeat(DIALOG_WINDOW_CHARS + 100)
+        );
+        assert_quoted_task_delivers(&task, &task, false);
+    }
+
+    #[test]
+    fn redrawn_task_modal_quotes_still_deliver() {
+        let task = "Explain Update available Update now Skip and Hooks need review Trust all and continue.";
+        assert_quoted_task_delivers(task, &format!("{task}\n{task}"), false);
+    }
+
+    #[test]
+    fn task_modal_quotes_without_retained_echo_markers_still_deliver() {
+        let task = "Explain the following dialog choices in plain language: Update available Update now Skip. End with a detailed summary of the choices.";
+        assert_quoted_task_delivers(task, "Update available Update now Skip", true);
+    }
+
+    #[test]
+    fn modal_quotes_before_longest_task_line_still_deliver() {
+        let task = "Explain Update available Update now Skip.\nPlease write a detailed plain language explanation of the update choices and what each action means.";
+        assert_quoted_task_delivers(task, task, false);
+    }
+
+    fn assert_quoted_task_delivers(task: &str, retained: &str, overflowed: bool) {
+        for marker in ["", "Ask Codex to do anything"] {
+            let start = Instant::now();
+            let mut guard = SubmitGuard::new(start, task).with_readiness_marker(marker);
+            assert_eq!(
+                guard.tick(&obs(start, 4, 100, Some(1), "Ask Codex to do anything")),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+            let tail = normalize_tui_output(retained);
+            let mut snapshot = obs(start, 6, 4000, Some(5), &tail);
+            snapshot.write_window_overflowed = overflowed;
+            assert_eq!(
+                guard.tick(&snapshot),
+                Some(SubmitAction::SendEnter { attempt: 0 })
+            );
+            assert_eq!(guard.escalation_reason(), None);
+            assert!(guard.input_pending());
+            assert_eq!(guard.tick(&obs(start, 7, 4100, Some(7), "Working")), None);
+            assert!(guard.is_delivered());
+            assert!(!guard.input_pending());
+        }
+    }
+
+    #[test]
+    fn modal_between_task_echo_fragments_blocks_enter() {
+        for (modal, reason) in LIVE_STARTUP_MODALS {
+            let start = Instant::now();
+            let ready = "Ask Codex to do anything";
+            let task = "Explain the repository layout carefully. Then summarize the existing test coverage.";
+            let mut guard = SubmitGuard::new(start, task).with_readiness_marker(ready);
+            assert_eq!(
+                guard.tick(&obs(start, 1, 100, Some(1), ready)),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+            let tail = format!("Explain the repository layout carefully. {modal} Then summarize the existing test coverage.");
+            let snapshot = obs(start, 4, 500, Some(2), &tail);
+            assert_eq!(guard.tick(&snapshot), Some(SubmitAction::Escalate));
+            assert_eq!(
+                guard.escalation_reason(),
+                Some(EscalationReason::StartupDialog(reason))
+            );
+            assert!(guard.input_pending());
+            assert!(!guard.is_delivered());
+            assert_eq!(guard.tick(&snapshot), None);
+        }
+    }
+
+    #[test]
     fn task_and_agent_modal_words_do_not_block_delivery() {
         let start = Instant::now();
         let task =
