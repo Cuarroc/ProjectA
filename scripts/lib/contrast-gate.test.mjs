@@ -111,7 +111,7 @@ test("viz tokens are present and pass 3:1 against their surfaces", () => {
 });
 
 test("a missing viz token fails with Token fehlt", () => {
-  const r = runGate((css) => css, () => {}, (css) => css.replace(/^\s*--g-viz-3:.*\n/gm, ""));
+  const r = runGate((css) => css, () => {}, (css) => css.replace(/^\s*--g-viz-3:.*\r?\n/gm, ""));
   assert.match(r.out, /--g-viz-3: Token fehlt/);
   assert.notEqual(r.status, 0);
 });
