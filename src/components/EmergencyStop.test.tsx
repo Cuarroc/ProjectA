@@ -64,15 +64,21 @@ describe("EmergencyStop", () => {
 
   it("ignores Escape outside the dialog and never steals focus", async () => {
     ipc.getEmergencyStop.mockResolvedValue(false);
-    render(<EmergencyStop />);
+    render(
+      <>
+        <button type="button">Fokus außerhalb</button>
+        <EmergencyStop />
+      </>,
+    );
+    const outside = screen.getByRole("button", { name: "Fokus außerhalb" });
     const raise = screen.getByRole("button", { name: "Not-Aus auslösen" });
     await waitFor(() => expect(raise).toBeEnabled());
     fireEvent.click(raise);
     const dialog = screen.getByRole("dialog", { name: "Not-Aus bestätigen" });
-    raise.focus();
-    fireEvent.keyDown(raise, { key: "Escape" });
+    outside.focus();
+    fireEvent.keyDown(outside, { key: "Escape" });
     expect(dialog).toBeInTheDocument();
-    expect(raise).toHaveFocus();
+    expect(outside).toHaveFocus();
     expect(ipc.setEmergencyStop).not.toHaveBeenCalled();
   });
 
