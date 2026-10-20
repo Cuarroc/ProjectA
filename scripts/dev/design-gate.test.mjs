@@ -49,6 +49,15 @@ test('ratchet rejects rises and missing cases but accepts falls', () => {
   assert.equal(ratchet({ extra: [0, 0, 0, 0, 0] }, {}).length, 1);
   assert.throws(() => ratchet({ screen: [NaN] }, { screen: [1, 0, 0, 0, 0] }), /invalid/i);
 });
+
+test('update accepts changed case sets but rejects rises on retained cases', () => {
+  const baseline = { retained: [1, 0, 0, 0, 0], removed: [2, 0, 0, 0, 0] };
+  const current = { retained: [0, 0, 0, 0, 0], added: [3, 0, 0, 0, 0] };
+  assert.deepEqual(ratchet(current, baseline, true), []);
+  assert.equal(ratchet(current, baseline).length, 2);
+  assert.deepEqual(ratchet({ ...current, retained: [2, 0, 0, 0, 0] }, baseline, true), ['retained slack: 2 > 1']);
+  assert.throws(() => ratchet({ added: [-1, 0, 0, 0, 0] }, baseline, true), /invalid/i);
+});
 test('unrendered app content cannot produce a green snapshot', async () => {
   await assert.rejects(inspect('<main class="g-shell-content"><div hidden>Legacy</div></main>'), /not ready/i);
 });
