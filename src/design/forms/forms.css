@@ -7,7 +7,7 @@
 .g-field[data-invalid] .g-inp { border-color: var(--g-danger-line); }
 
 .g-cb { position: relative; display: inline-flex; align-items: flex-start; gap: var(--g-space-4); font: var(--g-t-body); color: var(--g-ink); cursor: pointer; }
-.g-cb:has(.g-cb__in:disabled) { cursor: not-allowed; opacity: .5; }
+.g-cb:has(.g-cb__in:disabled) { cursor: not-allowed; opacity: var(--g-disabled-opacity); }
 /* The native input stays the control (focus, Space, form value); it is invisible but covers the drawn box. */
 .g-cb__in { position: absolute; inset: 0 auto auto 0; width: 18px; height: 18px; margin: 0; opacity: 0; cursor: inherit; }
 .g-cb__box {
@@ -41,7 +41,7 @@
 .g-rg__opt[aria-checked="true"] .g-rg__dot::after { opacity: 1; }
 
 .g-swf { position: relative; display: flex; align-items: center; gap: var(--g-space-4); font: var(--g-t-body); color: var(--g-ink); cursor: pointer; }
-.g-swf:has(.g-swf__in:disabled) { cursor: not-allowed; opacity: .5; }
+.g-swf:has(.g-swf__in:disabled) { cursor: not-allowed; opacity: var(--g-disabled-opacity); }
 /* The native input stays the control (focus, Space, form value); it is invisible but covers the drawn track. */
 .g-swf__in { position: absolute; inset: 0 auto auto 0; width: 40px; height: 24px; margin: 0; opacity: 0; cursor: inherit; }
 .g-swf__track {

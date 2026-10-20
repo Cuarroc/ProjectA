@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AgentProfile, Project } from "../types";
 import SettingsView from "./SettingsView";
+import { de } from "../i18n/de";
+import { setFeatureFlagEnabled } from "../flags/featureFlags";
 import { saveUiDensity } from "../lib/settings";
 
 const getProjectSetupCommand = vi.fn();
@@ -422,5 +424,23 @@ describe("SettingsView agent env stage", { timeout: 15000 }, () => {
     expect(alert).toHaveTextContent("forbidden");
     expect(strict).toBeChecked();
     expect(within(group).getByRole("radio", { name: /Erbt alles/ })).not.toBeChecked();
+  });
+});
+
+describe("SettingsView Not-Aus placement (R1722-H1)", () => {
+  afterEach(() => setFeatureFlagEnabled("d1_neue_oberflaeche", true));
+
+  it("keeps the stop control in the classic UI when the new shell is off", async () => {
+    setFeatureFlagEnabled("d1_neue_oberflaeche", false);
+    render(<SettingsView {...PROPS} project={null} />);
+    expect(await screen.findByTestId("emergency-stop")).toBeTruthy();
+    expect(screen.queryByText(de["shell.estopLocation"])).toBeNull();
+  });
+
+  it("shows only the location hint when the new shell carries the stop", async () => {
+    setFeatureFlagEnabled("d1_neue_oberflaeche", true);
+    render(<SettingsView {...PROPS} project={null} />);
+    expect(await screen.findByText(de["shell.estopLocation"])).toBeTruthy();
+    expect(screen.queryByTestId("emergency-stop")).toBeNull();
   });
 });
