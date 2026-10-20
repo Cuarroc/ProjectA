@@ -1253,6 +1253,22 @@
     }
 
     #[test]
+    fn startup_block_clears_on_delivery_or_output_and_preserves_override() {
+        for delivered in [false, true] {
+            let engine = crate::status::StatusEngine::default();
+            engine.set_override("hooks-worker", Some("done")).unwrap();
+            super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::StartupBlocked(crate::submit_guard::BlockingDialog::CodexHooksReview));
+            assert_eq!(engine.verdict_for("hooks-worker").column, "needs_you");
+            if delivered {
+                super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::Delivered);
+            } else {
+                engine.note_output("hooks-worker", "Ask Codex to do anything");
+            }
+            assert_eq!(engine.verdict_for("hooks-worker").column, "done");
+        }
+    }
+
+    #[test]
     fn codex_startup_block_is_named_in_status_and_activity() {
         use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
         for (dialog, title) in [(CodexHooksReview, "Hooks need review"), (CodexUpdateAvailable, "Update available")] {

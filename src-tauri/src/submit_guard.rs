@@ -964,6 +964,91 @@ mod tests {
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
 
+    #[test]
+    fn task_and_agent_modal_words_do_not_block_delivery() {
+        let start = Instant::now();
+        let task = "Explain Update available and Hooks need review";
+        let mut guard = SubmitGuard::new(start, task);
+        assert_eq!(
+            guard.tick(&obs(start, 4, 100, Some(1), "ready")),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        assert_eq!(guard.tick(&obs(start, 5, 200, Some(5), task)), None);
+        assert_eq!(
+            guard.tick(&obs(start, 6, 200, Some(5), task)),
+            Some(SubmitAction::SendEnter { attempt: 0 })
+        );
+        assert_eq!(
+            guard.tick(&obs(
+                start,
+                7,
+                400,
+                Some(7),
+                "Update available Update now Skip Hooks need review Trust all and continue"
+            )),
+            None
+        );
+        assert!(guard.is_delivered());
+    }
+
+    #[test]
+    fn dismissed_modal_before_composer_allows_resend() {
+        let start = Instant::now();
+        for modal in [
+            "Update available Update now Skip",
+            "Hooks need review Trust all and continue",
+        ] {
+            let screen = format!("{modal} Ask Codex to do anything");
+            let mut guard =
+                SubmitGuard::new(start, TASK).with_readiness_marker("Ask Codex to do anything");
+            assert_eq!(
+                guard.tick(&obs_since(start, 4, 100, Some(1), &screen, "")),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+        }
+    }
+
+    #[test]
+    fn codex_0163_hooks_panel_blocks_without_keystrokes() {
+        let start = Instant::now();
+        let mut guard = SubmitGuard::new(start, TASK);
+        let screen = "Hooks Lifecycle hooks from config and enabled plugins. ⚠3 hooks need review before they can run. t trust all · enter review · esc close";
+        assert_eq!(
+            guard.tick(&obs(start, 4, 100, Some(1), screen)),
+            Some(SubmitAction::Escalate)
+        );
+        assert_eq!(
+            guard.escalation_reason(),
+            Some(EscalationReason::StartupDialog(
+                BlockingDialog::CodexHooksReview
+            ))
+        );
+        assert!(!guard.input_pending());
+        assert_eq!(guard.tick(&obs(start, 5, 100, Some(1), screen)), None);
+    }
+
+    #[test]
+    fn partial_modal_holds_until_ready_or_busy_cap() {
+        let start = Instant::now();
+        let mut guard = SubmitGuard::new(start, TASK);
+        assert_eq!(
+            guard.tick(&obs(start, 4, 100, Some(1), "Update available")),
+            None
+        );
+        assert!(!guard.is_done());
+        assert_eq!(
+            guard.tick(&obs(
+                start,
+                MARKER_BUSY_CAP.as_secs(),
+                100,
+                Some(1),
+                "Update available"
+            )),
+            Some(SubmitAction::Escalate)
+        );
+        assert!(!guard.input_pending());
+    }
+
     fn assert_startup_modal_blocks(screen: &str) {
         for stage in 0..=4 {
             let start = Instant::now();
