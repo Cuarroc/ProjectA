@@ -102,18 +102,9 @@ pub enum BlockingDialog {
     /// Codex CLI's directory trust prompt preselects "1. Yes, continue", so
     /// a plain Enter confirms it (captured 2026-09-14).
     CodexTrust,
-    /// Codex CLI's hooks review, stage 1: the menu rests on "1. Review
-    /// hooks", so two cursor moves down aim at "3. Continue without
-    /// trusting (hooks won't run)". Never a blind Enter: the option above
-    /// the target is "Trust all and continue", which would run hooks
-    /// outside the sandbox, and the menu order belongs to a self-updating
-    /// CLI (0.153.4 -> 0.154.0 arrived unannounced on 2026-09-14).
-    CodexHooksMove,
-    /// Stage 2, only when the tail actually shows the selector resting on
-    /// "3. Continue without trusting": a single Enter confirms. Without
-    /// that observed selector no Enter is ever sent - the guard escalates
-    /// instead of gambling on a menu order.
-    CodexHooksConfirm,
+    /// Startup decisions that ProjectA must leave to the user.
+    CodexHooksReview,
+    CodexUpdateAvailable,
 }
 
 impl BlockingDialog {
@@ -124,9 +115,20 @@ impl BlockingDialog {
             BlockingDialog::ClaudeTrust => "\r",
             BlockingDialog::KimiTrust => "\u{1b}[A\r",
             BlockingDialog::CodexTrust => "\r",
-            BlockingDialog::CodexHooksMove => "\u{1b}[B\u{1b}[B",
-            BlockingDialog::CodexHooksConfirm => "\r",
+            BlockingDialog::CodexHooksReview | BlockingDialog::CodexUpdateAvailable => "",
         }
+    }
+
+    pub fn blocked_message(self) -> &'static str {
+        match self {
+            Self::CodexHooksReview => "Codex-Startdialog: Hooks need review; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            Self::CodexUpdateAvailable => "Codex-Startdialog: Update available; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            _ => "",
+        }
+    }
+
+    fn requires_user(self) -> bool {
+        matches!(self, Self::CodexHooksReview | Self::CodexUpdateAvailable)
     }
 
     /// Whether the answer closes the dialog (it ends with the Enter). A
@@ -222,6 +224,8 @@ enum StateData {
 /// reason are mapped at the event boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EscalationReason {
+    /// A startup decision must be handled by the user without synthetic keys.
+    StartupDialog(BlockingDialog),
     /// The task write was never echoed (rewrites exhausted or the echo busy
     /// cap ran out).
     EchoNeverSeen,
@@ -285,6 +289,8 @@ pub struct SubmitGuard {
     /// tail, so the longest line can sit in the hidden region while the
     /// last line is always visible when the write fully landed.
     tail_fragment: String,
+    /// End of the echoed paste, so titles inside the task remain task text.
+    task_end: String,
     /// Squashed prompt marker that proves the input loop is alive; empty
     /// means "no marker known, use the silence heuristic".
     readiness_marker: String,
@@ -312,6 +318,7 @@ impl SubmitGuard {
             started_at,
             fragment: task_fragment(task),
             tail_fragment: task_tail_fragment(task),
+            task_end: last_chars(&squash(&normalize_tui_output(task)), 24).to_string(),
             readiness_marker: String::new(),
             answer_marker: String::new(),
             echo_window: echo_window_for(task),
@@ -426,11 +433,42 @@ impl SubmitGuard {
         if self.is_done() {
             return None;
         }
-        // Echo before dialogs: a real blocking dialog swallows input, so a
-        // visible echo proves none is in the way - and a task whose own text
-        // mentions a marker must not trigger an answer (double Enter). The
-        // echo only counts in output *after* the write baseline: a fragment
-        // left over in the tail from an earlier text is history, not proof.
+        // Only a modal drawn after the last echo and before submission is live.
+        // Agent output after submission must not trigger startup decisions.
+        if !matches!(self.state, StateData::AwaitingWork { .. }) {
+            let tail = squash(last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS));
+            let echo_end = [&self.fragment, &self.tail_fragment, &self.task_end]
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .filter_map(|s| tail.rfind(s).map(|p| p + s.len()))
+                .max();
+            let after_echo = match self.state {
+                StateData::IdleWatching { .. } => tail.as_str(),
+                StateData::AwaitingEnter { .. } if echo_end.is_none() => "",
+                _ => &tail[echo_end.unwrap_or(0)..],
+            };
+            let visible = if self.readiness_marker.is_empty() {
+                after_echo
+            } else {
+                after_echo
+                    .rsplit(&self.readiness_marker)
+                    .next()
+                    .unwrap_or(after_echo)
+            };
+            if let Some(dialog) = detect_blocking_dialog(visible).filter(|d| d.requires_user()) {
+                return self.escalate(EscalationReason::StartupDialog(dialog));
+            }
+            let lower = visible.to_ascii_lowercase();
+            if lower.contains("updateavailable") || lower.contains("hooksneedreview") {
+                return if obs.now.saturating_duration_since(self.started_at) >= MARKER_BUSY_CAP {
+                    self.escalate(EscalationReason::ReadinessMarkerNeverSeen)
+                } else {
+                    None
+                };
+            }
+        }
+        // For auto-answerable trust prompts, a task echo prevents answering
+        // a dialog marker quoted by the task itself.
         if let StateData::AwaitingEcho { bytes_at_write, .. } = self.state {
             if self.echo_seen(obs, bytes_at_write) {
                 // Not the Enter yet: an Enter on the heels of the paste is
@@ -456,9 +494,7 @@ impl SubmitGuard {
             };
             return Some(SubmitAction::SendEnter { attempt: 0 });
         }
-        // Dialogs are only answered before delivery: after the Enter, words
-        // in the agent's own output that look like a marker must not type
-        // keystrokes into a working agent.
+        // Auto-answerable trust dialogs are checked only before a task echo.
         if matches!(
             self.state,
             StateData::IdleWatching { .. } | StateData::AwaitingEcho { .. }
@@ -649,8 +685,7 @@ impl SubmitGuard {
                 };
                 Some(SubmitAction::SendEnter { attempt: next })
             }
-            // Handled above, before the dialog check: the echo proved no
-            // dialog is in the way.
+            // Handled above, after the startup-modal check.
             StateData::AwaitingEnter { .. } => None,
             StateData::Delivered | StateData::Escalated(_) => None,
         }
@@ -660,8 +695,7 @@ impl SubmitGuard {
     ///
     /// Called from the two states that can still be *waiting* on a dialog:
     /// `IdleWatching` (nothing typed yet) and `AwaitingEcho` (task written,
-    /// no echo). `AwaitingEnter` returns before this - the echo already
-    /// proved no dialog is in the way, and a keystroke inside the settle
+    /// no echo). `AwaitingEnter` returns before this: a keystroke in the settle
     /// window is exactly the W1-01 paste-folding bug - and after the Enter
     /// the agent's own words must never trigger keystrokes.
     fn dialog_action(&mut self, obs: &Observation) -> Option<SubmitAction> {
@@ -684,14 +718,7 @@ impl SubmitGuard {
         // answer look the same then (the dialog text sits before the
         // baseline in both). No observed TUI does that; each redraws its
         // open dialog or its prompt after an answer.
-        let haystack = match self.state {
-            StateData::AwaitingEcho { .. } => obs.tail_since_write,
-            _ if self.dialog_dismissed && !squash(obs.tail_since_write).is_empty() => {
-                obs.tail_since_write
-            }
-            _ => obs.tail,
-        };
-        let kind = detect_blocking_dialog(haystack)?;
+        let kind = detect_blocking_dialog(self.dialog_tail(obs)).filter(|d| !d.requires_user())?;
         if self.dialog_answers >= MAX_DIALOG_ANSWERS {
             return None;
         }
@@ -705,6 +732,18 @@ impl SubmitGuard {
         self.last_dialog_answer = Some(obs.now);
         self.dialog_dismissed |= kind.dismisses();
         Some(SubmitAction::AnswerDialog(kind))
+    }
+
+    fn dialog_tail<'a>(&self, obs: &'a Observation<'a>) -> &'a str {
+        match self.state {
+            StateData::AwaitingEcho { .. }
+            | StateData::AwaitingEnter { .. }
+            | StateData::AwaitingWork { .. } => obs.tail_since_write,
+            _ if self.dialog_dismissed && !squash(obs.tail_since_write).is_empty() => {
+                obs.tail_since_write
+            }
+            _ => obs.tail,
+        }
     }
 
     /// The task counts as echoed when its fragment reappears in the output
@@ -756,7 +795,7 @@ pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
     // Which option the selector rests on decides the Claude stage: Ink draws
     // the selector as "❯" (older builds normalized to ">"), and the selected
     // line is the one that carries it. Without a visible selector on "Yes"
-    // no Enter is sent - the same rule as the codex hooks review.
+    // no Enter is sent.
     let claude_yes_selected = ["\u{276f} Yes, I trust", "> Yes, I trust"]
         .iter()
         .filter_map(|marker| window.rfind(marker))
@@ -770,25 +809,29 @@ pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
     });
     let claude_move = claude.filter(|_| claude_confirm.is_none());
     let codex_trust = window.rfind("Do you trust the contents of this directory");
-    // The hooks review answers in two observed stages: while the selector
-    // is not visibly on option 3, only cursor moves are sent; the Enter
-    // requires the selector on "3. Continue without trusting" in the tail.
-    let codex_hooks_move = window.rfind("Hooks need review");
-    let codex_hooks_confirm = window.rfind("> 3. Continue without trusting");
+    let lower = squash(window).to_ascii_lowercase();
+    let hooks = lower.rfind("hooksneedreview").filter(|&p| {
+        let menu = &lower[p..];
+        menu.contains("trustallandcontinue")
+            || (menu.contains("ttrustall")
+                && menu.contains("enterreview")
+                && menu.contains("escclose"))
+    });
+    let update = lower
+        .rfind("updateavailable")
+        .filter(|&p| lower[p..].contains("updatenow") && lower[p..].contains("skip"));
     let kimi = window.rfind("Trust this folder");
+    let offset = |p: Option<usize>| p.map(|p| squash(&window[..p]).len());
     // Codex's billing notice ("Add Credits" / "Continue with Luna Reserve")
     // is deliberately absent: a capped account must surface as an honest
     // escalation, not a silent continue.
     [
-        (claude_move, BlockingDialog::ClaudeTrustMove),
-        (claude_confirm, BlockingDialog::ClaudeTrust),
-        (codex_trust, BlockingDialog::CodexTrust),
-        (
-            codex_hooks_move.filter(|_| codex_hooks_confirm.is_none()),
-            BlockingDialog::CodexHooksMove,
-        ),
-        (codex_hooks_confirm, BlockingDialog::CodexHooksConfirm),
-        (kimi, BlockingDialog::KimiTrust),
+        (offset(claude_move), BlockingDialog::ClaudeTrustMove),
+        (offset(claude_confirm), BlockingDialog::ClaudeTrust),
+        (offset(codex_trust), BlockingDialog::CodexTrust),
+        (hooks, BlockingDialog::CodexHooksReview),
+        (update, BlockingDialog::CodexUpdateAvailable),
+        (offset(kimi), BlockingDialog::KimiTrust),
     ]
     .into_iter()
     .filter_map(|(position, dialog)| position.map(|p| (p, dialog)))
@@ -955,6 +998,103 @@ mod tests {
     }
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
+
+    #[test]
+    fn task_and_agent_modal_words_do_not_block_delivery() {
+        let start = Instant::now();
+        let task =
+            "Explain Update available Update now Skip and Hooks need review Trust all and continue";
+        let mut guard = SubmitGuard::new(start, task);
+        assert_eq!(
+            guard.tick(&obs(start, 4, 100, Some(1), "ready")),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        assert_eq!(guard.tick(&obs(start, 5, 200, Some(5), task)), None);
+        assert_eq!(
+            guard.tick(&obs(start, 6, 200, Some(5), task)),
+            Some(SubmitAction::SendEnter { attempt: 0 })
+        );
+        let output = "Update available Update now Skip Hooks need review Trust all and continue";
+        assert_eq!(guard.tick(&obs(start, 7, 400, Some(7), output)), None);
+        assert!(guard.is_delivered());
+    }
+
+    #[test]
+    fn dismissed_modal_before_composer_allows_resend() {
+        let start = Instant::now();
+        for modal in [
+            "Update available Update now Skip",
+            "Hooks need review Trust all and continue",
+        ] {
+            let screen = format!("{modal} Ask Codex to do anything");
+            let mut guard =
+                SubmitGuard::new(start, TASK).with_readiness_marker("Ask Codex to do anything");
+            assert_eq!(
+                guard.tick(&obs_since(start, 4, 100, Some(1), &screen, "")),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+        }
+    }
+
+    #[test]
+    fn codex_0163_hooks_panel_blocks_without_keystrokes() {
+        assert_startup_modal_blocks("Hooks Lifecycle hooks from config and enabled plugins. ⚠3 hooks need review before they can run. t trust all · enter review · esc close");
+    }
+
+    #[test]
+    fn partial_modal_holds_until_ready_or_busy_cap() {
+        let start = Instant::now();
+        let mut guard = SubmitGuard::new(start, TASK);
+        let mut partial = obs(start, 4, 100, Some(1), "Update available");
+        assert_eq!(guard.tick(&partial), None);
+        assert!(!guard.is_done());
+        partial.now = start + MARKER_BUSY_CAP;
+        assert_eq!(guard.tick(&partial), Some(SubmitAction::Escalate));
+        assert!(!guard.input_pending());
+    }
+
+    fn assert_startup_modal_blocks(screen: &str) {
+        // Already visible, newly drawn, after paste, and during Enter settling.
+        for stage in 0..=3 {
+            let start = Instant::now();
+            let mut guard =
+                SubmitGuard::new(start, TASK).with_readiness_marker("Ask Codex to do anything");
+            let ready = "Ask Codex to do anything";
+            if stage >= 2 {
+                guard.tick(&obs(start, 1, 100, Some(1), ready));
+            }
+            if stage >= 3 {
+                assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
+            }
+            let full = normalize_tui_output(&format!("{ready}\n{TASK}\n{screen}"));
+            // Stage 0 starts on an already-visible modal, before the baseline.
+            let since = if stage == 0 { "" } else { full.as_str() };
+            let snapshot = obs_since(start, 40, 500, Some(5), &full, since);
+            assert_eq!(
+                guard.tick(&snapshot),
+                Some(SubmitAction::Escalate),
+                "live startup modal before Enter (stage {stage})"
+            );
+            assert!(matches!(
+                guard.escalation_reason(),
+                Some(EscalationReason::StartupDialog(_))
+            ));
+            assert_eq!(guard.input_pending(), stage >= 2);
+            assert!(!guard.is_delivered());
+            assert!(!guard.is_confirmed());
+            assert_eq!(guard.tick(&snapshot), None);
+        }
+    }
+
+    #[test]
+    fn codex_hooks_startup_modal_blocks_delivery() {
+        assert_startup_modal_blocks("Hooks need review\n2 hooks are new or changed\n> 1. Review hooks\n2. Trust all and continue\n3. Continue without trusting");
+    }
+
+    #[test]
+    fn codex_update_startup_modal_blocks_delivery() {
+        assert_startup_modal_blocks("Update available · 0.162.1 -> 0.163.0\n> 1. Update now (runs `npm install -g @openai/codex`)\n2. Skip\n3. Skip until next version\nenter continue · esc skip");
+    }
     const CLAUDE_DIALOG: &str = "Accessing workspace: Quick safety check: Is this a project you created or one you trust? No, exit > Yes, I trust this folder Enter to confirm - Esc to cancel";
 
     #[test]
@@ -1235,54 +1375,16 @@ mod tests {
     }
 
     #[test]
-    fn the_codex_hooks_review_moves_the_cursor_but_never_enters_blindly() {
-        // Real capture 2026-09-14: after the trust answer codex shows "Hooks
-        // need review" with "1. Review hooks" preselected. The safe choice is
-        // "3. Continue without trusting (hooks won't run)". The answer is
-        // staged: only cursor moves while the selector is not observed on
-        // option 3 - the neighbour above the target is "Trust all and
-        // continue", and the menu order belongs to a self-updating CLI.
+    fn hooks_review_never_sends_keys_even_with_option_three_selected() {
         let start = Instant::now();
         let mut guard = SubmitGuard::new(start, TASK);
-        let hooks_dialog = "Hooks need review 2 hooks are new or changed. Hooks can run outside the sandbox after you trust them. > 1. Review hooks 2. Trust all and continue 3. Continue without trusting (hooks won't run) Press enter to confirm or esc to go back";
-
-        assert_eq!(
-            guard.tick(&obs(start, 2, 300, Some(2), hooks_dialog)),
-            Some(SubmitAction::AnswerDialog(BlockingDialog::CodexHooksMove))
-        );
-        assert_eq!(
-            BlockingDialog::CodexHooksMove.keystrokes(),
-            "\u{1b}[B\u{1b}[B"
-        );
-    }
-
-    #[test]
-    fn the_hooks_review_enter_requires_the_selector_observed_on_option_three() {
-        // Stage 2: once the tail shows the selector resting on "3. Continue
-        // without trusting", a single Enter confirms.
-        let start = Instant::now();
-        let mut guard = SubmitGuard::new(start, TASK);
-        let selected = "Hooks need review 1. Review hooks 2. Trust all and continue > 3. Continue without trusting (hooks won't run)";
-
+        let selected = "Hooks need review 1. Review hooks 2. Trust all and continue > 3. Continue without trusting";
         assert_eq!(
             guard.tick(&obs(start, 2, 300, Some(2), selected)),
-            Some(SubmitAction::AnswerDialog(
-                BlockingDialog::CodexHooksConfirm
-            ))
+            Some(SubmitAction::Escalate)
         );
-        assert_eq!(BlockingDialog::CodexHooksConfirm.keystrokes(), "\r");
-    }
-
-    #[test]
-    fn a_reordered_hooks_menu_without_the_observed_selector_never_gets_enter() {
-        // A codex update that reorders the menu must not gamble: with no
-        // "> 3. Continue without trusting" in the tail the only allowed
-        // keystrokes are cursor moves; the dialog cap then stops the loop
-        // and the guard escalates instead of typing Enter into the unknown.
-        assert_ne!(
-            detect_blocking_dialog("Hooks need review > 1. Review hooks 2. Continue without trusting (hooks won't run) 3. Trust all and continue"),
-            Some(BlockingDialog::CodexHooksConfirm)
-        );
+        assert_eq!(BlockingDialog::CodexHooksReview.keystrokes(), "");
+        assert_eq!(BlockingDialog::CodexUpdateAvailable.keystrokes(), "");
     }
 
     #[test]
@@ -1296,7 +1398,7 @@ mod tests {
 Hooks need review 2 hooks are new or changed. > 1. Review hooks 2. Trust all and continue 3. Continue without trusting (hooks won't run)";
         assert_eq!(
             detect_blocking_dialog(combined),
-            Some(BlockingDialog::CodexHooksMove)
+            Some(BlockingDialog::CodexHooksReview)
         );
     }
 
@@ -1594,9 +1696,9 @@ Hooks need review 2 hooks are new or changed. > 1. Review hooks 2. Trust all and
         assert!(BlockingDialog::ClaudeTrust.dismisses());
         assert!(BlockingDialog::KimiTrust.dismisses());
         assert!(BlockingDialog::CodexTrust.dismisses());
-        assert!(BlockingDialog::CodexHooksConfirm.dismisses());
+        assert!(!BlockingDialog::CodexHooksReview.dismisses());
         assert!(!BlockingDialog::ClaudeTrustMove.dismisses());
-        assert!(!BlockingDialog::CodexHooksMove.dismisses());
+        assert!(!BlockingDialog::CodexUpdateAvailable.dismisses());
 
         let start = Instant::now();
         let mut guard = SubmitGuard::new(start, TASK);
@@ -1609,7 +1711,7 @@ Hooks need review 2 hooks are new or changed. > 1. Review hooks 2. Trust all and
         let full = format!("{trust} {hooks}");
         assert_eq!(
             guard.tick(&obs_since(start, 5, 600, Some(5), &full, hooks)),
-            Some(SubmitAction::AnswerDialog(BlockingDialog::CodexHooksMove))
+            Some(SubmitAction::Escalate)
         );
     }
 
