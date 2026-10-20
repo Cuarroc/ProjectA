@@ -67,7 +67,7 @@ Spalten: (1) Was der Nutzer heute tut · (2) Glass-Heimat · (3) Ersatz-Stand (g
 | `ProfilePicker` `:29`, `NewWorkerDialog` `:42` (`App.tsx:1504, 1513`) | Ad-hoc-Sitzung oder Worker starten | Start-Sheet (S02) | Plan V2-S02; Vorarbeit B3 #1024, B5 #1112 | S02 → RT-6i |
 | `ProviderDialog` `:46`, `GitHubLinkDialog`, `SkillPackDialog` | Anbieter-Schlüssel, GitHub, Skill-Packs | `/einstellungen` (S10a/S10b/S10c) | MISSING (Anbieter), S10c Plan | RT-6h |
 | `FirstRunChecklist` `:18` | leere Fläche: nächste Schritte | `/start` (S11) | gemergt #1070 | RT-6e |
-| `EmergencyStop` | Not-Aus | Schale (`StopBand`, `Shell.tsx:74, 76`) | gemergt #1054; bleibt in `GeneralTab` | bleibt; nicht Teil des Ausbaus |
+| `EmergencyStop` | Not-Aus | Schale (`StopBand`, `Shell.tsx:74, 76`) | gemergt #1054; Bestätigungsdialog und Schalen-Kopf-Platz #1722; klassische Ansicht: bleibt in `GeneralTab` | bleibt; nicht Teil des Ausbaus |
 | `ErrorBoundary` (`App.tsx:1541` und je Ansicht) | ruhige Fehlerfläche | Teil der Schale | Netz bleibt | bleibt bis RT-9 |
 
 Nicht Teil von `AppContent`, aber zu prüfen: `HistoryView`/`ActivityView` (Heimat `/leitstand/verlauf`, S01c),
