@@ -5,6 +5,7 @@ import "../../../design/controls/controls.css";
 import { HonestState } from "../../../design/data/HonestState";
 import { DevNote } from "../../../design/data/DevNote";
 import { Table, type Column } from "../../../design/data/Table";
+import { Banner } from "../../../design/layout/Banner";
 import { hasProviderKey } from "../../../lib/ipc";
 import { providerKindLabel, useProviderOverview, vaultErrorText } from "../../../lib/providers";
 import type { Provider } from "../../../types";
@@ -71,7 +72,7 @@ function VaultRead({
   if (error !== null) return <HonestState kind="offline" title={T.offline} hint={T.offlineHint} />;
   return (
     <>
-      {vaultError !== null ? <p className="tr-alert" role="alert">{vaultErrorText(vaultError)}</p> : null}
+      {vaultError !== null ? <Banner kind="bad">{vaultErrorText(vaultError)}</Banner> : null}
       <Table
         label={T.vaultTable}
         columns={columns}

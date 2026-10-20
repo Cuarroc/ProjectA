@@ -72,3 +72,26 @@
 }
 .g-pop__panel[data-align="end"] { left: auto; right: 0; }
 .g-pop__panel[data-side="top"] { top: auto; bottom: calc(100% + 8px); }
+
+/* Tooltip (DS-X-27): static bubble under the control, above it when Tooltip.tsx measured no room below. */
+.g-tip { position: relative; display: inline-flex; }
+.g-tip__bubble {
+  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: var(--g-z-tooltip);
+  width: max-content; max-width: 240px; padding: 6px 10px; pointer-events: none;
+  border: 1px solid var(--g-line); border-radius: 8px; background: var(--g-ground); box-shadow: var(--g-shadow-pop);
+  color: var(--g-ink); font: 500 12px/1.4 var(--g-font-sans);
+}
+.g-tip__bubble[data-side="top"] { top: auto; bottom: calc(100% + 8px); }
+
+/* Banner (DS-X-27): the word names the kind, the tint and the left bar repeat it. */
+.g-banner {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; padding: 10px 12px; min-width: 0;
+  border: 1px solid var(--g-line); border-left-width: 3px; border-radius: 8px;
+  background: var(--g-tint); color: var(--g-ink); font: 400 13px/1.4 var(--g-font-sans); overflow-wrap: anywhere;
+}
+.g-banner__word { flex: none; font-weight: 600; }
+.g-banner__body { min-width: 0; }
+.g-banner--info { background: var(--g-run-bg); border-color: var(--g-run); }
+.g-banner--ok { background: var(--g-ok-bg); border-color: var(--g-ok); }
+.g-banner--warn { background: var(--g-need-bg); border-color: var(--g-need); }
+.g-banner--bad { background: var(--g-bad-bg); border-color: var(--g-danger-line); border-left-color: var(--g-bad); color: var(--g-bad); }

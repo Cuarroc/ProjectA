@@ -1,7 +1,8 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type FocusEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type FocusEvent, type ReactNode, type RefObject } from "react";
 
 import { useExitTransition } from "../motion/useExitTransition";
 import "./layout.css";
+import { useFlip } from "./useFlip";
 
 export interface PopoverTriggerProps {
   ref: RefObject<HTMLButtonElement>;
@@ -21,9 +22,6 @@ export interface PopoverProps {
   children?: ReactNode;
 }
 
-/** Keep in step with `top: calc(100% + 8px)` in layout.css. */
-const GAP = 8;
-
 /** Panel next to its trigger: an outside pointerdown, Esc or focus leaving closes it; Esc, and any close with focus inside, return focus to the trigger; it stays mounted (aria-hidden) while it animates out.
  *  shortcut: it flips above once, measured when it opens, so later growth is not re-measured; upgrade if a panel grows a lot after opening. */
 export function Popover({ open, onOpenChange, trigger, align = "start", className, panelClassName, children }: PopoverProps) {
@@ -33,15 +31,8 @@ export function Popover({ open, onOpenChange, trigger, align = "start", classNam
   const panel = useRef<HTMLDivElement>(null);
   const byPointer = useRef(false);
   const returnFocus = useRef(false);
-  const [side, setSide] = useState<"top" | "bottom">("bottom");
   const { mounted, closing } = useExitTransition(open);
-
-  useLayoutEffect(() => {
-    if (!open || !root.current || !panel.current) return;
-    const { top, bottom } = root.current.getBoundingClientRect();
-    const need = panel.current.offsetHeight + GAP;
-    setSide(bottom + need > window.innerHeight && top - need >= 0 ? "top" : "bottom");
-  }, [open]);
+  const side = useFlip(open, root, panel);
 
   useEffect(() => {
     if (!open) return;
