@@ -12,14 +12,26 @@
   font: 500 13px/1 var(--g-font-sans); white-space: nowrap; cursor: pointer; box-shadow: none;
   transition: transform var(--g-t), background-color var(--g-t), border-color var(--g-t);
 }
-.g-btn:active, [data-force-state="active"] .g-btn { transform: scale(.97); }
+.g-btn:active, [data-force-state="active"] .g-btn { transform: scale(var(--g-press-scale, .98)); }
 .g-btn--primary { background: var(--g-accent); border-color: transparent; color: var(--g-on-accent); }
 .g-btn--tint { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-btn--ghost { background: transparent; border-color: transparent; color: var(--g-ink2); }
 .g-btn--danger { background: var(--g-bad-bg); border-color: var(--g-danger-line); color: var(--g-bad); }
 .g-btn--lg { height: 44px; padding: 0 20px; }
 .g-btn--sm { height: 32px; padding: 0 12px; font-size: 12px; }
-.g-btn:disabled, [data-force-state="disabled"] .g-btn { opacity: .5; cursor: not-allowed; transform: none; }
+.g-btn:disabled, [data-force-state="disabled"] .g-btn { transform: none; }
+/* The one disabled look of every control (tokens.css --g-disabled-opacity). */
+:is(.g-btn, .g-fchip, .g-sw):disabled, [data-force-state="disabled"] :is(.g-btn, .g-fchip, .g-sw) { opacity: var(--g-disabled-opacity); cursor: not-allowed; }
+.g-btn--icon { aspect-ratio: 1; padding: 0; }
+/* loading: the label stays (width unchanged, still named) but turns transparent; a ring sits over it in the text colour. */
+.g-btn[aria-busy="true"] { position: relative; cursor: progress; }
+.g-btn__label { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.g-btn--loading .g-btn__label { opacity: 0; } /* only `loading` draws the ring; a plain aria-busy keeps its text */
+.g-btn__busy {
+  position: absolute; inset: 0; margin: auto; width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent; animation: g-btn-spin var(--g-dur-5, 720ms) linear infinite;
+}
+@keyframes g-btn-spin { to { transform: rotate(360deg); } }
 .g-btn-group { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .g-estop { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .g-estop-hint {
@@ -41,7 +53,7 @@
   transition: transform var(--g-t), background-color var(--g-t), color var(--g-t);
 }
 .g-fchip b { font-weight: 600; color: var(--g-muted); }
-.g-fchip:active, [data-force-state="active"] .g-fchip { transform: scale(.97); }
+.g-fchip:active, [data-force-state="active"] .g-fchip { transform: scale(var(--g-press-scale, .98)); }
 .g-fchip[aria-pressed="true"] { background: var(--g-accent-soft); border-color: transparent; color: var(--g-accent); }
 .g-fchip[aria-pressed="true"] b { color: var(--g-accent); }
 .g-sw {
@@ -56,7 +68,6 @@
 }
 .g-sw[aria-checked="true"] { background: var(--g-sw-on); }
 .g-sw[aria-checked="true"]::after { transform: translateX(16px); }
-.g-sw:disabled, [data-force-state="disabled"] .g-sw { cursor: not-allowed; opacity: .6; }
 .g-seg {
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 4px;
   border-radius: 12px; background: var(--g-tint); border: 1px solid var(--g-hair);
@@ -66,9 +77,10 @@
   font: 500 12px/1 var(--g-font-sans); color: var(--g-ink2); cursor: pointer;
   transition: background-color var(--g-t), transform var(--g-t);
 }
-.g-seg button:active, [data-force-state="active"] .g-seg button[tabindex="0"] { transform: scale(.97); }
+.g-seg button:active, [data-force-state="active"] .g-seg button[tabindex="0"] { transform: scale(var(--g-press-scale, .98)); }
 @media (prefers-reduced-motion: reduce) {
   .g-btn:active, .g-fchip:active, .g-seg button:active, [data-force-state="active"] .g-btn, [data-force-state="active"] .g-fchip, [data-force-state="active"] .g-seg button[tabindex="0"] { transform: none; }
+  .g-btn__busy { animation: none; }
 }
 .g-seg button[aria-checked="true"] { background: var(--g-tint-hi); border-color: var(--g-line); color: var(--g-ink); }
 @media (hover: hover) and (pointer: fine) {

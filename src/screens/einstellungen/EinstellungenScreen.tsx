@@ -1,10 +1,10 @@
+import { de } from "../../i18n/de";
 import { useState, type ReactNode } from "react";
 import "../../design/controls/controls.css";
 import "../../design/forms/forms.css";
 import "../../design/glass.css";
 import "../../design/layout/layout.css";
 
-import EmergencyStop from "../../components/EmergencyStop";
 import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
 import { SwitchField } from "../../design/forms/SwitchField";
@@ -64,7 +64,7 @@ export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => vo
               </Section>
               <Section title={T.version}><VersionUpdates /><VersionChangelog /></Section>
               <Section title={T.diag} hint={T.diagHint}><DiagnoseSection /></Section>
-              <Section title={T.stop} className="es-sec--stop"><EmergencyStop /></Section>
+              <Section title={T.stop} className="es-sec--stop"><p>{de["shell.estopLocation"]}</p></Section>
               <Section title={T.more} hint={T.moreHint}>
                 <Button size="sm" onClick={onOpenClassic}>{T.moreOpen}</Button>
               </Section>

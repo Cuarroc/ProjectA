@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { de, type MessageKey } from "../../i18n/de";
 import { Button } from "../controls/Button";
+import { Icon } from "../icons/Icon";
+import { GLYPHS } from "../icons/glyphs";
 import { Segmented } from "../controls/Segmented";
 import { Hall } from "../hall/Hall";
 import { EMPTY_HALL, SAMPLE_HALL, type HallScene } from "../hall/fixtures";
@@ -29,7 +31,7 @@ const HALL_SET_IDS = Object.keys(HALL_SETS) as HallSet[];
 const oneOf = <T extends string>(ids: readonly T[], raw: string | null): T => ids.find((id) => id === raw) ?? ids[0];
 const query = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
 
-const SWATCHES = ["--g-ink", "--g-ink2", "--g-muted", "--g-accent", "--g-run", "--g-need", "--g-rev", "--g-ok", "--g-bad"];
+const SWATCHES = ["--g-ink", "--g-ink2", "--g-muted", "--g-accent", "--g-run", "--g-need", "--g-rev", "--g-ok", "--g-bad", "--g-viz-1", "--g-viz-2", "--g-viz-3", "--g-viz-4", "--g-viz-5", "--g-viz-6"];
 const TYPE = ["display", "title", "heading", "subheading", "body", "label", "note", "micro", "code"];
 const RADIUS = ["xs", "sm", "md", "lg", "ctl", "card", "panel", "sheet", "pill"];
 
@@ -134,6 +136,9 @@ function Body({ page }: { page: Page }) {
       </Sample>
     );
     case "motion": return <MotionDemo />;
+    case "icons": return (
+      <ul className="g-gal-grid">{Object.keys(GLYPHS).map((n) => <li key={n} className="g-gal-icon"><Icon name={n as keyof typeof GLYPHS} /><code>{n}</code></li>)}</ul>
+    );
     case "hall": return <ProbeHall />;
     case "controls":
     case "inputs": return renderStories(page);

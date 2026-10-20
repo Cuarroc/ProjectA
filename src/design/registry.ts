@@ -1,7 +1,7 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
 // keeps it in step with the component exports (function, const, default) under src/design.
 
-export type ComponentFamily = "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "inputs" | "layout" | "state" | "surface";
+export type ComponentFamily = "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "icons" | "inputs" | "layout" | "state" | "surface";
 
 export interface ComponentEntry {
   /** The exported function name. */
@@ -21,9 +21,15 @@ export interface ComponentEntry {
 export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   {
     name: "Button", family: "controls",
-    variants: ["\"primary\", \"secondary\", \"tint\", \"ghost\", \"danger\"; size sm, md, lg"], states: ["disabled"],
-    a11y: "Native button, type=\"button\" by default; an icon-only button needs aria-label.",
+    variants: ["\"primary\", \"secondary\", \"tint\", \"ghost\", \"danger\"; size sm, md, lg"], states: ["disabled", "loading"],
+    a11y: "Native button, type=\"button\" by default; loading sets aria-busy, keeps focus and the label, and swallows clicks; an icon-only button is an IconButton.",
     text: "Children from the caller.",
+  },
+  {
+    name: "IconButton", family: "controls",
+    variants: ["the Button variants (default ghost) and sizes, square"], states: ["disabled", "loading"],
+    a11y: "aria-label is required by type and, while developing, by a thrown error; the icon child is aria-hidden.",
+    text: "The aria-label from the caller (via de.ts).",
   },
   {
     name: "ButtonGroup", family: "controls",
@@ -182,16 +188,34 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     text: "Options from the caller.",
   },
   {
+    name: "ConfirmDialog", family: "layout",
+    variants: ["default", "danger"], states: ["open, closed; confirm fires once per opening"],
+    a11y: "role=\"alertdialog\" aria-modal with aria-labelledby and aria-describedby; focus starts on Abbrechen, Esc cancels, a scrim click does not close.",
+    text: "title, description and confirmLabel from the caller; cancel word from src/i18n/de.ts confirm.*.",
+  },
+  {
+    name: "Popover", family: "layout",
+    variants: ["align start, end"], states: ["open, closing, closed; flips above when there is no room below"],
+    a11y: "Trigger gets aria-expanded and aria-controls; Esc closes and returns focus to the trigger; an outside pointerdown or focus leaving closes without taking focus back.",
+    text: "Trigger and children from the caller.",
+  },
+  {
     name: "Sheet", family: "layout",
-    variants: [], states: ["open, closed"],
-    a11y: "role=\"dialog\" aria-modal; focus moves in, Tab cycles, Esc or scrim click closes, focus returns.",
-    text: "aria-label and children from the caller.",
+    variants: ["sm", "md", "lg"], states: ["open, closed"],
+    a11y: "role=\"dialog\" (or alertdialog) aria-modal; focus moves in, Tab cycles, Esc or scrim click closes (scrim optional), focus returns; named by aria-label or aria-labelledby, aria-describedby optional.",
+    text: "aria-label or aria-labelledby, and children from the caller.",
   },
   {
     name: "Tabs", family: "layout",
     variants: [], states: ["selected tab; value matching no tab leaves the first as the tab stop"],
     a11y: "role=\"tablist\" with one tab stop; arrows, Home and End select; ids tie tabs to TabPanel.",
     text: "Tab labels from the caller.",
+  },
+  {
+    name: "TabLinks", family: "layout",
+    variants: [], states: ["current link (aria-current=\"page\"); value matching none leaves the first as the tab stop"],
+    a11y: "nav of links with one tab stop; arrows, Home and End move focus, Enter follows the link.",
+    text: "Link labels from the caller (via de.ts).",
   },
   {
     name: "TabPanel", family: "layout",
@@ -201,9 +225,9 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   },
   {
     name: "ToastRegion", family: "layout",
-    variants: ["tone info, ok, bad"], states: ["closes itself after ttl (6 s)"],
-    a11y: "aria-live region; bad uses role=\"alert\", the others role=\"status\"; close button is named.",
-    text: "src/i18n/de.ts action.close; text from the caller.",
+    variants: ["tone info, ok, bad", "optional action button", "useToast(): push, dismiss, at most 3 visible"], states: ["closes itself after ttl (6 s)", "closing (exit transition)", "waiting in the queue"],
+    a11y: "aria-live region; bad uses role=\"alert\", the others role=\"status\"; close and action buttons are named; the action runs once.",
+    text: "src/i18n/de.ts action.close; text and action label from the caller.",
   },
   {
     name: "StateGlyph", family: "state",
@@ -234,5 +258,11 @@ export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
     variants: ["tone neutral, accent"], states: ["no finite count and no children renders nothing; 0 is shown"],
     a11y: "Static text, never focusable; the count or tag is the signal, so colour is never alone. A bare count needs a word beside it.",
     text: "Count or children from the caller; not a state word (use StateMark) and not proof (use ProofChip).",
+  },
+  {
+    name: "Icon", family: "icons",
+    variants: ["name from the Lucide set in glyphs.ts, 20 px"], states: ["label given or not"],
+    a11y: "aria-hidden without a label; with one it is role=\"img\" and aria-label. Colour follows currentColor.",
+    text: "No text; the label is the caller's. Licence: LUCIDE-LIZENZ.txt, docs/THIRD_PARTY_NOTICES.md.",
   },
 ];
