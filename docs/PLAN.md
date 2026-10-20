@@ -293,8 +293,8 @@ hinterlegen. OpenCode Zen ist nicht freigegeben.
 
 ### DOC und Hook-Pakete — Nachtrag 20.10.2026
 
-Teilstand DOC-8, kein neuer Gesamtstand: Git/PR/CI am 20.10.2026 23:26–23:30 UTC per
-`git fetch origin`, `git log origin/main -1` und `gh pr view` geprüft:
+Teilstand DOC-8, kein neuer Gesamtstand: Git/PR/CI am 20.10.2026 23:26–23:49 UTC per
+`git fetch origin`, `git log origin/main -1`, `git ls-remote` und `gh pr view` geprüft:
 main `653db649`; alle sechs unten nummerierten PRs OPEN/Draft, Linux/Windows/red-first
 SKIPPED, kein Mergebeleg. Lokal vorbereitete Arbeit ist nicht gepusht oder abgenommen.
 Ticket-/Nicht-Git-Stände: Root-Auftrag 23:21 UTC; `lage-jetzt` hier nicht verfügbar,
@@ -320,7 +320,7 @@ Code benötigt Rot→Grün und kandidatgebundene Reviews, Dokumentation Leser-/L
 | DOC-CTRL1 | Dokumentationsarbeit beaufsichtigen | Chief; Root nimmt ab | – | egal | C | In Arbeit: laut Auftrag Koordinationsowner; native Lage unbekannt | Aufträge/Überlappung/Restpflichten abgleichen; danach Chief liefert belegte Übergabe an Root | b3d2f947 |
 | PA-HOOKS-2a | C2-7/8: Startdialog trotz Auftragsecho erkennen | srv-pa-hooks-2a, gleiche Fix-Lane | – | Server | A | In Prüfung: #1756 `e0cacb41`; Fixrunde gepusht, keine Root-Abnahme belegt | Kandidatgebundene Fixreview offen; danach Dialog sperrt Enter; Root integriert, DOC-8-Zeile vorher abgleichen | e9f093c8 |
 | PA-HOOKS-2b | C2-6/10: historische Titel/Trust/Blockgrund | Root bindet einen Owner | PA-HOOKS-2a | Server | A | Blockiert: erst nach Merge #1756; kein PR | Rot→Grün, legitimen Trust erhalten, Blockgrund bei Ablauf; danach Root prüft/integriert; kein blindes Enter | unbekannt |
-| PA-HOOKS-2c | C2-9: benannte Blockade bis Erholung erhalten | srv-pa-hooks-2c, gleiche Fix-Lane | – | Server | A | In Prüfung: #1757 `2f4cc8a1`; Runde 2 laut Auftrag zugewiesen | geteilter Neuzeichnungsfall/Gates/Reviews offen; danach nur belegte Erholung hebt Blockade auf; Root integriert | 0bf0a005 |
+| PA-HOOKS-2c | C2-9: benannte Blockade bis Erholung erhalten | srv-pa-hooks-2c, gleiche Fix-Lane | – | Server | A | In Prüfung: #1757 `579b54f5`; Fixrunde gepusht, keine Root-Abnahme belegt | Kandidatgebundene Fixreview offen; danach nur belegte Erholung hebt Blockade auf; Root integriert | 0bf0a005 |
 | PA-HOOKS-2d | Nur P9: belegter Folgeauftrag im ruhenden Terminal | Root bindet einen Owner | PA-HOOKS-2b | Server | A | Blockiert: Fehlerzeit-Capture/Ursache fehlen; kein PR | Capture mit effektivem Marker, Rot→Grün/PTY, Busy-/Modal-Gegenfälle; danach Root prüft; entfällt als Duplikat, falls 2b P9 belegt löst | unbekannt |
 
 DOC-8 übernimmt die fehlenden Zeilen aus R1756-G2/A2 und R1757-A3/G2.
