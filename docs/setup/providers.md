@@ -12,9 +12,12 @@ je Harness steht in den Nachbarseiten
 ([codex.md](codex.md), [kimi.md](kimi.md), [opencode.md](opencode.md),
 [ollama-reviewers.md](ollama-reviewers.md), [claude-code.md](claude-code.md)).
 
-**Nur Abos.** Keine API-Keys, kein OpenRouter, keine OpenCode-Zen-Modelle
-(`opencode/*` — die rechnen Guthaben ab), keine zusätzlichen bezahlten Ausgaben
-(Nutzerentscheidung 25.09.). Diese Seite nennt nie Schlüsselwerte.
+**Abos zuerst; dokumentierte Kreditausnahmen in AGENTS.md.** OpenRouter nur aus
+vorhandenem Guthaben, kein Kauf oder Auto-Reload. Tier B: zwei verschiedene
+Nicht-Autorenfamilien, regulär Abo + OpenRouter; E1 (Elias, 20.10.2026) erlaubt
+bei OpenRouter-Guthaben <= 0 zwei Abo-Familien. Kostenlose Modelle zählen nie
+als Pflichtreviewer (AGENTS.md, Regel 5). Keine OpenCode-Zen-Modelle
+(`opencode/*`), keine zusätzlichen bezahlten Ausgaben; nie Schlüsselwerte hier.
 
 „Geprüft“ heißt: am 25.09. mit einem echten Aufruf belegt. „Ungeprüft“ heißt:
 installiert oder im Abo enthalten, aber noch nicht als Worker gelaufen — vor dem
@@ -30,10 +33,10 @@ ersten echten Paket einmal proben.
    den Anbieter, der zuletzt am wenigsten bekommen hat; ein Anbieter mit
    Limit-Treffer (429, „usage limit“) fällt aus der Runde, bis sein Fenster
    zurückgesetzt ist.
-3. **Review nie beim Autor-Anbieter.** Zwei Reviewer anderer Anbieter
-   (`AGENTS.md`, Beweismaßstab). Das Ollama-Paar deckt den Alltag ab; kommt der
-   Autor selbst von GLM, ersetzt Codex oder Copilot den gleichnamigen
-   Reviewer.
+3. **Review nie bei der Autorenfamilie.** Stufe A/B: zwei verschiedene
+   Nicht-Autorenfamilien, B nach Regel 5 einschließlich E1 (siehe oben).
+   Stufe C: nur Gates; C+ (Skip/Timeout/Retry oder schwächere Assertions in
+   Tests): ein Fremdreview. Kostenlose Ollama-Modelle zählen nur ergänzend.
 4. **RAM ist die harte Grenze.** 16 GB, oft unter 2 GB frei. Höchstens
    2–3 Worker gleichzeitig und höchstens drei `cargo`-Builds, bei knappem RAM
    zwei (AGENTS.md, „Build slots“); vor jedem Start freien Speicher prüfen

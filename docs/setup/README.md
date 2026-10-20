@@ -36,7 +36,10 @@ Konfig-Dateien) ist eine Warnung.
 Welcher Anbieter mit welchem Modell und Effort für welche Aufgabe, und wie die
 Abos gleichmäßig ausgeschöpft werden: [providers.md](providers.md).
 
-Nur Abos, kein OpenRouter, keine zusätzlichen bezahlten API-Ausgaben.
+Abos zuerst; OpenRouter nur aus vorhandenem Guthaben, kein Kauf oder Auto-Reload.
+Stufe B: zwei verschiedene Nicht-Autorenfamilien, regulär Abo + OpenRouter;
+E1 (Elias, 20.10.2026) erlaubt bei OpenRouter-Guthaben <= 0 zwei Abo-Familien.
+Kostenlose Modelle zählen nie als Pflichtreviewer (AGENTS.md, Regel 5).
 
 ## Welche Instruktionsdatei liest wer
 

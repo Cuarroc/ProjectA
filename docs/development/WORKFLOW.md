@@ -155,10 +155,14 @@ Aufzählung lädt dazu ein, die Lücke zu finden.
 
 ## Reviews nach Risiko
 
-Seit 25.09.2026 gestuft (AGENTS.md, Regel 5): Stufe A (Nahtstelle, Sicherheit,
-Nebenläufigkeit, PTY, Datenbank) zwei Reviewer anderer Anbieter, Stufe B
-(übriger Rust-/TS-Code) einer, Stufe C (Doku, Tests, Snapshots, Konfiguration
-ohne Laufzeitwirkung) keiner; höchstens zwei Runden, danach entscheidet der
+Maßgeblich ist AGENTS.md, Regel 5: Stufe A (Nahtstelle, Sicherheit,
+Nebenläufigkeit, PTY, Datenbank) zwei verschiedene Nicht-Autorenfamilien; Stufe B
+(übriger Rust-/TS-Code) ebenfalls zwei, regulär Abo + OpenRouter aus vorhandenem
+Guthaben. E1 (Elias, 20.10.2026): bei OpenRouter-Guthaben <= 0 auch zwei
+Abo-Familien; kein Kauf, kostenlose Modelle zählen nie als Pflichtreviewer.
+Stufe C (Doku, Tests, Snapshots, Konfiguration ohne Laufzeitwirkung) nur Gates;
+C+ (Tests mit Skip/Timeout/Retry oder schwächeren Assertions) ein Fremdreview.
+Höchstens zwei Runden, danach entscheidet der
 Koordinator (Root) über Merge, Aufteilen oder Verwerfen; der Nutzer wird
 informiert (AGENTS.md, Regel 5). Hintergrund (Prüfung C, 25.09.): alle zehn nachgewiesenen echten
 Review-Treffer lagen in Stufe-A-Code; F4 lief 27 Runden. Annahme oder Ablehnung
