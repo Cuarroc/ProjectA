@@ -96,7 +96,8 @@ fixes. Existing exceptions: generated `docs/dev-hq/data.js|json` on coordinator
 snapshot branches are excluded (user, 2026-10-16); named grants #1293/#1312 and
 SLIM moves #1451/#1456/#1457/#1459 ended with their delivery, not a general waiver.
 The 2026-10-20 documentation order additionally permits byte-identical archive
-moves with block/ID/link proof; all non-move edits still count toward 300.
+moves with block/ID/link proof; all non-move edits count toward 300/400.
+Dependabot lockfile bumps follow the lane plan in `docs/setup/mergify.md`.
 No other exclusion or higher cap follows from a checker's counting behavior.
 
 Only one implementation lane may edit a seam at a time (rule 6). Claude Code
@@ -116,15 +117,24 @@ The tier (rule 5) follows the changed files: any seam, security-relevant code,
 concurrency, PTY or database/migration change makes it tier A. Counts,
 non-author families, E1, C+ and fix-round delta requirements follow rule 5.
 Record every finding and disposition (accepted with commit, rejected with reason,
-follow-up) in the PR. Round two requires a high-severity round-one finding;
+follow-up) in the PR. Every accepted fix, at any severity, requires bounded
+verification of exactly `<reviewed-head>..<new-head>`: closure of the accepted
+findings and new defects in the delta. This IS round two and the last round.
+A full candidate re-review in round two is allowed only after a high finding.
 Root then records merge/split/drop and informs the user; no third round.
-Evidence binds to the candidate: later changes require affected delta review.
+Evidence binds to the candidate; later changes invalidate affected evidence.
 A finding without `file:line` counts as unproven.
 
-Scoped user order 2026-10-20, documentation mission only: central orchestrator
-uses Claude; delegated Chiefs, workers and independent reviewers use GPT 6.1/high.
-Separate agents/observations replace cross-family selection only for this mission,
-until its completion or a newer user order; general rule 5 remains unchanged.
+Dated user order 2026-10-20, documentation mission until DOC-9 acceptance:
+central orchestration uses Claude; delegated implementation is ordered to use
+GPT-6.1/high or GPT-6 Astra. Source: [PLAN](docs/PLAN.md), DOC-CTRL1 mission
+record (DOC-8), and [decision index](docs/decisions.md) (DOC-2).
+Observe the actual model per job via its own `turn_context`, never a profile claim.
+Rule 5 is NOT suspended: each package receives cross-family reviews via the
+approved Ollama credit path plus a separate GPT observer. The 2026-10-20 user
+approval covers existing credit for `glm-5.3`, `glm-5.3-flash` and
+`deepseek-v4.1-flash`; private bounds apply, no purchase or auto-reload.
+It supersedes the older block until 2026-11-01; no current balance is asserted.
 
 Every review checks `docs/PLAN.md` at the head: the PR's own row (identified by `Plan-ID:`) states what is true after merge, and changes in the PR leave no other row, the user section or decision inbox stale; cross-check against `gh`. A mismatch is a medium finding, or high if the user section asks for something already done, and must be fixed in the same PR before `review-ok` (user order 2026-10-15: the plan must never be stale).
 

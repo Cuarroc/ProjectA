@@ -53,6 +53,8 @@ für den Alltag. Zurück zur Übersicht: [README.md](README.md).
 - **Ein Draft-PR je Paket, früh sichern.** Im eigenen Worktree arbeiten,
   `bash scripts/ci/gates.sh lane prepush` lokal fahren, jeden grünen Schritt committen,
   pushen und mit `git ls-remote` prüfen (AGENTS.md Regel 4).
+  Zwischenstände nur als Draft pushen; der letzte Push folgt der vollständigen
+  Selbstprüfung am endgültigen Commit (siehe `../development/prompting.md`).
   Jeder Push auf einen offenen, fertigen PR startet einen CI-Lauf
   (Linux; die Windows-Lane läuft erst in der Queue).
 - **Draft = nicht fertig.** Draft-PRs bekommen keine CI und kommen nicht in die

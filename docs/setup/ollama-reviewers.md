@@ -8,7 +8,12 @@ regulär Abo + OpenRouter aus vorhandenem Guthaben. E1 (Elias, 20.10.2026): bei
 OpenRouter-Guthaben <= 0 auch zwei Abo-Familien; kein Kauf, kostenlose Modelle
 zählen nie als Pflichtreviewer. Doku, Tests, Snapshots und Konfiguration ohne
 Laufzeitwirkung (C) → Gates; C+ (Skip/Timeout/Retry oder schwächere Assertions
-in Tests) → ein Fremdreview. Ollama zählt nur über einen berechtigten Abo-Pfad.
+in Tests) → ein Fremdreview. Ollama zählt über einen berechtigten Abo-Pfad oder
+über den am 20.10.2026 genehmigten bestehenden Guthabenpfad für `glm-5.3`,
+`glm-5.3-flash` und `deepseek-v4.1-flash` (private Freigabegrenzen, kein Kauf
+oder Auto-Reload). Diese Freigabe ersetzt die alte Sperre bis 01.11.2026;
+kein aktueller Saldo behauptet. Zugang und tatsächliches Modell je Auftrag belegen;
+Regel 5 bleibt verbindlich, im Dokuauftrag kommt ein getrennter GPT-Beobachter hinzu.
 Zurück zur Übersicht: [README.md](README.md).
 
 ## Voraussetzungen
@@ -28,6 +33,8 @@ Zurück zur Übersicht: [README.md](README.md).
 `REVIEW_DIR` bezeichnet ein privates Verzeichnis außerhalb des Repos:
 
 ```sh
+export REVIEW_DIR="${HOME}/projecta-private-reviews" # außerhalb des Repos
+: "${REVIEW_DIR:?Privates Ausgabeverzeichnis setzen}"
 export REVIEWER_1_NAME=kimi-k3 REVIEWER_1_KIND=ollama \
        REVIEWER_1_URL=http://127.0.0.1:11434/api/generate REVIEWER_1_MODEL=kimi-k3:cloud
 export REVIEWER_2_NAME=glm-5.2 REVIEWER_2_KIND=ollama \
@@ -64,6 +71,7 @@ Frage erkannt" sind kein Review.
 beschriebenen `.pa/review_transport.py` auf, statt ihn nachzubauen.
 
 ```sh
+: "${REVIEW_DIR:?Wie oben auf ein privates Verzeichnis außerhalb des Repos setzen}"
 bash scripts/review/run-local.sh 42 --out-dir "$REVIEW_DIR"       # PR #42 gegen origin/main
 bash scripts/review/run-local.sh --out-dir "$REVIEW_DIR"          # aktueller Branch
 bash scripts/review/run-local.sh 42 --via kilo --out-dir "$REVIEW_DIR" # nur ergänzend, kostenlos

@@ -42,8 +42,9 @@ per provider: `docs/setup/README.md`. Check your machine with
 ## 2. Build and gates
 
 - The gate list lives only in `scripts/ci/gates.sh`. Run
-  `bash scripts/ci/gates.sh lane prepush` before pushing; `npm ci` for missing
-  dependencies only within valid user authorization (AGENTS.md rule 10).
+  `bash scripts/ci/gates.sh lane prepush` before pushing; `npm ci` for missing or stale
+  dependencies from the unchanged lockfile within valid user authorization (AGENTS.md rule 10).
+  Missing authorization: ask the user and wait; never run gates on stale dependencies.
 - Every gate run ends with a `NICHT ABGEDECKT` block; put it in the PR text.
 - Worktrees under `.claude/worktrees/` have no `target/`. Point cargo at a
   build slot: `export CARGO_TARGET_DIR=$HOME/cargo-targets/projecta-<a|b|c>`
@@ -95,6 +96,9 @@ test first, then the fix.
   Tier C (docs, tests, snapshots, config without runtime effect): gates only;
   C+ (tests adding skip/timeout/retry or weakening assertions): one outside
   reviewer. Fix-round delta: one outside reviewer, two if tier-A files change.
+  Every accepted fix needs bounded verification of `<reviewed-head>..<new-head>`
+  for closure and new delta defects: this IS round two, the last round.
+  Full candidate re-review only after a high finding. No third round.
   After round two Root decides merge, split or drop, records it in the PR
   report and informs the user. Review-forced fixes may reach 400 diff lines
   (initial dispatch: 300); record the overrun and forcing finding IDs.
@@ -140,7 +144,8 @@ AGENTS.md; a family shared with the author never counts.
    Handover includes goal/output evidence, candidate/base, distinct delivery
    states, remaining limits and next owner/step; keep the parent's goal open.
 2. Commit and push after every green step. Open **one PR per package** as
-   **draft** (drafts get no CI); it is marked ready (`gh pr ready <n>`) only
+   **draft** (drafts get no CI); intermediate pushes stay draft. The final push
+   follows the full self-check at the final commit; Root marks it ready (`gh pr ready <n>`) only
    when the report, disposition and `NICHT ABGEDECKT` are in. Every push to a
    ready PR costs a CI run. Verify a push with `git ls-remote`, not with the
    push exit code. Package branches (`<vendor>/w<N>-…`, `df<N>`, `ki-<N>`,
