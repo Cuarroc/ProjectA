@@ -999,6 +999,168 @@ mod tests {
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
 
+    const LIVE_STARTUP_MODALS: [(&str, BlockingDialog); 3] = [
+        (
+            "Update available Update now Skip",
+            BlockingDialog::CodexUpdateAvailable,
+        ),
+        (
+            "Hooks need review Trust all and continue",
+            BlockingDialog::CodexHooksReview,
+        ),
+        (
+            "Hooks Lifecycle hooks from config and enabled plugins. ⚠3 hooks need review before they can run. t trust all · enter review · esc close",
+            BlockingDialog::CodexHooksReview,
+        ),
+    ];
+
+    fn assert_guard_decision(task: &str, retained: &str, overflowed: bool, blocked: bool) {
+        for marker in ["", "Ask Codex to do anything"] {
+            let start = Instant::now();
+            let mut guard = SubmitGuard::new(start, task).with_readiness_marker(marker);
+            assert_eq!(
+                guard.tick(&obs(start, 4, 100, Some(1), "Ask Codex to do anything")),
+                Some(SubmitAction::WriteTask { write: 1 })
+            );
+            let retained = normalize_tui_output(retained);
+            let mut snapshot = obs(start, 6, 4000, Some(5), &retained);
+            snapshot.write_window_overflowed = overflowed;
+            let expected = if blocked {
+                SubmitAction::Escalate
+            } else {
+                SubmitAction::SendEnter { attempt: 0 }
+            };
+            assert_eq!(
+                guard.tick(&snapshot),
+                Some(expected),
+                "task={task}, overflow={overflowed}"
+            );
+            assert!(guard.input_pending());
+            assert!(!guard.is_delivered());
+            assert!(!guard.is_confirmed());
+            if blocked {
+                assert!(matches!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(_))
+                ));
+                assert_eq!(guard.tick(&snapshot), None);
+            } else {
+                assert_eq!(guard.escalation_reason(), None);
+                assert_eq!(guard.tick(&obs(start, 7, 4100, Some(7), "Working")), None);
+                assert!(guard.is_delivered());
+                assert!(!guard.input_pending());
+            }
+        }
+    }
+
+    #[test]
+    fn modal_before_task_echo_escalates_before_enter() {
+        for (modal, _) in LIVE_STARTUP_MODALS {
+            assert_guard_decision(TASK, &format!("{modal} {TASK}"), false, true);
+        }
+    }
+
+    #[test]
+    fn live_modal_without_retained_echo_blocks_enter() {
+        for (modal, reason) in LIVE_STARTUP_MODALS {
+            for overflowed in [false, true] {
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker("ready");
+                assert_eq!(
+                    guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+                    Some(SubmitAction::WriteTask { write: 1 })
+                );
+                assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
+                assert_eq!(guard.state(), SubmitState::AwaitingEnter);
+                let mut snapshot = obs(start, 4, 500, Some(3), modal);
+                snapshot.write_window_overflowed = overflowed;
+                assert_eq!(guard.tick(&snapshot), Some(SubmitAction::Escalate));
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(reason))
+                );
+                assert!(guard.input_pending());
+                assert!(!guard.is_delivered());
+                assert!(!guard.is_confirmed());
+            }
+        }
+    }
+
+    #[test]
+    fn complete_task_modal_quotes_still_deliver() {
+        let task = format!("BEGIN-unique-task-fragment {} Explain Update available Update now Skip and Hooks need review Trust all and continue. END-unique-task-suffix", "x".repeat(DIALOG_WINDOW_CHARS + 100));
+        assert_guard_decision(&task, &task, false, false);
+        let task = "Explain Update available Update now Skip and Hooks need review Trust all and continue.";
+        assert_guard_decision(task, &format!("{task}\n{task}"), false, false);
+        let task = "Explain Update available Update now Skip.\nPlease write a detailed plain language explanation of the update choices and what each action means.";
+        assert_guard_decision(task, task, false, false);
+    }
+
+    #[test]
+    fn modal_between_task_echo_fragments_blocks_enter() {
+        let task =
+            "Explain the repository layout carefully. Then summarize the existing test coverage.";
+        for (modal, _) in LIVE_STARTUP_MODALS {
+            let tail = format!("Explain the repository layout carefully. {modal} Then summarize the existing test coverage.");
+            assert_guard_decision(task, &tail, false, true);
+        }
+    }
+
+    #[test]
+    fn different_live_menu_between_task_fragments_blocks_enter() {
+        let task = "Explain Update available Update now immediately. Then summarize the existing test coverage.";
+        let tail = "Explain Update available Update now immediately. Update available Update now Skip Then summarize the existing test coverage.";
+        assert_guard_decision(task, tail, false, true);
+    }
+
+    #[test]
+    fn overflowed_task_quotes_never_erase_trust_all_menu() {
+        let task = "Explain Hooks need review Trust all and continue";
+        for tail in ["Hooks need review Trust all and continue", task] {
+            assert_guard_decision(task, tail, true, true);
+        }
+    }
+
+    #[test]
+    fn partial_and_mixed_quoted_redraws_escalate() {
+        let task = "Explain the following dialog choices in plain language: Update available Update now Skip. End with a detailed summary of the choices.";
+        for tail in [
+            "Update available Update now Skip".to_string(),
+            format!("Update available Update now Skip. {task}"),
+        ] {
+            assert_guard_decision(task, &tail, false, true);
+        }
+    }
+
+    #[test]
+    fn short_tasks_preserve_live_modal_and_partial_notice_words() {
+        for task in ["a", "e", "ok", "y"] {
+            for (modal, _) in LIVE_STARTUP_MODALS {
+                assert_guard_decision(task, &format!("{modal} {task}"), false, true);
+            }
+            for notice in ["Update available 2.3.4", "Hooks need review"] {
+                let start = Instant::now();
+                let mut guard =
+                    SubmitGuard::new(start, task).with_readiness_marker("Ask Codex to do anything");
+                assert_eq!(
+                    guard.tick(&obs(start, 1, 100, Some(1), "Ask Codex to do anything")),
+                    Some(SubmitAction::WriteTask { write: 1 })
+                );
+                let tail = format!("{task} Ask Codex to do anything {notice}");
+                assert_eq!(guard.tick(&obs(start, 4, 500, Some(2), &tail)), None);
+                assert_eq!(
+                    guard.tick(&obs(start, 121, 500, Some(2), &tail)),
+                    Some(SubmitAction::Escalate)
+                );
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::ReadinessMarkerNeverSeen)
+                );
+                assert!(guard.input_pending());
+            }
+        }
+    }
+
     #[test]
     fn task_and_agent_modal_words_do_not_block_delivery() {
         let start = Instant::now();
