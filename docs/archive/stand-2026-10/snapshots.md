@@ -2,7 +2,7 @@
 
 Source: `STAND.md` at `653db64985563c8a3e1603cd6d30906648ada41d`.
 The source block below is preserved byte for byte and is not a current status.
-Current guidance and reader fixtures remain in [STAND.md](../../../STAND.md).
+Aktuelle Hinweise und die Live-Beleg-Anleitung stehen in [STAND.md](../../../STAND.md).
 
 Preserved block: `STAND.md` from line 19, 1132 UTF-8 bytes.
 SHA-256: `d72812be544eff4143b33e8952017625fd15055eecb0d8436f8cdef623d1b1fb`.

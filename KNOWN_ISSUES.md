@@ -62,9 +62,11 @@ vorkommen — die Einstufung „nur Linux" heißt genau das und ist per
 
 Historische Befunde samt vollständigen Belegen stehen im
 [Archiv der behobenen Befunde](docs/archive/issues-2026-10/resolved.md#behoben).
-Die Nummern bleiben als Wegweiser erhalten: KI-15, KI-16, KI-35, KI-34, KI-33, KI-32, KI-20, KI-19, B-2, KI-3, KI-6, KI-8, KI-13, KI-14, KI-17, KI-18, KI-23, KI-2, KI-12, KI-30, KI-21, KI-22, KI-25, KI-26, KI-27.
+Die Nummern bleiben als Wegweiser erhalten: KI-15, KI-16, KI-35, KI-34, KI-33, KI-32, KI-20, KI-19, B-2, KI-3, KI-6, KI-8, KI-13, KI-17, KI-18, KI-23, KI-2, KI-12, KI-30, KI-21, KI-22, KI-25, KI-26, KI-27.
 
-Der noch offene Rest von KI-14 bleibt hier unverändert sichtbar:
+Eintrag ohne Nummer (—): [16 rote Tests der Nacht-Branches](docs/archive/issues-2026-10/resolved.md#behoben).
+
+KI-14: Rest offen unten; volle Historie im [Archiv](docs/archive/issues-2026-10/resolved.md#behoben).
 
 | # | Befund | Behoben | Beleg |
 |---|---|---|---|
@@ -72,8 +74,8 @@ Der noch offene Rest von KI-14 bleibt hier unverändert sichtbar:
 
 ### KI-12: Abgleich vom 2026-10-02
 
-[Vollständiger datierter Befund im Archiv](docs/archive/issues-2026-10/resolved.md#behoben).
+[Vollständiger datierter Befund im Archiv](docs/archive/issues-2026-10/resolved.md#ki-12-abgleich-vom-2026-10-02).
 
 ### KI-30: `real_native_*`-Flake auf der Windows-Bahn (geschlossen 2026-10-09)
 
-[Vollständiger datierter Befund im Archiv](docs/archive/issues-2026-10/resolved.md#behoben).
+[Vollständiger datierter Befund im Archiv](docs/archive/issues-2026-10/resolved.md#ki-30-real_native_-flake-auf-der-windows-bahn-geschlossen-2026-10-09).

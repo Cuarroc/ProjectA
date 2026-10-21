@@ -20,13 +20,12 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 
 [Vollständiger datierter Schnappschuss](docs/archive/stand-2026-10/snapshots.md).
 
-Im datierten Schnappschuss dokumentierte Grenzen:
+### Aktuelle Quellen für Release und Umfang
 
-- **Releasepause:**
-  Bis v2.0 kein Patch-Release und kein Tag (Entscheid 15.10., laut Root;
-  Inbox RELEASE-PAUSE in `docs/PLAN.md`); v2.0 braucht ein neues Ja.
-- **Ziel v2.0:** Umfang „eng“ entschieden (Inbox-Karte V2-ENG, früher Karte E1, 2026-10-15); Kriterien und
-  Restpakete in `docs/plan/v2.0/plan.md` (PR #1475).
+- **Releasebedingungen:** [AGENTS.md, Regel 10](AGENTS.md#the-ten-core-rules) und
+  der dort genannte Freigabenachweis der Koordination; Entscheidungsnachweis:
+  [K5 vom 16.10.2026](docs/decisions.md).
+- **Aktueller Umfang:** [docs/PLAN.md](docs/PLAN.md).
 
 Server-Automationen (review-feeder, dep-feeder, hold-feeder; 12 Server-Slots) leben in pa-orch und sind in der Projektnotiz `pa-orch-server-dispatch` dokumentiert, nicht im Repo.
 
