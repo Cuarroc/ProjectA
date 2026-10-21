@@ -250,6 +250,82 @@ test("a foreign refspec cannot date historical main evidence as fresh", async ()
   }
 });
 
+// Real remote namespace changes reproduce R1789-G1 without editing fetch metadata.
+async function resolvedFetch(source, suppressHead, check) {
+  const root = mkdtempSync(join(tmpdir(), "roadmap-resolved-")), cwd = process.cwd();
+  const remote = join(root, "remote.git"), seed = join(root, "seed"), client = join(root, "client");
+  const clock = "2026-10-21T16:00:00Z";
+  const env = { ...cleanEnv(), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" };
+  const git = (dir, args, date = clock) => {
+    const r = makeRunner({ env: { ...env, GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } })("git", ["-C", dir, ...args]);
+    assert.equal(r.code, 0, r.stderr);
+    return r.stdout.trim();
+  };
+  try {
+    for (const dir of [remote, seed, client]) mkdirSync(dir);
+    git(remote, ["init", "--bare", "-q"]); git(seed, ["init", "-q", "-b", "main"]);
+    mkdirSync(join(seed, "docs")); writeFileSync(join(seed, "docs/PLAN.md"), table("A"));
+    const commit = () => {
+      git(seed, ["add", "."]);
+      git(seed, ["-c", "user.name=Fixture", "-c", "user.email=fixture@users.noreply.github.com", "commit", "-q", "-m", "plan"]);
+      return git(seed, ["rev-parse", "HEAD"]);
+    };
+    const a = commit();
+    git(seed, ["branch", "other"]); git(seed, ["remote", "add", "origin", remote]);
+    git(seed, ["push", "-q", "origin", "main", "other"]);
+    git(client, ["init", "-q"]); git(client, ["remote", "add", "origin", remote]);
+    git(client, ["fetch", "-q", "origin", "main"], "2026-10-20T12:00:00Z");
+    writeFileSync(join(seed, "docs/PLAN.md"), table("B"));
+    const b = commit(); git(seed, ["push", "-q", "origin", "main"]);
+    git(client, ["fetch", "-q", "--no-write-fetch-head", "origin", "main"], "2026-10-21T15:00:00Z");
+    git(seed, ["push", "-q", "origin", `${a}:${source}`]); git(remote, ["update-ref", "-d", "refs/heads/main"]);
+    git(client, ["fetch", "-q", suppressHead ? "--no-write-fetch-head" : "--append", "origin", "+main:refs/remotes/origin/main"]);
+    assert.notEqual(a, b);
+    assert.equal(git(client, ["ls-remote", "origin", "refs/heads/main"]), "");
+    const real = makeRunner({ env }), run = (cmd, args) => cmd === "gh" ? { code: 0, stdout: "[]" } : real(cmd, args);
+    let out = "", errors = ""; process.chdir(client);
+    const code = await main(["--stdout"], { out: s => { out += s; }, err: s => { errors += s; } }, { run, now: clock });
+    const { stand } = JSON.parse(out);
+    assert.equal(code, 0, errors); assert.equal(errors, ""); assert.equal(stand.mainSha, a);
+    check(stand);
+  } finally { process.chdir(cwd); rmSync(root, { recursive: true, force: true }); }
+}
+
+test("a resolved non-branch main cannot borrow historical branch freshness", async () => {
+  for (const source of ["refs/remotes/main", "refs/main"]) for (const suppress of [false, true]) {
+    await resolvedFetch(source, suppress, stand => {
+      assert.equal(stand.fetchedAt, null, `${source}, suppress=${suppress}`);
+      assert.equal(stand.fetchAgeMs, null);
+    });
+  }
+});
+
+test("a tag named main cannot borrow historical branch freshness", async () => {
+  for (const suppress of [false, true]) await resolvedFetch("refs/tags/main", suppress, stand => {
+    assert.equal(stand.fetchedAt, null, `suppress=${suppress}`);
+    assert.equal(stand.fetchAgeMs, null);
+  });
+});
+
+test("configured origin fetches are dated only by an unambiguous main mapping", async () => {
+  for (const mode of ["default", "origin", "quiet", "exact", "conflict", "ambiguous", "unknown"]) {
+    const setup = (_dir, git) => {
+      git("branch", "-M", "main"); git("branch", "other"); git("remote", "add", "origin", ".");
+      if (mode === "exact") git("config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main");
+      git("fetch", ...(mode === "quiet" ? ["--quiet"] : []), ...(mode === "default" ? [] : ["origin"]));
+      if (mode === "conflict") git("config", "remote.origin.fetch", "+refs/heads/other:refs/remotes/origin/main");
+      if (mode === "ambiguous") git("config", "--add", "remote.origin.fetch", "+refs/heads/other:refs/remotes/origin/main");
+      if (mode === "unknown") git("config", "--unset-all", "remote.origin.fetch");
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
+      assert.equal(code, 0, errors);
+      const { stand } = JSON.parse(out), known = ["default", "origin", "quiet", "exact"].includes(mode);
+      assert.equal(stand.fetchedAt, known ? "2026-10-15T12:00:00.000Z" : null, mode);
+      assert.equal(stand.fetchAgeMs, known ? 0 : null, mode);
+    });
+  }
+});
+
 test("fetch evidence failures stay unknown with one diagnostic and no payload", async () => {
   const fake = (cmd, args) => cmd === "git" && args[0] === "remote" ? { code: 124, stdout: "private.invalid" } : undefined;
   await inRepo({ fake, args: ["--stdout"] }, ({ code, out, errors }) => {
