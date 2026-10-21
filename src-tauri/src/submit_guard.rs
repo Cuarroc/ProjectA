@@ -1097,13 +1097,86 @@ mod tests {
     }
 
     #[test]
-    fn complete_task_modal_quotes_still_deliver() {
+    fn complete_task_modal_quotes_ask_the_user() {
         let task = format!("BEGIN-unique-task-fragment {} Explain Update available Update now Skip and Hooks need review Trust all and continue. END-unique-task-suffix", "x".repeat(DIALOG_WINDOW_CHARS + 100));
-        assert_guard_decision(&task, &task, false, false);
+        assert_guard_decision(&task, &task, false, true);
         let task = "Explain Update available Update now Skip and Hooks need review Trust all and continue.";
-        assert_guard_decision(task, &format!("{task}\n{task}"), false, false);
+        assert_guard_decision(task, &format!("{task}\n{task}"), false, true);
         let task = "Explain Update available Update now Skip.\nPlease write a detailed plain language explanation of the update choices and what each action means.";
+        assert_guard_decision(task, task, false, true);
+    }
+
+    #[test]
+    fn surrounding_menu_spans_cannot_be_erased_by_task_echoes() {
+        for task in [
+            "⚠3 hooks need review before they can run. t trust all · enter review · esc close",
+            "Lifecycle hooks from config and enabled plugins. ⚠3 hooks need review before they can run. t trust all · enter review · esc close",
+            "3 hooks need review before they can run. t trust all · enter review · esc close",
+        ] {
+            assert_guard_decision(task, LIVE_STARTUP_MODALS[2].0, false, true);
+        }
+        assert_guard_decision(
+            "1. Update available Update now Skip",
+            "1. Update available Update now Skip",
+            false,
+            true,
+        );
+        assert_guard_decision(
+            "╭ Hooks need review Trust all and continue",
+            "╭ Hooks need review Trust all and continue",
+            false,
+            true,
+        );
+    }
+
+    #[test]
+    fn partial_heading_crossing_an_echo_boundary_holds_until_cap() {
+        let task = "Explain the repository layout carefully Update avail";
+        let tail = format!("{task}able 2.3.4");
+        let start = Instant::now();
+        let mut guard = SubmitGuard::new(start, task);
+        assert_eq!(
+            guard.tick(&obs(start, 4, 100, Some(1), "ready")),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        assert_eq!(guard.tick(&obs(start, 6, 500, Some(5), &tail)), None);
+        assert_eq!(
+            guard.tick(&obs(start, 121, 500, Some(5), &tail)),
+            Some(SubmitAction::Escalate)
+        );
+        assert_eq!(
+            guard.escalation_reason(),
+            Some(EscalationReason::ReadinessMarkerNeverSeen)
+        );
+        assert!(guard.input_pending());
+        assert!(!guard.is_delivered());
+    }
+
+    #[test]
+    fn task_with_complete_dialog_text_asks_the_user() {
+        let task =
+            "Explain Update available Update now Skip and Hooks need review Trust all and continue";
+        assert_guard_decision(task, task, false, true);
+    }
+
+    #[test]
+    fn partial_dialog_words_in_task_still_deliver() {
+        let task = "Explain the update choices and the hook review";
         assert_guard_decision(task, task, false, false);
+        let task = "Explain Update available and Hooks need review in plain language";
+        assert_guard_decision(task, task, false, false);
+    }
+
+    #[test]
+    fn budget_and_collapsed_dialog_quotes_ask_the_user() {
+        let task = format!(
+            "{} Update available Update now Skip",
+            "界".repeat(ECHO_SCAN_CHARS + 1)
+        );
+        assert_guard_decision(&task, &task, false, true);
+        let task = "Explain Update available Update now Skip.\nSummarize the repository layout and test coverage in detail.\nFinish with a clear explanation of these choices.";
+        let collapsed = "Explain Update available Update now Skip. ↑ 1 more Finish with a clear explanation of these choices.";
+        assert_guard_decision(task, collapsed, false, true);
     }
 
     #[test]
@@ -1185,10 +1258,9 @@ mod tests {
     }
 
     #[test]
-    fn task_and_agent_modal_words_do_not_block_delivery() {
+    fn agent_modal_words_after_enter_do_not_block_delivery() {
         let start = Instant::now();
-        let task =
-            "Explain Update available Update now Skip and Hooks need review Trust all and continue";
+        let task = TASK;
         let mut guard = SubmitGuard::new(start, task);
         assert_eq!(
             guard.tick(&obs(start, 4, 100, Some(1), "ready")),
