@@ -794,6 +794,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn windows_junctions_cannot_redirect_skill_destinations_outside_the_worktree() {
+        use std::os::windows::process::CommandExt;
+
         let dir = TempDir::new("skills-junction");
         let outside = dir.path().join("outside");
         let worktree = dir.path().join("worktree");
@@ -810,12 +812,15 @@ mod tests {
             ),
             (".claude", SkillsDiscovery::Convention),
         ] {
-            let result = std::process::Command::new("powershell.exe")
-                .args(["-NoProfile", "-NonInteractive", "-Command",
-                    "$ErrorActionPreference='Stop'; New-Item -ItemType Junction -Path $env:PROJECTA_TEST_LINK -Target $env:PROJECTA_TEST_TARGET | Out-Null"])
+            // cmd needs raw quoting; expand paths in quotes with delayed expansion off.
+            // /D disables registry AutoRun commands, an external timing source.
+            let result = std::process::Command::new("cmd.exe")
+                .args(["/D", "/V:OFF", "/C"])
+                .raw_arg("mklink /J \"%PROJECTA_TEST_LINK%\" \"%PROJECTA_TEST_TARGET%\"")
                 .env("PROJECTA_TEST_LINK", worktree.join(name))
                 .env("PROJECTA_TEST_TARGET", &outside)
-                .output().expect("create Windows junction");
+                .output()
+                .expect("create Windows junction");
             assert!(
                 result.status.success(),
                 "{}",
@@ -829,6 +834,19 @@ mod tests {
                 "not ours"
             );
         }
+    }
+
+    // Three separate samples (may run concurrently) per Windows run, each with both assertions.
+    #[test]
+    #[cfg(windows)]
+    fn windows_junction_refusal_timing_sample_2() {
+        windows_junctions_cannot_redirect_skill_destinations_outside_the_worktree();
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn windows_junction_refusal_timing_sample_3() {
+        windows_junctions_cannot_redirect_skill_destinations_outside_the_worktree();
     }
 
     #[test]
