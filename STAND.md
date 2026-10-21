@@ -24,7 +24,7 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 
 - **Releasebedingungen:** [AGENTS.md, Regel 10](AGENTS.md#the-ten-core-rules) und
   der dort genannte Freigabenachweis der Koordination; Entscheidungsnachweis:
-  [K5 vom 16.10.2026](docs/decisions.md).
+  [K5 RELEASE-PAUSE vom 16.10.2026](docs/PLAN.md#entscheidungs-inbox).
 - **Aktueller Umfang:** [docs/PLAN.md](docs/PLAN.md).
 
 Server-Automationen (review-feeder, dep-feeder, hold-feeder; 12 Server-Slots) leben in pa-orch und sind in der Projektnotiz `pa-orch-server-dispatch` dokumentiert, nicht im Repo.

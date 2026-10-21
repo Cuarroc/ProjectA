@@ -3,7 +3,7 @@
 Quelle: `docs/PLAN.md` auf `653db64985563c8a3e1603cd6d30906648ada41d`.
 Die folgenden Quellblöcke sind unverändert archiviert. Sie sind keine neuen
 Aufträge; aktuelle Aufgaben, Freigaben und Restabnahmen stehen im [Masterplan](../../PLAN.md).
-Gültige Anforderungen und Entscheidungen bleiben als verlinkte Verträge erhalten und ersetzen keine oben im Masterplan bestätigte Entscheidung. Die Quellblöcke sind eingefrorene Historie, keine zweite Statuspflege; abgeschlossene Paketzeilen stehen im [Paketarchiv](completed.md).
+Gültige Anforderungen und Entscheidungen bleiben als verlinkte Verträge erhalten und ersetzen keine oben im Masterplan bestätigte Entscheidung. Die Quellblöcke sind eingefrorene Historie, keine zweite Statuspflege; archivierte abgeschlossene Paketzeilen stehen im [Paketarchiv](completed.md).
 
 ### Serverreserve 3 — begrenzte Werkzeug-Härtung (historisch, erledigt)
 
@@ -730,3 +730,220 @@ Frühere Entscheidungen (Nr. 1–17): `.pa/archiv/PLAN_2026-09-24.md` §5 und
 
 
 Aktuelle Aufgaben: [Masterplan](../../PLAN.md).
+
+## DOC-1b — Archivschnitt vom 21.10.2026
+
+Quelle: `docs/PLAN.md` auf `f3a156fee712350055a2e13544f293cc2901936d`, Root-Auftrag `msg-0mvhfuvqf-a07adacf`. Die folgenden Quellblöcke sind bytegleich; weiter offene Pflichten und Parserzeilen bleiben im Masterplan. Dies ist eingefrorene Historie, keine zweite Statusquelle. Bei Tabellen bleiben die Metadaten und belegten Status in den aktiven Verweisen.
+
+### Abgeschlossene Z-Zeilen (DOC-1b)
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| DR-02 | Ledger-Modell als Modul, Split-Beweis (verhaltensgleich) | Seniorentwickler | DR-01, DR-01a | Server | A | Erledigt: #636 `4ef2ac2` durch Mergify am 08.10. 08:33:02 UTC gemergt (`7e3a7af`); Batch 659 / CI 37748898151 volle Windows-, Linux- und red-first-Gates grün; DR-03 folgt | FIT-Abnahme; bestehende Store-Tests unverändert grün; jede Datei ≤ 300 Zeilen; prepush Exit 0; DR-01a vor DR-02 gemergt | 55ea21ce, b0e90b72 |
+| DR-17 | Öffentliche README, Anleitung in 5 Schritten, CHANGELOG-Abschnitt Denkraum | Technischer Autor | DR-17a-Entwurf laut Root 09.10. vorgezogen; Trockenlauf nach DR-16a-Merge und Root-Annahme des DR-16b-Protokolls | Server | C | Erledigt #785 (merged 2026-10-09T20:37:12Z): Anleitung gemergt: #785 (gemergt 2026-10-09T20:37:12Z, Trockenlauf der fünf Schritte auf frischer Wegwerf-Instanz im PR-Text); CHANGELOG-Abschnitt final in V16-CHANGELOG; ersetzt: In Prüfung: Entwurf separat #785; Trockenlauf und Gesamt-Abnahme offen | Trockenlauf der 5 Schritte im PR-Text; beide UI-Skripte HTTP 200; eigene prepush; No-Test: documentation only | 55ea21ce |
+| DR-17a | README-Abschnitt und Anleitung in fünf Schritten als Entwurf; Quelle Root-Disposition 09.10. / PR #785 | bestehender Owner `srv-dr-17a` | Draft vor DR-16 erlaubt; Trockenlauf erst nach DR-16a und angenommenem DR-16b-Protokoll | Server | C | Erledigt #785 (gemergt 2026-10-09T20:37:12Z); ersetzt: In Prüfung: Draft #785 | ≤ 150 ALL; eigene prepush; kein Laufzeit-/Startbeleg aus dem Text, bis Trockenlauf erfolgt Draft halten | PLAN-SYNC-0910b |
+| Z2-PLAN-COMMIT | P2: v3 in kohärenten Paketen übernehmen; PLAN-C1 stellt Z1–Z4 vor den unveränderten historischen Parserbestand, danach getrennte Archiv-/Bereinigungsschnitte ≤ 300 ALL | Stabschef | Root-Abnahme je Kandidat | egal | C | Erledigt: PLAN-C1 #643 (merged 2026-10-08T05:46:58Z, `0a9a981d`, Kopf `1088909`), Statusnachtrag #646 (`a167486c`); #642 geschlossen als überholt (Nutzer 08.10.); weitere Bereinigungsschnitte ersetzt durch PLAN-CLEAN-1 bis -3 (15.10.); ersetzt: In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 geschlossen als überholt (Nutzer 08.10.), Originaldelta bleibt Historie, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen | ein kanonischer Plan; DF-Zeilen bytegleich; M1–M5 parsebar; eigene prepush-Lane Exit 0; Archiv erst nach vollständigem Quellenvergleich bereinigen | 55ea21ce |
+| Z2-RULE10 | P2: konkrete bereits erteilte Nutzerfreigaben erhalten; keine Rechteausweitung; Geld, Passwörter und Releases bleiben beim Nutzer | Stabschef | #643 (Schnitt PLAN-C1 von Z2-PLAN-COMMIT, Merge `0a9a981d`); gemeinsam mit GOALS-B | egal | C | Erledigt: Root-abgenommener #644 `4032800` am 08.10. 07:12:55 UTC gemergt, nach #643; allgemeine Sitzungsadoption nicht daraus abgeleitet | freigegebene Handlung nicht erneut erfragen; keine abgeleitete Pauschalfreigabe; eigene prepush-Lane Exit 0; Root-Abnahme | 52f46527 |
+| GOALS-B | P2: Rollen-Goals, Anpassung, Grenzen und selektive Rekursion in AGENTS.md, projecta-workflow und Übergabevorlage verankern; nur Prozessdoku, kein Runtime-Ausbau | Stabschef als Editor; Root nimmt ab | #643 (Schnitt PLAN-C1 von Z2-PLAN-COMMIT, Merge `0a9a981d`); Z2-RULE10 im selben Dokumentationspaket | egal | C | Erledigt: Root-abgenommenes Dokumentationspaket #644 `4032800` tatsächlich 07:12:55 UTC gemergt; vier bestehende Skills gespeichert/zurückgelesen; Adoption bleibt ausschließlich sitzungsweise belegt, keine allgemeine Wirksamkeitsbehauptung | ≤ 300 ALL; Anforderungen GOALS-01 2–7 erhalten; 1 zusätzliche Selbstprüfung, 2. nur konkreter Restmangel; Stops und unabhängige Reviews/Nutzerfreigaben unverändert; prepush Exit 0 | 52f46527 |
+| Z2-PLANPARSER | `hq-parse.mjs`, `dev-hq.mjs` und `hygiene.mjs` lesen die Z-Tabellen (Spalte Status, 8 Werte); danach Anhang B entfernen | Implementierer · Claude | Z2-PLAN-COMMIT | Server | B | Erledigt #697 (merged 2026-10-08T17:43:37Z) | `npm run test:hq` Exit 0; HQ zeigt Z1–Z4; prepush Exit 0 | – |
+| Z2-STATUS-UNKNOWN | Unbekannte CI-Kontexte und fehlende Checks nicht als grün darstellen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Erledigt #739 (merged 2026-10-08T22:50:42Z) | ≤ 140 ALL; benanntes Rot und Bericht-Fixtures; volle prepush und Fremdreview | 77c993f3 |
+| Z2-MRP-COMPLETE | Teilweise ausgefülltes Prompt-Log nicht als vollständigen Messbeleg zählen | Root benennt bestehenden Serverworker; Dateipaar unten exklusiv | main `9d9eaa7`; unabhängig | Server | B | Erledigt #746 (merged 2026-10-08T22:55:35Z) | ≤ 120 ALL; benanntes Rot, Zähler-/Bench-Fixture, Nullbefund gültig; volle prepush und Fremdreview | 77c993f3 |
+| DOCS-SYNC-0910 | Agenten-Dokumentation und Queue-Hinweise angleichen | abgeschlossener Root-Job | – | Server | C | Erledigt #764 (merged 2026-10-09T00:33:57Z) | Mergebeleg per gh pr view; restliche BUGS-Zeilen bleiben eigener Schnitt | #764 |
+| HOTFIX-HYGIENE-VERBS | Git-Globaloptionen in Hygiene-Testguards vor Verbprüfung entfernen | abgeschlossener Root-Job | – | Server | C laut Root-Abnahme #777 | Erledigt #777 (merged 2026-10-09T00:33:23Z) | Mergebeleg per gh pr view; echte Schreibbefehle bleiben im Guard erkennbar | #777 |
+| MATRIX-RECONCILE | Alle 27 Matrixzeilen mit datierten Belegen und offenen Resten abgleichen; Root-Disposition 09.10. | bestehender Owner `srv-matrix-reconcile` | bestehende Belege; Continuous bleibt aus | Server | C | Erledigt #781 (merged 2026-10-09T01:17:02Z); ersetzt: In Prüfung: Draft #781 | Anforderungen unverändert, kein erfundener Laufzeit-PASS; eigene prepush und Root-Abnahme | a6a28ae8 |
+| DS-T-02 | Vertrauensfehler P1-b: `Lamp` und `Meter` zeigen Unbekanntes neutral statt grün beziehungsweise 0 % (`Lamp.tsx`, `Meter.tsx`, `inputs.css`, `KontingenteScreen.tsx`) | Implementierer · Claude; Root nimmt ab | DS-Blueprint-Schnitt 16.10. (§2.2), Designsystem-Entscheidungen D1–D7 (`docs/decisions.md`) | Server | B | Erledigt: #1610 (merged 2026-10-16); unbekannte Lampe ist ein grauer geschlossener Ring, Balken ohne Messwert hat keinen Wert, Kontingente zeigen „Unbekannt“; Kartenlampe (`lampFor`) bleibt DS-T-03 | vier Test-First-Tests rot an der Merge-Base, grün am Kopf (`red-first.sh` Exit 0); `node scripts/contrast-check.mjs` Exit 0; prepush Exit 0; zwei Stufe-B-Reviews verschiedener Nicht-Autor-Familien: Subscription + OpenRouter; Root-Abnahme | – |
+| DS-T-01 | Vertrauensfehler P1-a: die Hauptansicht unterscheidet „unbekannt“ von „leer“ (`LeitstandRoute.tsx`, `NeedsYou.tsx`, `de.ts`) | Implementierer · Claude; Root nimmt ab | DS-X-01 (#1604); DS-Blueprint-Schnitt 16.10. (§2.2), Designsystem-Entscheidungen D1–D7 (`docs/decisions.md`) | Server | B | Erledigt: #1623 (merged 2026-10-16); Haupt sagt „Agenten werden gelesen …“, „Nicht verbunden“ mit „Erneut lesen“ oder „Kein Projekt gewählt“ statt „Noch kein Agent“, behält die Karten bei fehlgeschlagenem Nachladen („Aktualisierung fehlgeschlagen“, ohne Alter des letzten Stands) und „Braucht dich“ zeigt die Leermeldung erst nach gelesener Liste | fünf Test-First-Tests rot an der Merge-Base, grün am Kopf (`red-first.sh` Exit 0); typecheck, `node scripts/contrast-check.mjs` und prepush Exit 0; zwei Stufe-B-Reviews verschiedener Nicht-Autor-Familien: Subscription + OpenRouter; Root-Abnahme | – |
+| DS-T-05 | Vertrauensfehler P1-d: erster Schritt auf der Hauptansicht (`LeitstandRoute.tsx`, `LeitstandCards.tsx`, `de.ts`) | Implementierer · Claude; Root nimmt ab | DS-T-01 (#1623); DS-Blueprint-Schnitt 16.10. (§2.2), Designsystem-Entscheidungen D1–D7 (`docs/decisions.md`) | Server | B | Erledigt: #1629 (merged 2026-10-16); leere Hauptansicht bietet „Auftrag einreihen“ (öffnet Betrieb mit dem Einreih-Formular), ohne Projekt „Projekt anlegen“ (öffnet Werkzeuge, dort steht „Projekt hinzufügen“); beide Knöpfe navigieren nur, der Direktstart bleibt KR-05a | zwei Test-First-Tests rot an der Merge-Base, grün am Kopf (`red-first.sh` Exit 0); typecheck, `node scripts/contrast-check.mjs` und prepush Exit 0; zwei Stufe-B-Reviews verschiedener Nicht-Autor-Familien: Subscription + OpenRouter; Root-Abnahme | – |
+| DS-X-04 | Fabrik-Orb und sechs Zustandswort-Aliase gemäß D4 | Root | Entscheidung D4 vom 15.10. (`docs/decisions.md`) | Server | B | Erledigt: PR #1603; statischer Orb, Aliase und Kontrastprüfung geliefert; Bildschirmeinbindung und Bewegung bleiben DS-X-23/24 beziehungsweise DN-03. | sieben Orb-Formen je mit eigenem Zeichen, sechs Aliase ohne zweites Vokabular; Belege im Report von #1603: Fabrik-/Zustands-/i18n-Tests, red-first, `node scripts/contrast-check.mjs` (740 Paarungen) und eigene prepush je Exit 0; zwei Stufe-B-Reviews fremder Familien; Root-Abnahme | – |
+| DS-X-14 | Komponenten-Register und Abdeckungstest: `src/design/registry.ts` führt jede exportierte Designkomponente einmal (Familie, Varianten, Zustände, Bedienhilfe, Textquelle), `registry.coverage.test.ts` wird rot, wenn eine fehlt oder ein Eintrag keine Komponente mehr trifft | Implementierer · Claude; Root nimmt ab | DS-Blueprint-Schnitt 16.10. (DS-X-14) | Server | B | Erledigt: #1656 (merged 2026-10-16); 25 Komponenten gelistet, auch `hall/` wird gescannt (dort noch keine .tsx, DS-H-04 trägt seinen Eintrag selbst ein); Galerie DS-X-15 und Geschichten DS-X-16/17 lesen später dieses Register | Abdeckungstest rot→grün; `vitest run src/design`, typecheck, `plan-check --offline` und prepush Exit 0; zwei Stufe-B-Reviews fremder Nicht-Anthropic-Familien | – |
+| DS-X-13 | Eine Zustandskarte: `lampFor` liefert eine `StateForm` (`LAMP_FORM` in `lamps/lampFor.ts`), die Kopien `LAMP_STATE` in `AgentCard.tsx` und `flow/FlowTab.tsx` entfallen; die Agentenkarte zeigt genau eine Zustandsmarke; der Beweisstreifen klappt zu einer Zeile zusammen, wenn alle vier Beweise unbekannt sind; „Braucht dich“ sagt „Nichts offen“ nur einmal | Implementierer · Claude; Root nimmt ab | DS-Blueprint-Schnitt 16.10. (DS-X-13; S8, S9, S17) | Server | B | Erledigt: #1686 (merged 2026-10-17); `Lamp` bleibt für Anbieter und Kontingent; die Sperre `state-token` in `scripts/ci/ratchets.json` bleibt bei 191, weil sie `--state-` in `src/styles.css` zählt und dieses Paket dort nichts berührt | Tests rot→grün; `vitest run src/screens/leitstand`, typecheck, `contrast-check`, `plan-check --offline` und prepush Exit 0; Bilder der Agentenkarten hell und dunkel; ein Stufe-B-Review einer Nicht-Anthropic-Familie | – |
+| DS-X-07 | Austrittsübergänge: `useExitTransition` (`src/design/motion/`) hält einen schließenden Knoten für `--g-dur-exit` eingehängt und setzt `data-state="closing"`, bei reduzierter Bewegung (System oder Aus) wird sofort ausgehängt; `Sheet` und `Toast` nutzen ihn, `motion.css` trägt die Austrittsregeln; die `.g-is-new`-Einblendung für neue Agentenzeilen bleibt aus (nicht in diesem Paket) | Implementierer · Claude; Root nimmt ab | DS-X-03 (#1606); DS-Blueprint-Schnitt 16.10. (Zeile DS-X-07) | Server | B | Erledigt: #1683 (merged 2026-10-17) | red-first Vitest-Tests; `vitest run src/design`, typecheck, contrast-check, `plan-check --offline` und prepush Exit 0; ein unabhängiger Stufe-B-Review (Root beauftragt) | – |
+| DS-X-08 | Bestätigungsdialog `ConfirmDialog` (`role="alertdialog"`, Fokus zuerst auf Abbrechen, Esc bricht ab, ein Klick auf den Hintergrund schließt nicht, Bestätigen löst nur einmal aus, Gefahr-Ton über `Button` „danger“) und `Sheet` mit Größe (`sm`/`md`/`lg`) sowie Beschriftungs- und Beschreibungs-Kennungen; bestehende `Sheet`-Aufrufer bleiben unverändert; noch an keine Ansicht angeschlossen (jedes Paket, das ihn an Löschen, Zusammenführen oder Überschreiben hängt, ist Stufe A) | Implementierer · Claude; Root nimmt ab | DS-X-07 (#1683); DS-Blueprint-Schnitt 16.10. (Zeile DS-X-08) | Server | B | Erledigt: #1700 gemergt 2026-10-20 (`a4ef7057`, Kopf `414001b4`); Reviews und Disposition im PR | red-first Vitest-Tests; `vitest run src/design`, typecheck, `contrast-check`, `plan-check --offline` und prepush Exit 0; Bildschirmfotos hell/dunkel; ein unabhängiger Stufe-B-Review einer Nicht-Anthropic-Familie (Root beauftragt) | – |
+| DS-X-09 | Tabelle v2 (Fabrik-Designsystem, Welle 1): `src/design/data/Table.tsx` bekommt sortierbare Spaltenköpfe (`aria-sort`, Enter und Leertaste), optionale Zeilenauswahl mit dem Ankreuzfeld (Kopf-Feld „teils“, Anzahl wird angesagt), eine feststehende Kopfzeile sowie Platzhalter für leer und lädt über `HonestState`; bestehende Aufrufer bleiben unverändert | Implementierer · Claude; Root nimmt ab | DS-X-05 (#1678); DS-Blueprint-Schnitt 16.10. (Zeile DS-X-09) | Server | B | Erledigt: #1692 (merged 2026-10-17); keine Ansicht umgestellt (KR-07*, 10e folgen) | Tests rot→grün (`red-first.sh` Exit 0); `vitest run src/design`, typecheck, `contrast-check`, `plan-check --offline` und prepush Exit 0; Bildschirmfotos hell/dunkel; ein Stufe-B-Review einer Nicht-Anthropic-Familie, Root kommissioniert | – |
+| DS-X-21 | Ein Symbolsatz auf 20-px-Raster: `Icon` in `src/design/icons/` (ohne Beschriftung für Hilfstechnik verborgen, mit `label` als `role="img"`, Farbe über `currentColor`) und 24 Lucide-Pfade als Daten (`glyphs.ts`), dazu Entsprechungen für die 14 klassischen Symbole, die Seitenleisten-Symbole und den Auswahl-Pfeil; Lizenztext `LUCIDE-LIZENZ.txt` neben den Symbolen und Eintrag in `docs/THIRD_PARTY_NOTICES.md` | Implementierer · Claude; Root nimmt ab | DS-Blueprint-Schnitt 16.10. (DS-X-21), Root-Entscheidung 17.10.: Pfade kopieren, kein Paket | Server | B + Lizenzprüfung | Erledigt: #1701 (merged 2026-10-20); ursprünglich: Entwurfs-PR offen (17.10.): kein Aufrufer umgestellt, `src/components/Icon.tsx` bleibt bis KR-15; Galerie zeigt den Satz unter „Symbole“ | Tests rot→grün; `vitest run src/design`, typecheck, `contrast-check`, `plan-check --offline` und prepush Exit 0; Bilder der Galerie hell und dunkel; ein Stufe-B-Review einer Nicht-Anthropic-Familie, Root prüft den Lizenzhinweis | – |
+| DS-X-32 | Datenfarben `--g-viz-1` bis `--g-viz-6` in `src/design/tokens.css` (hell und dunkel), eigene Farbtöne abseits der Zustandsfarben; `scripts/contrast-check.mjs` prüft jede Datenfarbe als Nicht-Text mit mindestens 3:1 auf Grund, Chrome und Glas (auch in allen Glas-Varianten), hält sie voneinander und von den Zustandsfarben auseinander und meldet „Token fehlt“; die Galerie-Seite Farben zeigt die sechs Farbfelder; keine Diagramm-Bausteine (das ist DS-X-33) | Implementierer · Claude; Root nimmt ab | DS-X-02; DS-Blueprint-Schnitt 16.10. (Zeile DS-X-32) | Server | B | Erledigt: #1702 (merged 2026-10-18), Branch `claude/ds-x-32`; die sechs Datenfarben stehen in `tokens.css`, `contrast-check` prüft sie und die Galerie-Seite Farben zeigt sie, Diagramm-Bausteine folgen mit DS-X-33 | red-first Gate-Tests in `scripts/lib/contrast-gate.test.mjs`; `contrast-check`, typecheck, `plan-check --offline` und prepush Exit 0; Bilder der Farben-Seite hell und dunkel; ein unabhängiger Stufe-B-Review (Root beauftragt) | – |
+| DS-X-26 | Popover (Fabrik-Designsystem, Welle 4): `src/design/layout/Popover.tsx` setzt `aria-expanded`/`aria-controls` am Auslöser, schließt bei einem Pointerdown außerhalb genau einmal, mit Esc (Fokus zurück zum Auslöser) und beim Verlassen per Tab, misst einmal beim Öffnen, ob es nach oben klappt (keine CSS-Anker-Positionierung), und geht über den Austrittsübergang aus DS-X-07 (bei reduzierter Bewegung sofort); `ProjectPicker` und das kompakte Darstellungsmenü nutzen es mit unverändertem Verhalten und Aussehen; Eintrag im Register; kein Menü-Baustein, kein Tooltip (DS-X-27) | Implementierer · Claude; Root nimmt ab | DS-X-07 (#1683); DS-Blueprint-Schnitt 16.10. (Zeile DS-X-26) | Server | B | Erledigt: #1705 (merged 2026-10-18); `ProjectPicker` und das kompakte Darstellungsmenü nutzen das Popover mit unverändertem Verhalten und Aussehen, kein Menü-Baustein und kein Tooltip (DS-X-27) | red-first Vitest-Tests (`popover.test.tsx`); die bestehenden Tests von `ProjectPicker` und Darstellungsmenü bleiben unverändert grün; `vitest run src/design src/shell`, typecheck, contrast-check, `plan-check --offline` und prepush Exit 0; Bildschirmfotos beider Menüs hell und dunkel; ein unabhängiger Stufe-B-Review (Root beauftragt) | – |
+| DS-X-27 | Tooltip und Banner (Fabrik-Designsystem, Welle 4): `src/design/layout/Tooltip.tsx` öffnet bei Tastaturfokus sofort und beim Überfahren nach der Verzögerung aus dem Dauer-Token `--g-dur-4`, schließt mit Esc, beim Verlassen und bei Blur, setzt `aria-describedby` und bewegt sich nie; die Klapp-Messung teilt es sich mit dem Popover (`useFlip`); `Banner.tsx` hat die Arten info/ok/warn/bad (`bad` als `role="alert"`, die anderen als `status`) mit Zustandswort aus `src/i18n/de.ts`; `AgentCard`, `TresorPanel` und `WegWahl` nutzen das Banner statt `.ls-err`, `.tr-alert` und `.wg-warning`; `.g-hdr-stop` (Knopf, Rolle `status`) und das `.ls-err` in `LeitstandRoute` (Rolle `status`) bleiben, weil der Tausch ihre Rolle oder ihr Verhalten änderte; Register-Einträge; kein Austausch aller `title` | Implementierer · Claude; Root nimmt ab | DS-X-26 (#1705); DS-Blueprint-Schnitt 16.10. (Zeile DS-X-27) | Server | B | Erledigt: #1716 (merged 2026-10-20); ursprünglich: In Arbeit: Draft-PR | red-first Vitest-Tests (`tooltip.test.tsx`, `banner.test.tsx`); `vitest run src/design src/screens`, typecheck, contrast-check, `plan-check --offline` und prepush Exit 0; Bildschirmfotos eines offenen Tooltips und aller vier Banner-Arten hell und dunkel; ein unabhängiger Stufe-B-Review (Root beauftragt) | – |
+| DS-X-28 | Toast-Warteschlange (Fabrik-Designsystem, Welle 4): `useToast()` in `src/design/layout/useToast.tsx` liefert `push` (gibt eine Kennung zurück), `dismiss(id)` und den einzubindenden `region`; höchstens drei Hinweise sind sichtbar, weitere warten; ein optionaler Aktionsknopf ruft seine Funktion genau einmal auf; Hinweise verlassen den Bildschirm über `useExitTransition` (bei reduzierter Bewegung sofort); `ToastRegion` bleibt abwärtskompatibel, Register-Eintrag angepasst; keine Bildschirmeinbindung | Implementierer · Claude; Root nimmt ab | DS-X-07; DS-Blueprint-Schnitt 16.10. (Zeile DS-X-28) | Server | B | Erledigt: #1704 (merged 2026-10-18), Branch `claude/ds-x-28`; keine Bildschirmeinbindung | red-first Vitest-Tests (`toast.queue.test.tsx`); `vitest run src/design`, typecheck, contrast-check, `plan-check --offline` und prepush Exit 0; ein unabhängiger Stufe-B-Review (Root beauftragt) | – |
+| DS-H-03b | Probe-Halle: Gesichter und Hände der Rollenfiguren behalten in beiden Themes denselben Hautton (Befund R1663-ROOT1): neues Token `--g-px-skin`, `hall/figures/` | Root disponiert | DS-H-03 | Server | B | Erledigt: #1666 (merged 2026-10-16); hell und dunkel teilen sich einen Hautton (Palettenplatz 15 statt `--g-sw-off`, das nur Schalter nutzen); Haar und Hosen folgen weiter dem Theme | benannter Test rot→grün; `contrast-check`; prepush; zwei Reviews | – |
+| DS-H-03c | Probe-Halle: auch das Haar der Rollenfiguren behält in beiden Themes seine Farbe (Befund R1666-ROOT1): neues Token `--g-px-hair`, `hall/figures/` | Root disponiert | DS-H-03b | Server | B | Erledigt: #1672 (merged 2026-10-17); der dunkle Atlas zeigt dieselben Figuren wie der helle (Palettenplatz 13 statt des unbenutzten `--g-amb2`, nur Haarpixel der Figuren, Kacheln unverändert); Hose, Schuhe und Kleidung folgen weiter dem Theme; Lesetest der Palette läuft jetzt über die PNG-Chunks (R1666-K4), Kachel-Quellen dürfen Haut- und Haarplatz nie nutzen (R1666-K5) | benannte Tests rot→grün; `contrast-check`; prepush; zwei Reviews | – |
+| DS-H-07b | Messaufbau der Probe-Halle: `scripts/dev/shot.mjs` bekommt `--theme`, `--motion calm\|lively\|off`, `--reduced`, `--dpr`, `--wait` und `--video` für die Abnahmefälle aus `docs/design/hall/ASSETS.md` §9 (Teil b von DS-H-07; Teil a ist die Galerie-Seite) | Root disponiert | DS-H-07 | Server | B | Erledigt: #1694 (merged 2026-10-18), Plan-ID DS-H-07b; `shot.mjs` speichert den Bewegungsmodus vor dem Laden, kann Betriebssystem-Bewegungsreduktion, 125-%- und 150-%-Skalierung (Bild in dpr-facher Größe, Name mit `-dpr<n>`), eine Wartezeit vor dem Bild und ein webm je Farbschema; ohne die neuen Optionen bleiben Aufruf und Ausgabe unverändert; die Abnahme selbst läuft erst nach DS-H-07a | Tests rot→grün (`shot.test.mjs`); prepush Exit 0; ein unabhängiger Stufe-B-Review | – |
+| NAV-1a | Seitenleiste nach Bereichen: Feld `area` je Route und Liste der Bereiche, ein Link je Bereich auf seine erste sichtbare Route, `aria-current` je Bereich; neue Werte `nav.leitstand` „Fabrik“, `nav.eingangPlan` „Aufträge“, `nav.gedaechtnis` „Wissen“, neu `nav.betrieb`; zugleich der Reiter `leitstand.tab.fabrik` → „Linie“ (früher NAV-1b), damit kein Linkname doppelt vorkommt; Routen-IDs und Pfade bleiben (`src/shell/routes.ts`, `Shell.tsx` (nur `Sidebar`), `src/i18n/de.ts`, `src/screens/start/texts.ts`, `LeitstandRoute.test.tsx` und die Shell-Tests) | Root disponiert | NAV-0; #1606 (`Shell.tsx`) und #1604 gemergt oder `main` eingemergt | Server | B | Erledigt: #1636 (merged 2026-10-16); die Seitenleiste zeigt einen Link je Bereich (Schalter aus: Fabrik und Einstellungen, Betrieb ab NAV-2a), der Fluss-Reiter heißt „Linie“ | benannte Tests rot→grün (sechs Bereiche ohne Ersteinrichtung, Betrieb aktiv auf jeder Mitgliedsroute, Schalter aus zeigt Fabrik und Einstellungen, Reiter „Linie“); prepush; zwei Reviews; Zeilen ≤ 300 | – |
+| NAV-2c | Betrieb zeigt nie zwei Statusbereiche zugleich: Schlägt das Lesen der Profile fehl und ist kein Projekt gewählt, sagt ein einziger Bereich beides (Nachtrag R1647-K1 aus dem NAV-2b-Review; `BetriebRoute.tsx`, `betrieb.mount.test.tsx`) | Root disponiert | NAV-2b | Server | B | Erledigt: #1657 (merged 2026-10-16); ein Statusbereich statt zwei, wenn das Lesen der Profile scheitert und kein Projekt gewählt ist; mit gewähltem Projekt bleibt der Hinweis über dem Panel | benannter Test rot→grün (`a failed profile read without a project shows one status region`); prepush; ein unabhängiges Review; Zeilen ≤ 300 | – |
+| V16-ADR-A1 | ADR A1 (`ApiBackend` teilen) in `docs/decisions.md` entscheiden | bestehender Root-Job `srv-v16-adr-a1`; Fable bei Root | – | Server | C | Erledigt #667 (merged 2026-10-08T14:34:03Z) | `docs/decisions.md` A1 nicht mehr „Vorschlag (offen)“; precommit-Lane Exit 0; Root-Abnahme am SHA | 72f47044 |
+| V16-CHANGELOG-a | Unveröffentlichtes v1.6.0-Changelog-Gerüst; Quelle Root-Disposition 09.10. | bestehender Owner `srv-changelog-geruest` | nur an Basis gemergte Änderungen aufnehmen; unabhängig vom finalen Release-Text | Server | C | Erledigt #783 (gemergt 2026-10-09T01:02:31Z); Nachtrag #835 (gemergt 2026-10-09T10:05:01Z) | nur CHANGELOG.md, ≤ 120 ALL; eigene prepush; keine Tag-/Releasefreigabe; finale Aktualisierung bleibt V16-CHANGELOG | ed847e77 |
+| V16-CHANGELOG-b | v1.6.0-Abschnitt bis 09.10. nachziehen | bestehender Owner | V16-CHANGELOG-a | Server | C | Erledigt #861 (merged 2026-10-09T15:02:01Z) | nur CHANGELOG.md; finale Aktualisierung bleibt V16-CHANGELOG | – |
+| Z4-ARCH-D1-REST | Vierten HTTP-Fehlertext-Klassifizierer `error_status` in den gemeinsamen Klassifizierer übernehmen; ARCH-D1 bleibt offen | Implementierer; abgeschlossene api-Arbeit | – | Server | A | Erledigt #663 (merged 2026-10-08T20:55:57Z) | `rg -n "fn error_status" src-tauri/src/development_plan_access.rs` → 0 Treffer außerhalb des gemeinsamen Klassifizierers; eigene prepush und zwei Fremdvendor-Belege mit Disposition | 7810a005 |
+| FLAKE-Q-TMP | Fragen-Testfixture wartet bis Pool und temporäres Verzeichnis geschlossen sind; Root-Disposition 09.10. | bestehender Owner `srv-flake-q-tmp` | keine st-Änderung; #737 bleibt exklusiver st-Owner | Server / Windows-Beleg | B laut Auftrag #784 | Erledigt #784 (merged 2026-10-09T01:17:07Z); ersetzt: In Prüfung: Draft #784 | deterministisches Rot→Grün, eigene prepush/Fremdreview; Windows-Fixture-PASS und fremden nativen Fehler getrennt bewerten (PR-Bericht) | e257cee3 |
+| KI-CLOSE-C | Dokumentierte KI-Abschlüsse mit Quellen abgleichen; Root-Disposition 09.10. | Root bindet vorhandenen Doku-Owner | datierte Abschlussbelege je betroffenem KI-Eintrag | Server | C | Erledigt #790 (merged 2026-10-09T01:45:33Z; title: docs: close eight obsolete HQ bug records (KI-CLOSE-C)); ersetzt: Geplant; Abschluss-/PR-Beleg hier nicht beobachtet | keine pauschale Schließung, konkrete Belege und offene Reste; eigene prepush bei Repo-Änderung | PLAN-SYNC-0910b |
+| Z4-W118B-PROBE | Native Codex-Skill-Erkennung mit unabhängigem Canary/Kontrolle; Setup-Doku ≤ 120 ALL | bestehender Root-Job; kein Doppelstart | eigener Harness-/Modell-/Startcheck, keine Installation | Server | C | Erledigt #675 (merged 2026-10-08T14:34:14Z) | Canary-Wert fehlt in Prompt/Katalog; reale Discovery-/Read-Spur und Kontrolle samt Befehl/Exit; gesperrter Zugriff ist kein PASS | e4bae87c |
+| SEC-02 | CodeQL-Alarme SEC-02a bis SEC-02e: Markdown-Escape, Rust-Logging, HQ-Pfade, Windows-ACL, Rest | – | – | – | – | Erledigt 02.10.: #64, #71, #88, #90, #117 | – | – |
+| HQ-KLEIN-1003 | HQ-Nachläufer und Kleinfixes: Frische-Ampel, Offline-Signale, Intro-Hinweise, Plan-Zeilen zählen nicht als fertig | – | – | – | – | Erledigt 03.–05.10.: #131, #326, #511, #514, #516 | – | – |
+| DR-NACH-1009 | Denkraum und Update-Pfad, Nachläufer 09.10.: DR-SEC-Korrekturen, Windows-Stop, Update-Abbruch, Tests für Umschalten und Review-Läufer | – | – | – | – | Erledigt 09.10.: #805, #809, #814, #818, #819, #896, #902, #904, #905, #908, #910, #911, #912, #914 | – | – |
+
+## Regeln für diesen Plan (historisch, M1–M5; geltende Regeln: AGENTS.md und „Statuswerte“ oben)
+
+1. **Ein Plan.** Jedes Paket steht als eine Zeile in genau einer
+   Meilenstein-Tabelle. Neue Pakete entstehen nur hier.
+2. **Neue Ideen bis M4 auf „Später“.** Sie kommen in den Abschnitt unten, nicht
+   in M1–M4, außer der Nutzer entscheidet es.
+3. **Continuous-Code bis M4 eingefroren.** Keine neuen Migrationen und keine
+   neuen Funktionen für den Continuous Mode außerhalb der M4-Pakete.
+4. **Nichts doppelt bauen.** Neues entsteht an einer Stelle, HQ oder App, nicht
+   in beiden.
+5. **Status per Skript.** Die Stand-Spalte ist eine Momentaufnahme. Den
+   Live-Stand und den Tagesbericht erzeugt OPS-01 aus GitHub und git. Nach dem
+   Merge: `✓ #PR` hier, Zeile in `docs/ERLEDIGT.md` (`npm run dev:erledigt-row`).
+   Über die eigene Stand-Zeile hinaus schreiben `docs/PLAN.md`, `STAND.md` und
+   `docs/ERLEDIGT.md` nur der Koordinator oder ein Paket mit ausdrücklicher
+   Zuweisung.
+6. **Spec nur für M-Pakete.** Ein M-Paket bekommt beim Start
+   `.pa/task_<id>.md` (`Status: aktiv`) und eine Zeile unter „Aktive Specs“ in
+   `STAND.md`; `npm run specs` prüft beides. S-Pakete und Folgepakete aus einem
+   PR: der Auftrag steht im PR-Text.
+7. **Größen:** S ≤ 150, M ≤ 300 Diffzeilen einschließlich Tests. Was größer
+   wird, teilt der Koordinator vor dem Dispatch in Kinder.
+8. **CI-Geld:** Ziel 0 €. Wird die CI der Engpass, sind höchstens 20 € im Monat
+   erlaubt, und erst nach Freigabe des Nutzers.
+
+
+### Architektur-Pakete aus dem Architektur-Rat (03.10.2026, historisch)
+
+Die folgenden Pakete sind neue Ideen und bleiben nach AGENTS.md unter „Später“.
+ARCH-11 ist die Ausnahme: Es ist ein angenommener M3-Kandidat (Nutzer 04.10., F6
+und Zeile in der M3-Tabelle), ohne die M3-Abnahme-Tabelle zu ändern.
+
+| ID | Ziel | Dateien | Lane | Naht | Tier | Test-Trailer | Stand / Reihenfolge |
+|---|---|---|---|---|---|---|---|---|
+| ARCH-01 | Toten Kleinkram in FE/HQ entfernen: `hqCapacity.ts` samt Test löschen, `setLandingPage`-Wrapper und Design-Studio-Mock entfernen; `hq-live.mjs` akzeptiert zusätzlich `PROJECTA_API_FILE`. | 4–5 Dateien, ~150 Diff | fe + hqL | nein | B | Test-First: `descriptorCandidates({PROJECTA_API_FILE})` liefert genau diesen Pfad; Löschungen No-Test | Erledigt #166/#167; Reihenfolge: jetzt; Löschung mit Nutzer-Ja (F5) |
+| ARCH-02 | `queue.rs`: `enqueue` und `enqueue_with_enhancer` über gemeinsamen `insert_entry()`-Pfad führen; Test-Kopie entfernen. | `queue.rs`, Δ−35 | fR | nein | B | No-Test: mechanische Deduplizierung; 17 `queue::tests` decken Verhalten ab | Erledigt #191; Reihenfolge: nach Merge von PR #130 |
+| ARCH-03 | Einen atomaren `write_atomic`/`replace_file`-Pfad in `fsutil.rs` bündeln und in Retention, Provider und Delivery-Recovery verwenden; alten MSRV-Kommentar entfernen. `db_restore.rs:137` bleibt Folgepaket der pa-Lane. | 4 Dateien, ~220 Diff | fR | nein | A (Vault) | No-Test: Konsolidierung; bestehende Provider-, Retention- und Recovery-Tests | Erledigt #214/#217/#256; Reihenfolge: jetzt |
+| ARCH-04 | `retention::run_once` soll alte Sitzungsdateien über `sessionpersist::sweep(root, now)` löschen; globales Dead-Code-Allow entfernen, Item-Allow nur für `persist_draft` behalten. | `retention.rs`, `sessionpersist.rs`, ~120 Diff | fR | nein | B | Test-First: alte Sitzungsdatei verschwindet nach `run_once` | Erledigt #169; Reihenfolge: nach Inbox-Antwort F2 |
+| ARCH-05 | Binärmodule von `pub mod` auf `mod` umstellen und die dadurch sichtbaren Dead-Code-Warnungen einzeln mit Paket-ID erlauben. | `main.rs` + 2–3 Module, ~30 Diff | mn | ja | A (Naht) | No-Test: Sichtbarkeits-Lint; Force-Warn-Lauf vorher/nachher und Clippy | Erledigt #182; Reihenfolge: jetzt |
+| ARCH-06 | `AppAgentControl` und `PtyAgents` auf freie Funktionen umstellen; `ApiBackend::agents()` statt sieben `with_port`-Aufrufen verwenden. | `main.rs`, Δ−90 | mn | ja | A | No-Test: mechanische Deduplizierung; bestehende Worker-, API- und Main-Tests | Erledigt #219; Reihenfolge: nach ARCH-05, vor W5-04b |
+| ARCH-07 | Store-Kleinkram verschieben: `SRC_HOOK`/`SRC_HEURISTIC` löschen, Fehlercodes in neues `errors.rs` legen und die Rückkante store→workers entfernen. | `store.rs`, `store/queue_cancel.rs`, `workers.rs`, `errors.rs`, ~40 Diff | st | ja | A | No-Test: mechanische Verschiebung; bestehende Store-, Queue-Cancel- und API-Tests | Erledigt #202; Reihenfolge: nach #147/#44, gemäß st-Reihenfolge |
+| ARCH-08 | `SettingsView.tsx` je Tab in eigene Komponenten aufteilen. | `src/components/Settings*/`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; vorhandene Settings-Tests | Erledigt #181/#221/#229/#244/#247/#252; Reihenfolge: nach PR #154 |
+| ARCH-09 | `ipc.ts` als Barrel behalten und PTY-, Projekt- und Worker-Domänenmodule auslagern. | `src/lib/ipc/*.ts`, je ≤300 | fe | nein | B | No-Test: mechanische Verschiebung; IPC- und Komponententests | Erledigt #260/#264/#269; Reihenfolge: nach ARCH-08, niedrige Priorität |
+| ARCH-10 | `/api/hq/v1/*` als Unter-Router mit 14 Armen aus `route()` in `api/hq_routes.rs` auslagern. | `api.rs`, `api/hq_routes.rs` | api | ja | A | No-Test: mechanische Verschiebung; FakeBackend-Servertests behalten Status, Body und Auth | Erledigt #220/#236/#246/#250; Reihenfolge: vor W5-02b3 (api) |
+| ARCH-11 | **M3-Kandidat:** KI-24b auf Windows reproduzieren und den Test-DB-Wiederöffnungs-Wettlauf durch bewiesenes Pool-Schließen oder gezieltes Warten absichern. | `testutil.rs` + betroffene Tests | fR + N | nein | A (DB) | Regression-For: KI-24-Läufe 36165944208/36215024767; 20× close→reopen auf Windows | Verschoben nach Z4-ARCH-11; Reihenfolge: M3-Kandidat angenommen (Nutzer 04.10.); Windows-Lauf nötig, der PC des Nutzers darf dafür genutzt werden |
+| ARCH-12 | `impl ControlBackend for ApiBackend` aus `main.rs` auslagern. Das Paket bleibt gesperrt, weil der Trait-Block als reine Verschiebung mehr als 300 Diffzeilen erzeugt. | `main.rs`, `api/backend.rs`, ~715 Z. | mn + api | ja | A | No-Test: mechanische Verschiebung erst nach ADR A1 | nach ADR A1; gesperrt |
+
+
+### Synthese der Bestandsaufnahmen INV-01..08 und des Architektur-Rats (03.10.2026)
+
+Quelle der Bestandsaufnahmen sind die PR-Texte (Abschnitt „Bestandsaufnahme“);
+sie liegen nicht als Dateien im Repo. Der Architektur-Rat ist die Tabelle oben.
+Alles hier ist **Quellenbefund oder Hypothese, kein reproduzierter Fehler**: ein
+Bugpaket braucht zuerst einen kompilierenden roten Test, eine Laufzeit- oder
+Performanceaussage eine Messung. Nichts davon ist in M1–M4 aufgenommen. Die
+Nummern unten sind heutige PR-Nummern, beobachtet am 03.10.2026 mit
+`gh pr view` auf `origin/main` 1b38596; der Paketstand darunter ist am 04.10.2026 nachgeführt.
+
+**Stand der Pakete.** Architektur-Rat und Team-Katalog sind abgeschlossen.
+Status beobachtet 04.10.2026 13:50 UTC (15:50 Berlin), gelesen mit `gh pr list --state all`/`gh pr view <n>` auf `origin/main` effef1a (Merge #279 um 10:03:23 UTC, `ci`-Lauf 37194125481 grün). Gemergt (bis `cc95a57` Stand 03.10. 23:26 UTC, danach die Nachträge unten):
+ARCH-02 #191, ARCH-03 als #214 und #217 (das erste #211 ist geschlossen: es
+überschritt die 300-Zeilen-Grenze), ARCH-03c #256 (`08faff8`, 23:04 UTC), ARCH-04 #169, ARCH-05 #182, ARCH-06 #219,
+ARCH-07 #202, ARCH-08a #181, 08b #221, 08c #229, 08d #244, 08e #247 und 08f #252 (`f1a33de`, 22:31 UTC),
+ARCH-09a #260 (`cc95a57`), ARCH-10a #220, 10b #236, 10c #246 und 10d #250,
+W1-27 #140, W2-04c Teil 2 #222, PTY-READ-01 #206, PTY-RETIRE-01 #215,
+PTY-GUARD-01 #230, SEC-ARCHIVE-01 #225, M3-02 #189, PLAN-sync-04 #258 (`070a1d5`, 22:49 UTC) und
+UX-03 als #199 (#186 ist geschlossen). Ersetzt: #152 → #172, #147 → #178,
+#130 → #183 (alle gemergt). ARCH-10b ist trotz E13 gemergt (#236); E13 ist
+am 03.10. vom Nutzer freigegeben und der installationsfreie Starter auf dem Server
+eingespielt; Worker-Läufe über ihn haben seitdem PRs geliefert (siehe E13).
+**ARCH-03c** #256: die Windows-Bahn war per `workflow_dispatch` echt rot am
+Test-First-Commit `2b9fd1c` (Lauf 37155715659) und grün am Kopf `7af0aa5` (Lauf
+37156526153); danach gemergt. **ARCH-08** ist mit #252 vollständig.
+**ARCH-09:** 09a (Projekt-Wrapper in `ipc/projects.ts`) ist mit #260 gemergt;
+ARCH-09b (Worker-IPC) ist mit #264 gemergt (`db76682`, 03.10. 23:57:09 UTC);
+ARCH-09c (PTY-Wrapper, #269) ist Draft mit Label `do-not-merge`, nicht gemergt
+(`gh pr view 269`, 04.10. 13:50 UTC). **ARCH-10** ist
+vollständig: `src-tauri/src/api.rs:1384` delegiert nur noch an `hq_routes::route`,
+in `api.rs` steht kein `"hq", "v1"`-Arm mehr (`grep` leer); `api/hq_routes.rs:20-34`
+listet den Besitztest mit 15 Methode/Pfad-Kombinationen, `handle` hat 14 Arme
+(≥ 14 geplant). Die Produktions-Routenarme sind verschoben, die bestehenden
+Testpfade bleiben. Eine Aufschlüsselung der Servertests je Arm ist nicht geprüft.
+**Nachträge seit `cc95a57`** (`gh pr view <n>`, Merge-Zeit UTC): #262 (nur
+Diagnose zu KI-30) `e87b17e`, 03.10. 23:39:47; #264 ARCH-09b `db76682`, 23:57:09;
+#266 PLAN-sync-05 `7ea73b2`, 04.10. 00:08:49; #274 W1-17-Folgefix (`teilweise:`
+in der Stand-Zelle) `4846c84`, 09:21:50; #275 SETUP-15-Folgekorrektur `f33f40d`,
+09:47:29; #279 Mergify-Doku „explizit einreihen“ `effef1a`, 10:03:23.
+**Offen** (`gh pr list`, 04.10. 13:50 UTC): #269 ARCH-09c (Draft, `do-not-merge`);
+#270 OPS-02-Doku und #273 SETUP-09-Fix (beide Label `queued`, laufen als
+Queue-PR #283 zusammen); #282 SETUP-12-Rest (Draft). Queue-Lauf 37196272431 (#273
+allein, Queue-PR #281) scheiterte nur an einem KI-30-Test auf Windows, siehe
+`KNOWN_ISSUES.md`. Der Stand von Queue und CI ist neu zu lesen; er kann sich
+schon geändert haben.
+Nachtrag 15.10.: #270, #273 und #282 am 04.10. sowie #269 am 05.10. (`5796236d`) gemergt.
+Veraltete Altangaben (#130, #147, #152, #112 als „offen und maßgeblich“) gelten nicht mehr.
+
+**Serielle Reihenfolgen** (jede Scheibe ≤ 300 Diffzeilen **einschließlich**
+Verschiebungen und Tests; Überschneidungen trotz anderer Paketnamen prüfen):
+
+| Lane | Reihenfolge |
+|---|---|
+| `mn` | ARCH-05 (#182) → ARCH-06 (#219) → ARCH-03: alle gelandet; die Vault-Quellenbefunde unten sind bewertet und behoben (#200, #225). |
+| `fR` queue | ARCH-02 (#191) nach #160 und #183: gelandet. |
+| `pty` | #140 ✓ → PTY-READ-01 ✓ #206 → PTY-RETIRE-01 ✓ #215 → PTY-GUARD-01 ✓ #230; nie zwei zugleich. Guard belegt Produktionspfad und Überlauf, keine stillen Eingabeverluste. |
+| `st` / `api` | ARCH-07 ✓ #202; W2-04c Teil 2 ✓ #222 → ARCH-10b ✓ #236; ARCH-10a ✓ #220, 10c ✓ #246, 10d ✓ #250; ARCH-10 vor W5-02b3. Keine neuen Continuous-Migrationen. |
+| `fe` | ARCH-08: a ✓ #181, b ✓ #221, c ✓ #229, d ✓ #244, e ✓ #247, f ✓ #252; ARCH-09: a ✓ #260, b ✓ #264, c ✓ #269; M3-02 ✓ #189 und UX-03 ✓ #199 gelandet. |
+
+ARCH-11/KI-24b ist der laut Architektur-Rat nützlichste weitere Schutz (ein
+roter Test-DB-Wettlauf auf Windows hält die Queue an). Er ist **priorisierter
+Kandidat** und mit F6 am 04.10. in M3 aufgenommen. ARCH-12 bleibt
+gesperrt (> 300 Diffzeilen, F1). Abgelehnt bleibt: Rust↔TS-Codegen ohne
+belegten Vertragsbruch, ein neuer lib/store/`CoreError`-Split, der Review-Lock
+bleibt in-process, `delivery_recovery.rs` wird nicht gelöscht (W3-02).
+
+**Korrektur:** Die Behauptung „Vault- und CSP-Vorschläge durch #138 erledigt“ ist
+falsch. #138 hat nur `oneshot.rs` geändert (Unix-Verzeichnisprüfung).
+
+
+### Messchronologie vom 08.10.
+
+Batch 658 bleibt getrennt: Rust 1922 PASS / 19 skip, nativ 9 PASS / 1 FAIL;
+Hostreturn 5,3108033 s, Receipt 5,771698 s, Owner nicht mehr wartend.
+Originaljoblog 464284 Bytes / SHA256
+`26e08a88bce6fb6d2d43b8c79f117b9cdfe88f020d71cb012250413ee13814e0`.
+ARCH-D7-WIN: erster nativer Lauf 09:57:53–10:02:06 UTC ist geprüft, Kompilierung/
+Hostselbsttest Exit 0, kontrollierter rechtzeitiger Fall 1 PASS. Rollback 4,6226584 s,
+Receipt 4,7320788 s, Ack 4,7320891 s vor Hostende 4,7410857 s. Kein lokaler RED,
+historischer Ursachen- oder Fixbeleg. Derselbe Owner hat einen Channel-Gegenfall
+vorbereitet (112 ALL, ein Testpfad): absichtlich spätes Receipt nach tatsächlichem
+Hostende gegen frühe Kontrolle; keine Sleep-/Budget-/Produktassertionsänderung.
+Chief gab den einen vorhandenen nativen Runner nach tatsächlichem PLAN-Laufende
+und frischen Guards frei. Neuer Test hatte zunächst einen Compilerfehler E0599
+(kein semantischer RED); konkreter Testausdruck korrigiert, danach Kompilierung 0
+und Paartest 1 PASS. Frühe Kontrolle beendet den Host erfolgreich; absichtlich
+spätes Receipt wurde nach Hostende 5,6401899 s erfolgreich gespeichert, Ack abgelehnt.
+Das belegt die fehlende Zeitpremisse, keine historische Ursache oder Produktionsreparatur.
+
+### Release-Reihenfolge vor v1.6.0
+
+1. KI-30-Fix zuerst: Queue-Stabilität; bestehender Owner, kein Doppelstart.
+2. Denkraum DR-11 → DR-12 → DR-13 → DR-14 → DR-16 → DR-17 ist der kritische Pfad;
+   DR-SEC-01a/b vor DR-16a → DR-16b; zusätzlich DR-07 inkl. 07c/d/e1/e2, DR-15b/#750 und UI-Verdrahtung #718 als echte Vorgänger.
+3. mn: D5b (#728 gemergt) → D5-GUARD → V16-UPD-CANCEL (Backend/IPC → UI) → V16-06; E2/V16-F3 beantwortet 09.10.; D8a–c nach v1.6.0.
+4. Z2-AGENTS-SLIM direkt nach DR-12; Produktlieferung und freie Nähte bleiben geschützt.
+5. Andere Z2-Werkzeugpakete nur als Lückenfüller; keine Vorrangumkehr durch Reserveverträge.
+
+
+### Redaktionsstand vom 18.10.
+
+Stand: 18.10.2026 17:03 UTC (PLAN-CLEAN-5; PR-Stände per GitHub-API geprüft; Entscheidungen vom 18.10. gebucht).
+Beobachtete main-Basis bei Start: `f3fb146b4a63e70fee617176ae18dd6c5819a1b2` (Merge #1699); Arbeitsbasis identisch.
+Chief abwesend: PLAN-Pflege durch Root als Stellvertreter; Editor PLAN-CLEAN-5.
+Quelle: Root-Auftrag PLAN-CLEAN-5 vom 18.10. (Nutzerauftrag im Root-Chat, ~19:00 MESZ); Abnahme bei Root. Ältere Z-Zeilen behalten ihr Belegdatum.
+Betriebs- und Entscheidungsstände ohne eigenen neuen Beleg stammen aus der Synthese vom 15.10.; sie sind keine neue Laufzeitprüfung.
+
+### L0-Vorhersage
+
+Vorhersage vor Vorbereitung: vorhandener Masterplan plus kompletter Teilplan spart eine neue Planarchitektur und macht L0 ohne Editor/Graph ausführbar. Unvalidiert; ein Dokumentabschluss beweist keine nutzbare Lieferung.
+
+### Abgeschlossene Security-Beobachtungen (DOC-1b)
+
+| Kandidat | Quellenbefund | Voraussetzung |
+|---|---|---|
+| INV-SEC-VAULT-TEMP | `providers.rs:867` `write_atomic`: vorhersehbarer Tempname `provider-keys.json.tmp-<pid>`, `create(true).truncate(true)`; ein untergeschobener Symlink könnte den Schreibvorgang umleiten (Hypothese, nicht belegt). | ✓ #200 gemergt (03.10.); vorher roter Symlink-Test |
+| INV-SEC-VAULT-ARCHIVE | `providers.rs:728` `archive_corrupt`: Name aus Sekunde + PID; zwei Reparaturen in einer Sekunde könnten kollidieren. | ✓ #225 gemergt (03.10.); vorher roter Zwei-Reparaturen-Test |
+| INV-SEC-CSP-SPLIT | `tauri.conf.json:28`: die Release-CSP enthält `ws://localhost:1420/1421`. | ✓ #288 gemergt (04.10.): `devCsp` getrennt, Release-CSP ohne `ws://localhost` |
