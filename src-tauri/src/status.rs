@@ -2723,6 +2723,103 @@ mod tests {
         engine
     }
 
+    fn check_startup_concealment(screens: &[String], expected: &'static str) {
+        let mut wrong = Vec::new();
+        for (case, screen) in screens.iter().enumerate() {
+            for split in screen
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(screen.len()))
+                .chain(std::iter::once(usize::MAX))
+            {
+                let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+                let blocked = engine.verdict_for("wk-1");
+                let at = Instant::now();
+                if split == usize::MAX {
+                    for c in screen.chars() {
+                        engine.note_output_at("wk-1", &c.to_string(), at);
+                    }
+                } else {
+                    engine.note_output_at("wk-1", &screen[..split], at);
+                    engine.note_output_at("wk-1", &screen[split..], at);
+                }
+                engine.tick_at(at + Duration::from_millis(2999));
+                assert_eq!(engine.verdict_for("wk-1"), blocked);
+                engine.tick_at(at + Duration::from_millis(3000));
+                let wanted = if expected == COL_NEEDS_YOU {
+                    blocked
+                } else {
+                    Verdict::plain(COL_DONE)
+                };
+                if engine.verdict_for("wk-1") != wanted {
+                    wrong.push((case, split));
+                }
+            }
+        }
+        assert!(
+            wrong.is_empty(),
+            "incorrect concealment verdicts: {wrong:?}"
+        );
+    }
+
+    #[test]
+    fn startup_block_color_payloads_never_reset_concealment() {
+        let screens: Vec<_> = ["38;5;0", "38;5;28", "38;2;0;0;0", "48;5;28", "58;5;0"]
+            .map(|color| format!("\x1b[8m\x1b[{color}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_signed_sgr_never_resets_concealment() {
+        let screens: Vec<_> = ["+0", "+28", "0;+28", "+0;0", "28 "]
+            .map(|sgr| format!("\x1b[8m\x1b[{sgr}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_overlong_csi_keeps_concealment_uncertain() {
+        let overflow = format!("\x1b[{}8m", "0;".repeat(16));
+        let screens = [
+            format!("{overflow}{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+            format!("{overflow}{STARTUP_CLEAR}{STARTUP_PROMPT}{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+            format!(
+                "\x1b[8m\x1b[{}0m{STARTUP_CLEAR}{STARTUP_PROMPT}",
+                "1;".repeat(16)
+            ),
+        ];
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_csi_ignores_noncancel_controls_without_losing_concealment() {
+        let screens: Vec<_> = ['\0', '\x07', '\x08', '\t', '\n', '\r', '\x7f']
+            .map(|control| format!("\x1b[8{control}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_unambiguous_resets_restore_visible_readiness() {
+        let mut screens: Vec<_> = ["0", "28", "", "8;0", "38;5;0;28"]
+            .map(|reset| format!("\x1b[8m\x1b[{reset}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        for uncertain in [
+            "\x1b[38;5;0m".to_string(),
+            "\x1b[+0m".to_string(),
+            format!("\x1b[{}8m", "0;".repeat(16)),
+            "\x1b[8\x7fm".to_string(),
+        ] {
+            for reset in ["0", "28"] {
+                screens.push(format!(
+                    "\x1b[8m{uncertain}\x1b[{reset}m{STARTUP_CLEAR}{STARTUP_PROMPT}"
+                ));
+            }
+        }
+        check_startup_concealment(&screens, COL_DONE);
+    }
+
     #[test]
     fn startup_block_requires_disappearance_after_stale_composer() {
         for dialog in STARTUP_DIALOGS {
