@@ -869,6 +869,156 @@ fn parse_amount(text: &str) -> Option<u64> {
 
 // -- the engine ------------------------------------------------------------
 
+#[derive(Default, PartialEq, Eq)]
+enum StartupEscape {
+    #[default]
+    Text,
+    Escape,
+    Csi,
+    String(bool),
+    StringEscape(bool),
+}
+
+struct StartupBlock {
+    verdict: Verdict,
+    marker: Option<String>, // Unknown messages or missing markers await delivery.
+    text: String,
+    sequence: String,
+    escape: StartupEscape,
+    cleared: bool,
+    uncertain: bool,
+    concealed: bool,
+}
+
+impl StartupBlock {
+    fn new(detail: &str) -> Self {
+        use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
+        let marker = [CodexHooksReview, CodexUpdateAvailable]
+            .iter()
+            .any(|dialog| dialog.blocked_message() == detail)
+            .then(|| {
+                crate::profiles::default_profiles()
+                    .into_iter()
+                    .find(|p| p.id == "codex")?
+                    .caps
+                    .readiness_marker
+            })
+            .flatten()
+            .filter(|marker| !marker.is_empty());
+        Self {
+            verdict: Verdict::coded_with(COL_NEEDS_YOU, ReasonCode::DeliveryFailed, detail),
+            marker,
+            text: String::new(),
+            sequence: String::new(),
+            escape: StartupEscape::Text,
+            cleared: false,
+            uncertain: false,
+            concealed: false,
+        }
+    }
+
+    fn note_output(&mut self, chunk: &str) {
+        use StartupEscape::*;
+        // Stream ANSI state across reads; a clear inside an OSC/DCS is not a screen clear.
+        for c in chunk.chars() {
+            match self.escape {
+                Text => match c {
+                    '\x1b' => self.escape = Escape,
+                    '\u{90}' | '\u{98}' | '\u{9d}' | '\u{9e}' | '\u{9f}' => {
+                        self.uncertain = true;
+                        self.escape = String(c == '\u{9d}');
+                    }
+                    c if c.is_control() => self.uncertain = true,
+                    c => self.text.push(c),
+                },
+                Escape => {
+                    self.sequence.clear();
+                    self.escape = match c {
+                        '[' => Csi,
+                        ']' | 'P' | 'X' | '^' | '_' => {
+                            self.uncertain = true;
+                            String(c == ']')
+                        }
+                        _ => {
+                            self.uncertain = true;
+                            Text
+                        }
+                    };
+                }
+                Csi if ('@'..='~').contains(&c) => {
+                    if c == 'J' && self.sequence == "2" {
+                        self.text.clear();
+                        self.cleared = true;
+                        self.uncertain = self.concealed;
+                    } else if c == 'm' {
+                        for code in self.sequence.split(';') {
+                            match code.parse::<u16>().ok().or(code.is_empty().then_some(0)) {
+                                Some(0 | 28) => self.concealed = false,
+                                Some(
+                                    1..=7
+                                    | 9
+                                    | 22..=25
+                                    | 27
+                                    | 29..=37
+                                    | 39..=47
+                                    | 49
+                                    | 90..=97
+                                    | 100..=107,
+                                ) => {}
+                                _ => {
+                                    self.concealed = true;
+                                    self.uncertain = true;
+                                }
+                            }
+                        }
+                    } else if !(c == 'H' && self.sequence.is_empty() && self.text.trim().is_empty())
+                    {
+                        self.uncertain = true;
+                    }
+                    self.escape = Text;
+                }
+                Csi if !(' '..='?').contains(&c) => {
+                    self.uncertain = true;
+                    self.escape = if c == '\x1b' { Escape } else { Text };
+                }
+                Csi => {
+                    if self.sequence.len() < 32 {
+                        self.sequence.push(c);
+                    } else {
+                        self.uncertain = true;
+                    }
+                }
+                String(bell) => match c {
+                    '\x07' if bell => self.escape = Text,
+                    '\u{9c}' => self.escape = Text,
+                    '\x1b' => self.escape = StringEscape(bell),
+                    _ => {}
+                },
+                StringEscape(bell) => match c {
+                    '\x07' if bell => self.escape = Text,
+                    '\\' | '\u{9c}' => self.escape = Text,
+                    '\x1b' => {}
+                    _ => self.escape = String(bell),
+                },
+            }
+            if self.text.len() > TAIL_CAPACITY {
+                self.text.clear();
+                self.uncertain = true;
+            }
+        }
+    }
+
+    fn ready(&self) -> bool {
+        // Partial redraws and extra text are ambiguous, even when a prompt is present.
+        self.cleared
+            && !self.uncertain
+            && self.escape == StartupEscape::Text
+            && self.marker.as_ref().is_some_and(|marker| {
+                self.text.split_whitespace().collect::<Vec<_>>().join(" ") == *marker
+            })
+    }
+}
+
 /// Everything the engine remembers about one worker.
 struct WorkerState {
     profile_id: String,
@@ -882,9 +1032,9 @@ struct WorkerState {
     gh: Option<Verdict>,
     pr_url: Option<String>,
     override_column: Option<&'static str>,
-    /// A task was pasted but the TUI never accepted it after three Enter
-    /// retries. Real output clears this immediately.
+    /// A failed delivery; output clears it only when no startup block is pending.
     submit_guard: Option<Verdict>,
+    startup_block: Option<StartupBlock>,
     /// This worker has a blocking decision waiting for the human (Phase 21).
     ///
     /// Set when the question is asked and cleared when it is closed - by a
@@ -940,6 +1090,7 @@ impl Default for WorkerState {
             pr_url: None,
             override_column: None,
             submit_guard: None,
+            startup_block: None,
             question: None,
             tail: String::new(),
             last_output: None,
@@ -973,6 +1124,9 @@ impl WorkerState {
                 return Verdict::plain(column);
             }
             return Verdict::plain(COL_DONE);
+        }
+        if let Some(block) = &self.startup_block {
+            return block.verdict.clone();
         }
         if let Some(verdict) = &self.submit_guard {
             return verdict.clone();
@@ -1022,6 +1176,7 @@ impl WorkerState {
     /// `blockers[]` nehmen kann, ohne dass etwas nachgereicht werden muss.
     fn signals(&self) -> Vec<Signal> {
         let mut out: Vec<Signal> = [
+            self.startup_block.as_ref().map(|block| &block.verdict),
             self.submit_guard.as_ref(),
             self.question.as_ref(),
             self.hook.as_ref(),
@@ -1383,6 +1538,7 @@ impl StatusEngine {
                 // Archiving is definitive; so is coming back to life.
                 state.override_column = None;
                 state.submit_guard = None;
+                state.startup_block = None;
                 if worker.status == STATUS_EXITED {
                     // Every hook describes an agent that is still alive; once
                     // the lifecycle says it is gone, a `SessionStart` from
@@ -1433,9 +1589,12 @@ impl StatusEngine {
         self.update(worker_id, |state| {
             state.push_output(chunk);
             state.last_output = Some(at);
-            // Any real terminal output after the guard escalated means the
-            // prompt did not stay stuck after all.
-            state.submit_guard = None;
+            // Keep a concurrent delivery failure while startup recovery is unproven.
+            if let Some(block) = &mut state.startup_block {
+                block.note_output(chunk);
+            } else {
+                state.submit_guard = None;
+            }
             // Same for the stuck verdict: it says nothing has happened, and
             // this is something happening. The tick puts it back if the
             // silence resumes for another full threshold.
@@ -1561,7 +1720,7 @@ impl StatusEngine {
 
     /// The task prompt remained silent through all synthetic Enter retries.
     /// This is a stronger and more specific signal than the ordinary idle
-    /// heuristic, and stays until output, exit, or archive changes the facts.
+    /// heuristic; startup recovery alone preserves it until delivery or lifecycle reset.
     pub fn note_submit_guard_failed(&self, worker_id: &str) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
@@ -1571,13 +1730,14 @@ impl StatusEngine {
         });
     }
 
-    /// Startup failure detail in the transient guard slot; recovery clears it.
+    /// Startup blocks need positive recovery evidence; delivery clears both guards.
     pub fn note_submit_guard(&self, worker_id: &str, detail: Option<&str>) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
-                state.submit_guard = detail.map(|text| {
-                    Verdict::coded_with(COL_NEEDS_YOU, ReasonCode::DeliveryFailed, text)
-                });
+                state.startup_block = detail.map(StartupBlock::new);
+                if detail.is_none() {
+                    state.submit_guard = None;
+                }
             }
         });
     }
@@ -1721,6 +1881,14 @@ impl StatusEngine {
                 let quiet_for = |since: Option<Instant>, threshold: Duration| {
                     since.is_some_and(|last| now.saturating_duration_since(last) >= threshold)
                 };
+                if quiet_for(state.last_output, crate::submit_guard::READY_IDLE_AFTER)
+                    && state
+                        .startup_block
+                        .as_ref()
+                        .is_some_and(StartupBlock::ready)
+                {
+                    state.startup_block = None;
+                }
                 let quiet = quiet_for(state.last_output, idle_after);
                 // A prompt that has been sitting there for a minute is still a
                 // prompt, and says more than "quiet".
@@ -2537,6 +2705,211 @@ mod tests {
         );
 
         engine.note_output("wk-1", samples::ACTIVITY);
+        assert_eq!(engine.verdict_for("wk-1").column, COL_WORKING);
+    }
+
+    const STARTUP_PROMPT: &str = "Ask Codex to do anything";
+    const STARTUP_CLEAR: &str = "\x1b[2J\x1b[H";
+    const STARTUP_DIALOGS: [crate::submit_guard::BlockingDialog; 2] = [
+        crate::submit_guard::BlockingDialog::CodexHooksReview,
+        crate::submit_guard::BlockingDialog::CodexUpdateAvailable,
+    ];
+
+    fn startup_fixture(detail: &str) -> StatusEngine {
+        let engine = StatusEngine::default();
+        engine.set_override("wk-1", Some(COL_DONE)).unwrap();
+        engine.note_submit_guard("wk-1", Some(detail));
+        assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+        engine
+    }
+
+    #[test]
+    fn startup_block_requires_disappearance_after_stale_composer() {
+        for dialog in STARTUP_DIALOGS {
+            let engine = startup_fixture(dialog.blocked_message());
+            let blocked = engine.verdict_for("wk-1");
+            let at = Instant::now();
+            engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
+            engine.note_output_at("wk-1", STARTUP_PROMPT, at + Duration::from_secs(4));
+            engine.tick_at(at + Duration::from_secs(7));
+            assert_eq!(engine.verdict_for("wk-1"), blocked);
+        }
+    }
+
+    #[test]
+    fn startup_block_keeps_other_dialogs_and_unknown_output() {
+        for dialog in STARTUP_DIALOGS {
+            for screen in [
+                "Update available\nUpdate now\nSkip",
+                "Hooks need review\nTrust all and continue",
+                "unrecognized startup decision",
+                "\u{9d}\x1b[2J\x1b[HAsk Codex to do anything",
+            ] {
+                let engine = startup_fixture(dialog.blocked_message());
+                let at = Instant::now() + Duration::from_secs(4);
+                let redraw = format!("{STARTUP_CLEAR}{STARTUP_PROMPT}\n{screen}");
+                engine.note_output_at("wk-1", &redraw, at);
+                engine.tick_at(at + Duration::from_secs(3));
+                assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+                let reason = engine.verdict_for("wk-1").reason.unwrap();
+                assert!(reason.contains("Terminal"));
+            }
+        }
+    }
+
+    #[test]
+    fn startup_block_rejects_ambiguous_controls() {
+        let mut wrong = Vec::new();
+        for screen in [
+            "Ask Codex to\rdo anything",
+            "Ask Codex to do anything\r                        ",
+            "Ask Codex to\tdo anything",
+            "Ask Codex to\ndo anything",
+            "Ask Codex to do anything\x1b[\x18m",
+            "Ask Codex to do anything\x1b[\x1am",
+            "Ask Codex to do anything\x1b[\x1b[m",
+            "\x1b[8mAsk Codex to do anything\x1b[0m",
+            "\x1b[8m\x1b[2J\x1b[HAsk Codex to do anything",
+            "Ask Codex to do anything\x1b[1D",
+        ] {
+            let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+            let at = Instant::now();
+            for c in format!("{STARTUP_CLEAR}{screen}").chars() {
+                engine.note_output_at("wk-1", &c.to_string(), at);
+            }
+            engine.tick_at(at + Duration::from_secs(3));
+            if engine.verdict_for("wk-1").column != COL_NEEDS_YOU {
+                wrong.push(screen);
+            }
+        }
+        assert!(wrong.is_empty(), "unsafe startup recoveries: {wrong:?}");
+    }
+
+    #[test]
+    fn startup_block_is_invariant_under_read_splits() {
+        let long_modal = format!(
+            "{}\nHooks need review\n{}\nTrust all and continue\n{}\n{STARTUP_PROMPT}",
+            "p".repeat(950),
+            "hook entry ".repeat(115),
+            "x".repeat(4096)
+        );
+        for (bytes, expected) in [
+            (long_modal, COL_NEEDS_YOU),
+            (
+                format!("\x1b]titre é 🦀\x07{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+                COL_DONE,
+            ),
+            (
+                format!("\x1bPé 🦀\x1b\\{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+                COL_DONE,
+            ),
+            (
+                format!("{}\r{STARTUP_CLEAR}{STARTUP_PROMPT}", "dialog ".repeat(400)),
+                COL_DONE,
+            ),
+            (
+                format!("\x1b[8m\x1b[0m{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+                COL_DONE,
+            ),
+            (
+                format!("{STARTUP_CLEAR}{}{STARTUP_PROMPT}", "junk ".repeat(500)),
+                COL_NEEDS_YOU,
+            ),
+            (format!("{STARTUP_PROMPT}\x1b[2J\x1b[H"), COL_NEEDS_YOU),
+            (
+                format!("\x1b[2J\x1b[H{STARTUP_PROMPT}\nUpdate available\nUpdate now\nSkip"),
+                COL_NEEDS_YOU,
+            ),
+            (
+                format!("\x1b]title\x1b[2J\x1b[H{STARTUP_PROMPT}\x07"),
+                COL_NEEDS_YOU,
+            ),
+            (
+                format!("\x1bPdata\x07\x1b[2J\x1b[H{STARTUP_PROMPT}"),
+                COL_NEEDS_YOU,
+            ),
+            (
+                format!("\x1b[2J\x1b[H\x1b[32m{STARTUP_PROMPT}\x1b[0m"),
+                COL_DONE,
+            ),
+        ] {
+            for split in bytes
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(bytes.len()))
+            {
+                let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+                let at = Instant::now();
+                engine.note_output_at("wk-1", &bytes[..split], at);
+                engine.note_output_at("wk-1", &bytes[split..], at);
+                engine.tick_at(at + Duration::from_secs(3));
+                assert_eq!(engine.verdict_for("wk-1").column, expected, "split {split}");
+            }
+            let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+            let at = Instant::now();
+            for byte in bytes.chars() {
+                engine.note_output_at("wk-1", &byte.to_string(), at);
+            }
+            engine.tick_at(at + Duration::from_secs(3));
+            assert_eq!(engine.verdict_for("wk-1").column, expected);
+        }
+    }
+
+    #[test]
+    fn startup_block_retains_delivery_failure_after_recovery() {
+        let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+        let blocked = engine.verdict_for("wk-1");
+        engine.note_submit_guard_failed("wk-1");
+        assert_eq!(engine.verdict_for("wk-1"), blocked);
+        let at = Instant::now();
+        engine.note_output_at("wk-1", &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}"), at);
+        engine.tick_at(at + Duration::from_secs(3));
+        let failed = Verdict::coded(COL_NEEDS_YOU, ReasonCode::DeliveryFailed);
+        assert_eq!(engine.verdict_for("wk-1"), failed);
+        engine.note_submit_guard("wk-1", None);
+        assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+    }
+
+    #[test]
+    fn startup_block_recovers_on_clear_before_idle_boundary() {
+        for dialog in STARTUP_DIALOGS {
+            let engine = startup_fixture(dialog.blocked_message());
+            let at = Instant::now();
+            engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
+            let redraw = format!("{STARTUP_CLEAR}{STARTUP_PROMPT}");
+            engine.note_output_at("wk-1", &redraw, at + Duration::from_secs(1));
+            assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+            engine.tick_at(at + Duration::from_millis(3999));
+            assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+            engine.tick_at(at + Duration::from_secs(4));
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+        }
+    }
+
+    #[test]
+    fn startup_block_unknown_detail_never_clears_on_output() {
+        for detail in ["unknown startup decision", ""] {
+            let engine = startup_fixture(detail);
+            let blocked = engine.verdict_for("wk-1");
+            let at = Instant::now();
+            engine.note_output_at("wk-1", &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}"), at);
+            engine.tick_at(at + Duration::from_secs(3));
+            assert_eq!(engine.verdict_for("wk-1"), blocked);
+            engine.note_submit_guard("wk-1", None);
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+        }
+    }
+
+    #[test]
+    fn startup_block_clears_on_lifecycle_change() {
+        let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+        engine.note_submit_guard_failed("wk-1");
+        engine.observe_worker(&worker("wk-1", STATUS_EXITED));
+        assert_eq!(
+            engine.verdict_for("wk-1"),
+            Verdict::coded(COL_NEEDS_YOU, ReasonCode::AgentExited)
+        );
+        engine.observe_worker(&worker("wk-1", STATUS_RUNNING));
         assert_eq!(engine.verdict_for("wk-1").column, COL_WORKING);
     }
 
