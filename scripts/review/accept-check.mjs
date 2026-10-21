@@ -1,22 +1,12 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { lint } from "../dev/brief-lint.mjs";
+import { lint, sizeLimit, tierFor } from "../dev/brief-lint.mjs";
 import { isMain, makeRunner, runCli } from "../lib/dev-tools.mjs";
+export { tierFor } from "../dev/brief-lint.mjs";
 
 const FIELDS = "headRefOid,isDraft,additions,deletions,files,body,statusCheckRollup,labels";
 const count = n => Number.isSafeInteger(n) && n >= 0;
-const lock = path => /(?:^|\/)package-lock\.json$|\.lock$/.test(path);
-const riskPredicates = [
-  function seam(path) { return /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store\.rs$|store\/|bin\/pa\.rs$)/i.test(path); },
-  function pty(path) { return /(?:^|[\/._-])pty(?:[\/._-]|$)/i.test(path); },
-  function migration(path) { return /(?:^|[\/._-])migrations?(?:[\/._-]|$)|\.sql$/i.test(path); },
-  function workflow(path) { return /^\.github\/workflows\//i.test(path); },
-];
-export function tierFor(paths) {
-  if (paths.some(path => riskPredicates.some(isRisk => isRisk(path)))) return "A";
-  return paths.every(p => /\.(?:md|mdx|rst|txt)$|(?:^|\/)(?:tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(p)) ? "C" : "B";
-}
 export function familyFor(model) {
   return /^(glm|kimi|claude|gpt|gemini|deepseek)(?:[-_.]|$)/i.exec(model)?.[1].toLowerCase();
 }
@@ -54,15 +44,27 @@ export function assess(pr, reviews, number) {
   }
   const total = pr.files.reduce((n, f) => n + f.additions + f.deletions, 0);
   if (total !== pr.additions + pr.deletions) reasons.push("Dateiliste und PR-Größe stimmen nicht überein");
-  const size = total - pr.files.filter(f => lock(f.path)).reduce((n, f) => n + f.additions + f.deletions, 0);
-  if (size > 300) reasons.push(`Größe ${size} > 300`);
+  const tier = tierFor(pr.files.map(f => f.path));
+  // Like review-ok, these shared-account label signals authenticate nothing.
+  // Only Root/Chief sets them, with a prior ticket/msg or forcing finding IDs in a
+  // PR comment. Root acceptance verifies native decision-before-dispatch evidence
+  // and records it in the report; this check is conventional, not cryptographic.
+  const signals = pr.labels.filter(l => /size[\s_-]*(budget|fix)/i.test(l.name));
+  const budgets = signals.filter(l => /^size-budget-[1-9]\d{0,2}$/.test(l.name) && !/\s/.test(l.name) &&
+    Number(l.name.slice("size-budget-".length)) <= 600);
+  const fixes = signals.filter(l => l.name === "size-fix-round");
+  const conflict = signals.length !== budgets.length + fixes.length || budgets.length > 1 || fixes.length > 1;
+  const limit = conflict ? 300 : sizeLimit(tier, Number(budgets[0]?.name.slice("size-budget-".length)), fixes.length === 1);
+  // No identity/manifest evidence is supplied: even pure lock/move/generated claims
+  // count in full. In particular these gh fields cannot prove a Dependabot exception.
+  if (total > limit) reasons.push(`Größe ${total} > ${limit}`);
   if (pr.isDraft) reasons.push("PR ist Draft");
   for (const { name } of pr.labels) if (["do-not-merge", "conflict"].includes(name)) reasons.push(`Label: ${name}`);
   for (const check of pr.statusCheckRollup) {
     const state = check?.conclusion || check?.state || check?.status;
     if (!["SUCCESS", "NEUTRAL", "SKIPPED"].includes(state)) reasons.push(`Check: ${state ?? "unbekannt"}`);
   }
-  const tier = tierFor(pr.files.map(f => f.path)), sha = pr.headRefOid.slice(0, 8);
+  const sha = pr.headRefOid.slice(0, 8);
   const families = new Set(), reviewers = [];
   for (const review of reviews) {
     const match = /^review_pr(\d+)-([a-f0-9]{8})_([\w.-]+)\.md$/i.exec(review.name);
@@ -75,7 +77,21 @@ export function assess(pr, reviews, number) {
   }
   const needed = { A: 2, B: 1, C: 0 }[tier];
   if (families.size < needed) reasons.push(`Tier ${tier}: ${needed} Review-Familie(n) benötigt, ${families.size} vorhanden`);
-  return result(reasons, body.approvals, `### Review (accept-check, bound to head \`${sha}\`)\n- Reviewer: ${reviewers.join(", ") || "none required"}\n- Verdict: approve\n- Tier: ${tier}\n- Größe: ${size} lines (excluding lockfiles)`);
+  const decision = result(reasons, body.approvals, `### Review (accept-check, bound to head \`${sha}\`)\n- Reviewer: ${reviewers.join(", ") || "none required"}\n- Verdict: approve\n- Tier: ${tier}`);
+  decision.output += `- Größe: ${total} lines (raw diff: ${total}; ceiling: ${limit})\n`;
+  return decision;
+}
+// Minimal top-level metadata scan; JSON.parse remains the grammar validator.
+// Whole string tokens keep body examples/nested metadata from masquerading as keys.
+function duplicateLabels(raw) {
+  let depth = 0, labels = 0;
+  for (const token of raw.matchAll(/"(?:\\.|[^"\\])*"|[{}\[\]]/g)) {
+    const text = token[0];
+    if (text.startsWith('"')) {
+      if (depth === 1 && /^\s*:/.test(raw.slice(token.index + text.length)) && JSON.parse(text) === "labels" && ++labels > 1) return true;
+    } else depth += text === "{" || text === "[" ? 1 : -1;
+  }
+  return false;
 }
 export async function main(argv, io, { run = makeRunner({ timeoutMs: 30_000 }) } = {}) {
   let decision;
@@ -86,7 +102,11 @@ export async function main(argv, io, { run = makeRunner({ timeoutMs: 30_000 }) }
     if (response.code !== 0) throw new Error("github");
     const reviews = readdirSync(values.reviews).filter(name => name.startsWith(`review_pr${positionals[0]}-`) && name.endsWith(".md"))
       .sort().map(name => ({ name, text: readFileSync(join(values.reviews, name), "utf8") }));
-    decision = assess(JSON.parse(response.stdout), reviews, positionals[0]);
+    const data = JSON.parse(response.stdout);
+    if (duplicateLabels(response.stdout)) {
+      const body = typeof data?.body === "string" ? lint(data.body, { prBody: true }) : { approvals: [] };
+      decision = result(["Doppeltes labels-Feld in PR-JSON"], body.approvals);
+    } else decision = assess(data, reviews, positionals[0]);
   } catch { decision = result(["Aufruf oder Eingaben nicht prüfbar; erwartet: <pr> --reviews <dir>"]); }
   io.out(decision.output);
   return decision.exit;
