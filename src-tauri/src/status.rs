@@ -2734,6 +2734,34 @@ mod tests {
     }
 
     #[test]
+    fn startup_block_rejects_ambiguous_controls() {
+        let mut wrong = Vec::new();
+        for screen in [
+            "Ask Codex to\rdo anything",
+            "Ask Codex to do anything\r                       ",
+            "Ask Codex to\tdo anything",
+            "Ask Codex to\ndo anything",
+            "Ask Codex to do anything\x1b[\x18m",
+            "Ask Codex to do anything\x1b[\x1am",
+            "Ask Codex to do anything\x1b[\x1b[m",
+            "\x1b[8mAsk Codex to do anything\x1b[0m",
+            "\x1b[8m\x1b[2J\x1b[HAsk Codex to do anything",
+            "Ask Codex to do anything\x1b[1D",
+        ] {
+            let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+            let at = Instant::now();
+            for c in format!("{STARTUP_CLEAR}{screen}").chars() {
+                engine.note_output_at("wk-1", &c.to_string(), at);
+            }
+            engine.tick_at(at + Duration::from_secs(3));
+            if engine.verdict_for("wk-1").column != COL_NEEDS_YOU {
+                wrong.push(screen);
+            }
+        }
+        assert!(wrong.is_empty(), "unsafe startup recoveries: {wrong:?}");
+    }
+
+    #[test]
     fn startup_block_is_invariant_under_read_splits() {
         let long_modal = format!(
             "{}\nHooks need review\n{}\nTrust all and continue\n{}\n{STARTUP_PROMPT}",
@@ -2743,6 +2771,22 @@ mod tests {
         );
         for (bytes, expected) in [
             (long_modal, COL_NEEDS_YOU),
+            (
+                format!("\x1b]titre é 🦀\x07{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+                COL_DONE,
+            ),
+            (
+                format!("\x1bPé 🦀\x1b\\{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+                COL_DONE,
+            ),
+            (
+                format!("{}{STARTUP_CLEAR}{STARTUP_PROMPT}", "dialog ".repeat(400)),
+                COL_DONE,
+            ),
+            (
+                format!("{STARTUP_CLEAR}{}{STARTUP_PROMPT}", "junk ".repeat(500)),
+                COL_NEEDS_YOU,
+            ),
             (format!("{STARTUP_PROMPT}\x1b[2J\x1b[H"), COL_NEEDS_YOU),
             (
                 format!("\x1b[2J\x1b[H{STARTUP_PROMPT}\nUpdate available\nUpdate now\nSkip"),
@@ -2820,6 +2864,19 @@ mod tests {
             engine.note_submit_guard("wk-1", None);
             assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
         }
+    }
+
+    #[test]
+    fn startup_block_clears_on_lifecycle_change() {
+        let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+        engine.note_submit_guard_failed("wk-1");
+        engine.observe_worker(&worker("wk-1", STATUS_EXITED));
+        assert_eq!(
+            engine.verdict_for("wk-1"),
+            Verdict::coded(COL_NEEDS_YOU, ReasonCode::AgentExited)
+        );
+        engine.observe_worker(&worker("wk-1", STATUS_RUNNING));
+        assert_eq!(engine.verdict_for("wk-1").column, COL_WORKING);
     }
 
     #[test]
