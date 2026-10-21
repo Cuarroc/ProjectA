@@ -80,6 +80,8 @@ pub const MAX_DIALOG_ANSWERS: u8 = 3;
 /// dialogs stay in the raw stream far longer, and answering a ghost types
 /// stray Enters into the prompt.
 const DIALOG_WINDOW_CHARS: usize = 2048;
+/// Fixed budget for finding complete echoes before inspecting the dialog window.
+const ECHO_SCAN_CHARS: usize = DIALOG_WINDOW_CHARS * 4;
 /// How far back from the end of the normalized tail a readiness marker still
 /// counts as on screen for an already-running, quiet session (C-1): roughly a
 /// screenful, like the dialog window.
@@ -289,8 +291,8 @@ pub struct SubmitGuard {
     /// tail, so the longest line can sit in the hidden region while the
     /// last line is always visible when the write fully landed.
     tail_fragment: String,
-    /// End of the echoed paste, so titles inside the task remain task text.
-    task_end: String,
+    /// Complete normalized task; partial echoes cannot disprove a live menu.
+    task_echo: String,
     /// Squashed prompt marker that proves the input loop is alive; empty
     /// means "no marker known, use the silence heuristic".
     readiness_marker: String,
@@ -314,11 +316,17 @@ pub struct SubmitGuard {
 
 impl SubmitGuard {
     pub fn new(started_at: Instant, task: &str) -> Self {
+        let mut task_echo = squash(&normalize_tui_output(task));
+        let heading = task_echo.to_ascii_lowercase();
+        // A task beginning like a menu is not independent evidence of an echo.
+        if heading.starts_with("updateavailable") || heading.starts_with("hooks") {
+            task_echo.clear();
+        }
         Self {
             started_at,
             fragment: task_fragment(task),
             tail_fragment: task_tail_fragment(task),
-            task_end: last_chars(&squash(&normalize_tui_output(task)), 24).to_string(),
+            task_echo,
             readiness_marker: String::new(),
             answer_marker: String::new(),
             echo_window: echo_window_for(task),
@@ -433,27 +441,29 @@ impl SubmitGuard {
         if self.is_done() {
             return None;
         }
-        // Only a modal drawn after the last echo and before submission is live.
         // Agent output after submission must not trigger startup decisions.
         if !matches!(self.state, StateData::AwaitingWork { .. }) {
-            let tail = squash(last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS));
-            let echo_end = [&self.fragment, &self.tail_fragment, &self.task_end]
-                .into_iter()
-                .filter(|s| !s.is_empty())
-                .filter_map(|s| tail.rfind(s).map(|p| p + s.len()))
-                .max();
-            let after_echo = match self.state {
-                StateData::IdleWatching { .. } => tail.as_str(),
-                StateData::AwaitingEnter { .. } if echo_end.is_none() => "",
-                _ => &tail[echo_end.unwrap_or(0)..],
-            };
-            let visible = if self.readiness_marker.is_empty() {
-                after_echo
+            let tail = squash(last_chars(self.dialog_tail(obs), ECHO_SCAN_CHARS));
+            // Only full echoes qualify. Overflow, short tasks and tasks larger
+            // than the scan budget cannot safely disambiguate a live menu.
+            let tail = if !matches!(self.state, StateData::IdleWatching { .. })
+                && !obs.write_window_overflowed
+                && self.task_echo.len() <= ECHO_SCAN_CHARS
+                && self.task_echo.chars().take(24).count() == 24
+            {
+                // Preserve surrounding text and separate excised redraws.
+                tail.replace(&self.task_echo, "|")
             } else {
-                after_echo
-                    .rsplit(&self.readiness_marker)
-                    .next()
-                    .unwrap_or(after_echo)
+                tail
+            };
+            // shortcut: partial/quoted or dismissed dialog residue may block;
+            // screen/liveness evidence belongs to PA-HOOKS-2d/P9.
+            let tail = last_chars(&tail, DIALOG_WINDOW_CHARS);
+            let visible = if self.readiness_marker.is_empty() {
+                tail
+            } else {
+                // Preserve the existing readiness dismissal rule (GLM-F3).
+                tail.rsplit(&self.readiness_marker).next().unwrap_or(tail)
             };
             if let Some(dialog) = detect_blocking_dialog(visible).filter(|d| d.requires_user()) {
                 return self.escalate(EscalationReason::StartupDialog(dialog));
