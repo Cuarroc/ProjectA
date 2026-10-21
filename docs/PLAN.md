@@ -290,10 +290,10 @@ C2 bezeichnet Hook-Prüffälle; P9 den Folgeauftrag im ruhenden Terminal.
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
 | DOC-1 | Historie mit Leserbelegen archivieren | srv-doc-1-plan-archive | – | Server | C | Erledigt: #1760 `a226b995`, Merge `f3a156fe` 21.10. 01:28:41Z | Root entschied MERGE; DOC-1b und DOC-9 bleiben getrennt | 148253cc |
-| DOC-2 | Entscheidungsindex mit Journal | srv-doc-2-decisions-index | – | Server | C | In Prüfung: #1761 `67a63f11` | Quellen/Anker/Journal erhalten; danach Root nimmt ab/integriert | 9f78f652 |
+| DOC-2 | Entscheidungsindex mit Journal | srv-doc-2-decisions-index | – | Server | C | Erledigt: #1761 `67a63f11`, Merge `a19aa18e` 21.10. 01:46:07Z | Quellen/Anker/Journal erhalten; danach Root nimmt ab/integriert | 9f78f652 |
 | DOC-3 | v2-Rest vereinfachen | Root benennt Restowner | DOC-3a | Server | C | Geplant: Restschnitt ohne PR | Root disponiert/schneidet Rest vor DOC-9; Umfang/Owner/Leserbelege vor Start; DOC-3a beendet DOC-3 nicht | unbekannt |
 | DOC-3a | Größenentwurf bytegleich auslagern | srv-doc-3a-v2-slice | – | Server | C | In Prüfung: #1762 `8ac7fb23` | v2-Zellen/Versatz/native Tests erhalten; danach Root nimmt Teilschnitt ab/integriert | 3f7748a1 |
-| DOC-4 | Betriebsregeln abgleichen | srv-doc-4-rules-reconcile | – | Server | C | In Prüfung: #1759 `729a41ae` | Kernregeln/Rechte/Limits erhalten; danach Root nimmt ab/integriert | 90435bab |
+| DOC-4 | Betriebsregeln abgleichen | srv-doc-4-rules-reconcile | – | Server | C | Erledigt: #1759 `729a41ae`, Merge `a341e968` 21.10. 01:46:21Z | Kernregeln/Rechte/Limits erhalten; danach Root nimmt ab/integriert | 90435bab |
 | DOC-5 | Begrenztes Speicherpaket | Speicherowner; Root | – | egal | C | In Prüfung: Root angenommen laut Auftrag 20.10. 23:07:57Z, Entscheid D24, Nicht-Git | gemeldet 31633 Bytes/178 Zeilen; Nutzerchat 20.10.: OpenAI 828400 Kontexttokens akzeptiert, andere Modelle weiter 1M; Laufzeit/automatische Kontext-/UI-/Tokenlimits separat durch Root zu belegen | 252b26ed |
 | DOC-6 | Quellenalter/Prüflücken zeigen | srv-doc-6-roadmap-honest | – | Server | B | Erledigt: #1758 `3874d77d`, Merge `4cb2622d` 21.10. 00:45:42Z | unbekannte/alte Quellen sichtbar; integriert, keine App-Laufzeitabnahme | e9df1aff |
 | DOC-7 | Issue-/Stand-Archiv validieren | Codebase-Archäologe (Agent) | – | PC/Server | C | In Prüfung: #1764 `91f6b024` | Autor meldet Windows-prepush 0; Beobachter prüfte Inhalt/Leser, nicht volle Gates; Root hat den Quellenstand angenommen; Integration und ROOT-R2-1-Pointer bleiben offen | 69c96921 |
@@ -312,7 +312,7 @@ Hook-Code/PR-Berichtskorrekturen bleiben bei ihren Ownern.
 
 ### DOC-1b — kanonischer Nachtrag 21.10.2026
 
-Beleg: `gh pr view`/`gh pr list`, 21.10. 01:45 UTC; keine neue Abnahme. Root-Auftrag `msg-0mvhf9eph-f7713f3b`: nur DOC-1b pflegt diese Zeilen; fehlende Zeilen blockieren die Quell-PRs nicht einzeln. DOC-8 bleibt am festen Kopf `18fa7510`; seine Zeilen sind hier mit den jüngeren Belegen zusammengeführt; bei Integration keine zweite Tabelle anhängen. Root integriert und nimmt ab; DOC-9 bleibt offen.
+Beleg: `gh pr view`/`gh pr list`, 21.10. 01:45 UTC; DOC-2/-4-Merges nachgeprüft nach prepush; keine neue Abnahme. Root-Auftrag `msg-0mvhf9eph-f7713f3b`: nur DOC-1b pflegt diese Zeilen; fehlende Zeilen blockieren die Quell-PRs nicht einzeln. DOC-8 bleibt am festen Kopf `18fa7510`; seine Zeilen sind hier mit den jüngeren Belegen zusammengeführt; bei Integration keine zweite Tabelle anhängen. Root integriert und nimmt ab; DOC-9 bleibt offen.
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
