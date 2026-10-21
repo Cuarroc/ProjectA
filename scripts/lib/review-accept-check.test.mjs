@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { assess, main } from "../review/accept-check.mjs";
+import { assess, main, tierFor } from "../review/accept-check.mjs";
 
 const directory = fileURLToPath(new URL("../review/fixtures/accept-check/", import.meta.url));
 const fixture = (name) => readFileSync(`${directory}/${name}`, "utf8");
@@ -104,6 +104,45 @@ test("unverified lock move and generated claims never reduce raw accounting", ()
     assert.equal(evaluate(data).exit, 2, path);
   }
   assert.match(evaluate().output, /raw diff: 25/);
+});
+test("tierFor stays available from the accept-check public export", () => {
+  assert.equal(tierFor(["src-tauri/src/api.rs"]), "A");
+  assert.equal(tierFor(["docs/a.md"]), "C");
+  assert.equal(tierFor(["src/a.ts"]), "B");
+});
+test("normalised risk paths cannot widen assessed size", () => {
+  const pair = [review(), { name: name.replace("glm-5.2", "kimi-k3"), text: review().text.replaceAll("glm-5.2", "kimi-k3") }];
+  for (const path of ["./.github/workflows/ci.yml", "src-tauri//src/api.rs", "src-tauri/src/store/", "schema.sql"]) {
+    const data = pr(); data.additions = 450; data.deletions = 0;
+    data.files = [{ path, additions: 450, deletions: 0 }]; data.labels = [{ name: "size-budget-600" }];
+    assert.equal(evaluate(data, pair).exit, 2, path);
+  }
+});
+test("spelling variants conflict with every budget or fix signal", () => {
+  for (const labels of [["size-budget-600", "size_fix-round"], ["size-budget-600", "size_budget-450"],
+    ["size-budget-600", "prefix size budget-450"], ["size-budget-600", "sizebudget-600"],
+    ["size-fix-round", "size_budget-600"], ["size-fix-round", "size-budget-700"],
+    ["size-fix-round", "size-budget-600\n"]]) {
+    const data = pr(); data.additions = 350; data.deletions = 0;
+    data.files = [{ path: "src/a.ts", additions: 350, deletions: 0 }]; data.labels = labels.map(name => ({ name }));
+    assert.equal(evaluate(data).exit, 2, JSON.stringify(labels));
+    assert.match(evaluate(data).output, /ceiling: 300/);
+  }
+});
+test("cli rejects duplicate raw labels keys before JSON can erase a conflict", async () => {
+  const data = pr(); data.additions = 450; data.deletions = 0;
+  data.files = [{ path: "src/a.ts", additions: 450, deletions: 0 }]; data.labels = [{ name: "size-budget-600" }];
+  const raw = JSON.stringify(data);
+  for (const key of ['"labels"', '"\\u006cabels"']) {
+    const duplicate = `{${key}:[],${raw.slice(1)}`;
+    let output = "";
+    assert.equal(await main(["42", "--reviews", directory], { out: s => output += s },
+      { run: () => ({ code: 0, stdout: duplicate }) }), 2, key);
+    assert.match(output, /labels/);
+  }
+  data.body += '\n```json\n{"labels":[],"nested":{"labels":[]}}\n```\n';
+  assert.equal(await main(["42", "--reviews", directory], { out() {} },
+    { run: () => ({ code: 0, stdout: JSON.stringify(data) }) }), 0);
 });
 test("pure docs and tests require no reviews", () => {
   for (const path of ["docs/guide.md", "scripts/lib/example.test.mjs"]) {
