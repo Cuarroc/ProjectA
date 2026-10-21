@@ -49,11 +49,12 @@ export function assess(pr, reviews, number) {
   // Only Root/Chief sets them, with a prior ticket/msg or forcing finding IDs in a
   // PR comment. Root acceptance verifies native decision-before-dispatch evidence
   // and records it in the report; this check is conventional, not cryptographic.
-  const budgets = pr.labels.filter(l => /^size-budget/i.test(l.name));
-  const match = budgets.length === 1 ? /^size-budget-([1-9]\d{0,2})$/.exec(budgets[0].name) : null;
-  const budget = match && match[0] === budgets[0].name ? Number(match[1]) : NaN;
-  const fixes = pr.labels.filter(l => /^size-fix/i.test(l.name));
-  const limit = sizeLimit(tier, budget, fixes.length === 1 && fixes[0].name === "size-fix-round");
+  const signals = pr.labels.filter(l => /size[\s_-]*(budget|fix)/i.test(l.name));
+  const budgets = signals.filter(l => /^size-budget-[1-9]\d{0,2}$/.test(l.name) && !/\s/.test(l.name) &&
+    Number(l.name.slice("size-budget-".length)) <= 600);
+  const fixes = signals.filter(l => l.name === "size-fix-round");
+  const conflict = signals.length !== budgets.length + fixes.length || budgets.length > 1 || fixes.length > 1;
+  const limit = conflict ? 300 : sizeLimit(tier, Number(budgets[0]?.name.slice("size-budget-".length)), fixes.length === 1);
   // No identity/manifest evidence is supplied: even pure lock/move/generated claims
   // count in full. In particular these gh fields cannot prove a Dependabot exception.
   if (total > limit) reasons.push(`Größe ${total} > ${limit}`);
@@ -80,6 +81,18 @@ export function assess(pr, reviews, number) {
   decision.output += `- Größe: ${total} lines (raw diff: ${total}; ceiling: ${limit})\n`;
   return decision;
 }
+// Minimal top-level metadata scan; JSON.parse remains the grammar validator.
+// Whole string tokens keep body examples/nested metadata from masquerading as keys.
+function duplicateLabels(raw) {
+  let depth = 0, labels = 0;
+  for (const token of raw.matchAll(/"(?:\\.|[^"\\])*"|[{}\[\]]/g)) {
+    const text = token[0];
+    if (text.startsWith('"')) {
+      if (depth === 1 && /^\s*:/.test(raw.slice(token.index + text.length)) && JSON.parse(text) === "labels" && ++labels > 1) return true;
+    } else depth += text === "{" || text === "[" ? 1 : -1;
+  }
+  return false;
+}
 export async function main(argv, io, { run = makeRunner({ timeoutMs: 30_000 }) } = {}) {
   let decision;
   try {
@@ -89,7 +102,11 @@ export async function main(argv, io, { run = makeRunner({ timeoutMs: 30_000 }) }
     if (response.code !== 0) throw new Error("github");
     const reviews = readdirSync(values.reviews).filter(name => name.startsWith(`review_pr${positionals[0]}-`) && name.endsWith(".md"))
       .sort().map(name => ({ name, text: readFileSync(join(values.reviews, name), "utf8") }));
-    decision = assess(JSON.parse(response.stdout), reviews, positionals[0]);
+    const data = JSON.parse(response.stdout);
+    if (duplicateLabels(response.stdout)) {
+      const body = typeof data?.body === "string" ? lint(data.body, { prBody: true }) : { approvals: [] };
+      decision = result(["Doppeltes labels-Feld in PR-JSON"], body.approvals);
+    } else decision = assess(data, reviews, positionals[0]);
   } catch { decision = result(["Aufruf oder Eingaben nicht prüfbar; erwartet: <pr> --reviews <dir>"]); }
   io.out(decision.output);
   return decision.exit;

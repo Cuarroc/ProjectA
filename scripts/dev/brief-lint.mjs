@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { posix } from "node:path";
 import { parseArgs } from "node:util";
 import { isMain, makeRunner, runCli, withExitCodes } from "../lib/dev-tools.mjs";
 
@@ -12,12 +13,14 @@ const TRAILER = /^\s*(Test-First|Regression-For|No-Test):\s*(.*)$/;
 const decision = (reasons, approvals = []) => ({ exit: approvals.length ? 3 : reasons.length ? 2 : 0, reasons, approvals });
 
 const riskPredicates = [
-  function seam(path) { return /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store\.rs$|store\/|bin\/pa\.rs$)/i.test(path); },
+  function seam(path) { return /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store(?:\.rs$|\/|$)|bin\/pa\.rs$)/i.test(path); },
   function pty(path) { return /(?:^|[\/._-])pty(?:[\/._-]|$)/i.test(path); },
   function migration(path) { return /(?:^|[\/._-])migrations?(?:[\/._-]|$)|\.sql$/i.test(path); },
-  function workflow(path) { return /^\.github\/workflows\//i.test(path); },
+  function workflow(path) { return /^\.github\/workflows(?:\/|$)/i.test(path); },
 ];
 export function tierFor(paths) {
+  paths = paths.map(p => posix.normalize(p.replaceAll("\\", "/")).replace(/\/$/, ""));
+  if (!paths.length || paths.some(p => !p || p === "." || p === ".." || p.startsWith("../") || p.startsWith("/"))) return "A";
   if (paths.some(path => riskPredicates.some(isRisk => isRisk(path)))) return "A";
   return paths.every(p => /\.(?:md|mdx|rst|txt)$|(?:^|\/)(?:tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(p)) ? "C" : "B";
 }
@@ -97,8 +100,11 @@ export function lint(text, { prBody = false, baseExists = true } = {}) {
     if (["UMSETZEN", "NACHBESSERN"].includes(f.OPERATOR)) {
       const declared = /^([ABC])\b/.exec(f.TIER ?? "")?.[1];
       if (!declared || (f.TIER.match(/\b[ABC]\b/g) ?? []).length !== 1) reasons.push("TIER braucht genau eine Stufe A, B oder C");
-      const paths = (f.FILES ?? "").replaceAll("\\", "/").match(/[.\w*-]+(?:\/[.\w*-]+)+/g) ?? [];
-      const tier = declared === "A" || tierFor(paths) === "A" ? "A" : declared;
+      const paths = (f.FILES ?? "").replaceAll("\\", "/").replace(/(^|\n)\s*[-*]\s+/g, "$1")
+        .split(/[,\s]+/).filter(Boolean).map(p => p.replace(/^`([^`]+)`$/, "$1"));
+      const parsed = paths.length > 0 && paths.every(p => /^[\p{L}\p{N}_./-]+$/u.test(p) &&
+        (p.includes("/") || /\.[\p{L}\p{N}_-]+$/u.test(p)));
+      const tier = declared === "A" || !parsed || tierFor(paths) === "A" ? "A" : declared;
       let budget = 300;
       // Form only: a reference in author text grants no authority. Root acceptance
       // checks the native decision and its time; assess uses coordinator label signals.
