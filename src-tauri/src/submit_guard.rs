@@ -231,8 +231,8 @@ pub enum EscalationReason {
     /// The task write was never echoed (rewrites exhausted or the echo busy
     /// cap ran out).
     EchoNeverSeen,
-    /// A configured readiness marker never appeared after the baseline; the
-    /// task was not written.
+    /// Readiness was never established, or ambiguous startup-menu text
+    /// remained until the busy cap; the task may already be pending input.
     ReadinessMarkerNeverSeen,
     /// The task was written and echoed, but the answer marker never confirmed
     /// within `ANSWER_MARKER_CAP` after the Enter that the agent reacted.
@@ -316,17 +316,11 @@ pub struct SubmitGuard {
 
 impl SubmitGuard {
     pub fn new(started_at: Instant, task: &str) -> Self {
-        let mut task_echo = squash(&normalize_tui_output(task));
-        let heading = task_echo.to_ascii_lowercase();
-        // A task beginning like a menu is not independent evidence of an echo.
-        if heading.starts_with("updateavailable") || heading.starts_with("hooks") {
-            task_echo.clear();
-        }
         Self {
             started_at,
             fragment: task_fragment(task),
             tail_fragment: task_tail_fragment(task),
-            task_echo,
+            task_echo: squash(&normalize_tui_output(task)),
             readiness_marker: String::new(),
             answer_marker: String::new(),
             echo_window: echo_window_for(task),
@@ -444,9 +438,29 @@ impl SubmitGuard {
         // Agent output after submission must not trigger startup decisions.
         if !matches!(self.state, StateData::AwaitingWork { .. }) {
             let tail = squash(last_chars(self.dialog_tail(obs), ECHO_SCAN_CHARS));
+            let visible = last_chars(&tail, DIALOG_WINDOW_CHARS);
+            // Keep the existing readiness dismissal rule, including its P9 limit.
+            let visible = if self.readiness_marker.is_empty() {
+                visible
+            } else {
+                visible
+                    .rsplit(&self.readiness_marker)
+                    .next()
+                    .unwrap_or(visible)
+            };
+            let spans = startup_dialog_spans(visible);
+            if let Some(dialog) = spans.iter().rev().find_map(|(_, _, dialog)| *dialog) {
+                // A complete signature is ambiguous even inside an exact echo.
+                return self.escalate(EscalationReason::StartupDialog(dialog));
+            }
+            let contained = startup_dialog_spans(&tail).iter().all(|(start, end, _)| {
+                tail.match_indices(&self.task_echo)
+                    .any(|(echo, _)| echo <= *start && *end <= echo + self.task_echo.len())
+            });
             // Only full echoes qualify. Overflow, short tasks and tasks larger
             // than the scan budget cannot safely disambiguate a live menu.
             let tail = if !matches!(self.state, StateData::IdleWatching { .. })
+                && contained
                 && !obs.write_window_overflowed
                 && self.task_echo.len() <= ECHO_SCAN_CHARS
                 && self.task_echo.chars().take(24).count() == 24
@@ -777,6 +791,47 @@ impl SubmitGuard {
         slice.contains(&self.fragment)
             || (!self.tail_fragment.is_empty() && slice.contains(&self.tail_fragment))
     }
+}
+
+/// All startup headings and their complete signature spans, before echo removal.
+fn startup_dialog_spans(window: &str) -> Vec<(usize, usize, Option<BlockingDialog>)> {
+    let lower = window.to_ascii_lowercase();
+    let mut spans = Vec::new();
+    for (heading, dialog) in [
+        ("updateavailable", BlockingDialog::CodexUpdateAvailable),
+        ("hooksneedreview", BlockingDialog::CodexHooksReview),
+    ] {
+        let alternatives: &[&[&str]] = match dialog {
+            BlockingDialog::CodexUpdateAvailable => &[&["updatenow", "skip"]],
+            _ => &[
+                &["trustallandcontinue"],
+                &["ttrustall", "enterreview", "escclose"],
+            ],
+        };
+        for (start, _) in lower.match_indices(heading) {
+            let end = alternatives
+                .iter()
+                .filter_map(|options| {
+                    options
+                        .iter()
+                        .map(|needle| {
+                            lower[start..]
+                                .find(needle)
+                                .map(|p| start + p + needle.len())
+                        })
+                        .collect::<Option<Vec<_>>>()
+                        .and_then(|ends| ends.into_iter().max())
+                })
+                .min();
+            spans.push((
+                start,
+                end.unwrap_or(start + heading.len()),
+                end.map(|_| dialog),
+            ));
+        }
+    }
+    spans.sort_by_key(|(start, _, _)| *start);
+    spans
 }
 
 /// Detect a known blocking dialog in the normalized scrollback tail.
