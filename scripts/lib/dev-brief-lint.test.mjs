@@ -17,6 +17,64 @@ test("complete brief exits 0", async () => {
   assert.equal((await run([fixture("complete")])).code, 0);
   assert.deepEqual(lint(brief), { exit: 0, reasons: [], approvals: [] });
 });
+test("prior Root budget form supports literal planning and fix ceilings", () => {
+  for (const [tier, op, size, budget, exit] of [
+    ["B", "UMSETZEN", 301, "301 (Root msg-budget-prior)", 0],
+    ["C", "UMSETZEN", 600, "600 (Root ticket e1461256-f9f6-45d0-b043-a8692e02eb6e)", 0],
+    ["C", "UMSETZEN", 601, "600 (Root msg-budget-prior)", 2],
+    ["B", "NACHBESSERN", 600, "600 (Root msg-budget-prior)", 0],
+    ["B", "NACHBESSERN", 601, "600 (Root msg-budget-prior)", 2],
+    ["B", "NACHBESSERN", 550, "450 (Root msg-budget-prior)", 0],
+    ["B", "NACHBESSERN", 551, "450 (Root msg-budget-prior)", 2],
+    ["A", "UMSETZEN", 300, null, 0], ["A", "UMSETZEN", 301, null, 2],
+    ["A", "NACHBESSERN", 400, null, 0], ["A", "NACHBESSERN", 401, null, 2],
+  ]) {
+    const text = brief.replace("UMSETZEN", op).replace("at most 300", `at most ${size}`)
+      .replace("TIER/REVIEW: B", `TIER/REVIEW: ${tier}`) + (budget === null ? "" : `\nSIZE-BUDGET: ${budget}\n`);
+    assert.equal(lint(text).exit, exit, JSON.stringify([tier, op, size, budget]));
+  }
+});
+test("malformed conflicting and risk bypass budget briefs fail closed", () => {
+  for (const budget of ["", "600", "600 (author approved)", "601 (Root msg-budget-prior)",
+    "-1 (Root msg-budget-prior)", "600.0 (Root msg-budget-prior)", "600 (Root missing)",
+    "600 (Root msg-budget-prior)\nSIZE-BUDGET: 450 (Root msg-budget-prior)",
+    "600 (Root msg-budget-prior)\nSIZE-BUDGET:\n  600 (Root msg-budget-prior)"]) {
+    assert.equal(lint(brief + `\nSIZE-BUDGET: ${budget}\n`).exit, 2, budget);
+  }
+  const enlarged = brief.replace("at most 300", "at most 450") + "\nSIZE-BUDGET: 600 (Root msg-budget-prior)\n";
+  for (const path of ["src-tauri/src/api.rs", "src/pty/reader.rs", "migrations/001.sql", ".github/workflows/ci.yml"]) {
+    assert.equal(lint(enlarged.replace("scripts/dev/brief-lint.mjs", path).replace("SEAM: no", "SEAM: yes")).exit, 2, path);
+  }
+  for (const tier of ["A", "B A", "B\nTIER: C"]) {
+    assert.equal(lint(enlarged.replace("TIER/REVIEW: B", `TIER/REVIEW: ${tier}`)).exit, 2, tier);
+  }
+});
+for (const [name, paths] of [
+  ["brief leading dot workflow paths remain tier a", ["./.github/workflows/ci.yml", "././.github//workflows/"]],
+  ["brief repeated path separators remain tier a", ["src-tauri//src/api.rs", "src-tauri/src/store/", "src-tauri/src/./main.rs/"]],
+  ["brief root SQL and migration files remain tier a", ["schema.sql", "migration.ts", "migrations/"]],
+]) test(name, () => {
+  for (const path of paths) {
+    const text = brief.replace("scripts/dev/brief-lint.mjs", path).replace("SEAM: no", "SEAM: yes")
+      .replace("at most 300", "at most 600") + "\nSIZE-BUDGET: 600 (Root msg-budget-prior)\n";
+    assert.equal(lint(text).exit, 2, path);
+  }
+});
+test("unparseable or empty FILES cannot gain a non-A budget", () => {
+  for (const files of ["", "???", "scripts/a.ts ???", "./", "../outside.ts"]) {
+    const text = brief.replace(/^FILES \(exclusive\):\n- .*$/m, `FILES: ${files}`)
+      + "\nSIZE-BUDGET: 600 (Root msg-budget-prior)\n";
+    assert.equal(lint(text).exit, 2, files);
+    assert.ok(lint(text).reasons.some(r => r.startsWith("SIZE-BUDGET")), files);
+  }
+});
+test("duplicate fields cannot be restored by a continuation", () => {
+  for (const field of ["GOAL", "ACCEPTANCE", "FILES"]) {
+    const result = lint(brief + `\n${field}:\n  scripts/restored.mjs\n`);
+    assert.equal(result.exit, 2, field);
+    assert.ok(result.reasons.includes(`${field} fehlt oder ist leer`), field);
+  }
+});
 test("missing acceptance exits 2 with the reason", () => {
   const r = lint(brief.replace(/^ACCEPTANCE:.*$/m, ""));
   assert.equal(r.exit, 2);
