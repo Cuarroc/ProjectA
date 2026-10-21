@@ -55,14 +55,20 @@ export function assess(pr, reviews, number) {
   const total = pr.files.reduce((n, f) => n + f.additions + f.deletions, 0);
   if (total !== pr.additions + pr.deletions) reasons.push("Dateiliste und PR-Größe stimmen nicht überein");
   const size = total - pr.files.filter(f => lock(f.path)).reduce((n, f) => n + f.additions + f.deletions, 0);
-  if (size > 300) reasons.push(`Größe ${size} > 300`);
+  const tier = tierFor(pr.files.map(f => f.path));
+  // Like review-ok, only Root/Chief sets this label and records the prior ticket/msg
+  // in a PR comment. Shared-account authority is conventional, not cryptographic.
+  const budgets = pr.labels.filter(l => /^size-budget(?:-|$)/i.test(l.name));
+  const budget = budgets.length === 1 ? Number(/^size-budget-([1-9]\d{0,2})$/.exec(budgets[0].name)?.[1]) : NaN;
+  const limit = tier !== "A" && budget <= 600 ? budget : 300;
+  if (size > limit) reasons.push(`Größe ${size} > ${limit}`);
   if (pr.isDraft) reasons.push("PR ist Draft");
   for (const { name } of pr.labels) if (["do-not-merge", "conflict"].includes(name)) reasons.push(`Label: ${name}`);
   for (const check of pr.statusCheckRollup) {
     const state = check?.conclusion || check?.state || check?.status;
     if (!["SUCCESS", "NEUTRAL", "SKIPPED"].includes(state)) reasons.push(`Check: ${state ?? "unbekannt"}`);
   }
-  const tier = tierFor(pr.files.map(f => f.path)), sha = pr.headRefOid.slice(0, 8);
+  const sha = pr.headRefOid.slice(0, 8);
   const families = new Set(), reviewers = [];
   for (const review of reviews) {
     const match = /^review_pr(\d+)-([a-f0-9]{8})_([\w.-]+)\.md$/i.exec(review.name);
