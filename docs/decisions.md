@@ -1,7 +1,7 @@
 # Entscheidungen — aktueller Index
 
 <a id="entscheidungs-journal"></a> Stand: 20.10.2026. Autorität, Geltung und Endbedingung stehen je Eintrag; Gründe, Anforderungen und Belege bleiben im verlinkten [Originaljournal](archive/decisions-2026-10/journal.md). Historische Zustände sind keine Live-Belege. Ein Datum allein beendet keine Regel; wiederholte kurze Kennungen behalten ihren Scope.
-Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neueren Nutzbar-1-Fokus; [AGENTS.md](../AGENTS.md) die geltenden Betriebsregeln. Der Dokumentationsauftrag vom 20.10. beendet die Zusatz-App, lässt die Fabrik-Arbeit getrennt bestehen und verlangt getrennte Prüfer. Dieser Index erteilt keine Ausführungsfreigabe; proposed bleibt proposed. Datumsüberschriften und ihre Reihenfolge bleiben für Leser und alte Anker erhalten. Archivierte relative Quellenlinks führen über reine Weiterverweise zum aktuellen Dokument.
+Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neueren Nutzbar-1-Fokus; [AGENTS.md](../AGENTS.md) die geltenden Betriebsregeln. Der [Dokumentationsauftrag vom 20.10.](#2026-10-20-dokumentationsauftrag) grenzt die Zusatz-App, Fabrik-Arbeit und befristete Prüferanweisung ab. Dieser Index erteilt keine Ausführungsfreigabe; proposed bleibt proposed. Datumsüberschriften und ihre Reihenfolge bleiben für Leser und alte Anker erhalten. Archivierte relative Quellenlinks führen über reine Weiterverweise zum aktuellen Dokument. Neue Entscheidungen werden hier in `docs/decisions.md` im Volltext mit **Was? / Warum? / Wann zurücknehmen?**, Autorität und Quelle ergänzt; das Archiv bleibt eingefroren.
 
 ## 2026-10-13 — V2-ARCH-0 architecture sketch
 
@@ -35,6 +35,8 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 **Agentenvorschlag (proposed)** · Gilt: 13.10.; ADR-V2-07/ADR-A7: eine serielle Store-Lane, ApiBackend nach A1/F1. · Ende: vier Wochen Lane-Messung und ausdrückliche Regeländerung; Annahme offen. · [Quelle](archive/decisions-2026-10/journal.md#adr-v2-07--adr-a7-separate-modules-one-serial-store-lane).
 
+**Technische Übergabevoraussetzung** · Gilt: jedes nachgelagerte Paket nennt die einschlägigen ADR-IDs im Auftrag/Bericht und prüft die Codeanker an seiner eigenen Basis; Root besitzt Annahme und Berater-Gegenprüfung. · Ende: nur ausdrücklich ersetzter Übergabevertrag; die Skizze allein ist keine Annahme und keine Runtime-/Migrationsfreigabe. · [Quelle](archive/decisions-2026-10/journal.md#adr-v2-07--adr-a7-separate-modules-one-serial-store-lane).
+
 ## 2026-10-08
 
 **technische Voraussetzung (entschieden)** · Gilt: A1, 08.10.: ApiBackend bis nach M4 in main.rs, dann kleine Ports; ARCH-12 wartet. · Ende: zwei bereite M4-Pakete je >7 Tage nur mn-Warten; Portzuschnitt bei belegter Unteilbarkeit neu prüfen. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-08).
@@ -45,15 +47,13 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 ## 2026-10-03
 
-**Agentenvorschlag / technische Voraussetzung** · Gilt: 03.10.: offene ADRs und getrennte CodeQL-Einordnung unten. · Ende: eigene Annahme je Vorschlag; Alert-Begründung nur bei gleichem Datenfluss. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-03).
-
 ### ADR-Entscheidungen und offene Vorschläge
 
 **Agentenvorschlag (proposed); CodeQL: technische Voraussetzung** · Gilt: 03.10.: A2–A7 offen; SEC-02e Session-/Worker-IDs nur Labels. · Ende: A2 Lint-Hygiene; A3 WRITE_THROUGH-Engpass; A4 dritter Transport; A5 zweiter SQLite-Schreiber; A6 zweiter Drift; A7 vier Wochen OPS-01; Alerts bei Berechtigungsfunktion neu prüfen. · [Quelle](archive/decisions-2026-10/journal.md#adr-entscheidungen-und-offene-vorschläge).
 
 ## 2026-09-21
 
-**technische Voraussetzung** · Gilt: 21.09.: Shell-Heuristik, GITHUB_OUTPUT-Auswahl, getrennte Build-Ziele; Gate-Hashes/Mindestlisten; leere Antwort kein Review. · Ende: je Einzelbefund: gleichwertiger Parser-/Cargo-/Review-Beleg; verworfene Promptgrößen-Hypothese nicht wiederbeleben. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-21).
+**technische Voraussetzung** · Gilt: 21.09.: Shell-Heuristik, GITHUB_OUTPUT-Auswahl, getrennte Build-Ziele; Gate-Hashes/Mindestlisten; leere Antwort kein Review. Die Promptgrößen-Hypothese wurde anhand der damaligen Antworten verworfen; drei kleinere Reviewaufträge bleiben vorerst. · Ende: diese Teilung zurücknehmen, sobald die echte Ausfallursache bekannt ist; neue Belege dürfen die Hypothese neu bewerten. Shell-Heuristik bis vertretbarem YAML-Parser; dateiweiter Shell-Default bis jobweiser Auswahl; Cargo-Ziele bleiben getrennt, Teilen bei gleichem Checkout endet erst mit Paketpfad im Cargo-Metadatenhash. GITHUB_OUTPUT bleibt selektiert, leere Antworten bleiben Reviewer-Ausfälle; Hash-/Mindestlisten- und Selbsttestschutz bleiben. Das abgelehnte Environment-API-Gate erst neu prüfen, wenn der Zustand ohne Adminrechte lesbar ist. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-21).
 
 ## 2026-09-17
 
@@ -71,6 +71,8 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 **Nutzerbeschluss / technische Voraussetzung** · Gilt: 09.09.: Multi-Harness, keine Browser-Retries, bash/pipefail, SHA Pinning, eine Gate-Liste, getrennte Testbäume, Release-Environment; Windows je PR ersetzt durch [Nachtrag](#2026-09-25---ci-03-github-actions-cost---windows-only-in-the-queue-red-first-in-the-linux-job-user-decision). · Ende: Harness nach Bedarfsbeleg; Schutz nur gleichwertig ersetzen; Linux-Beleg WSL/ext4, keine behauptete act-Parität. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-09).
 
+**Technische Sicherheitsvoraussetzung** · Gilt: `release.yml` bindet den Signing-/Mirror-Job an `environment: release`; wirksam erst mit Required Reviewers in Settings > Environments. · Ende: laut Beschluss nie zurücknehmen. Der [PLAN](PLAN.md#entscheidungs-inbox) verzeichnet die Konfigurationsbestätigung vom 09.10./15.10.; das ist kein neuer Live-Beleg. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-09).
+
 ## 2026-09-08
 
 **technische Voraussetzung** · Gilt: 08.09.: Spec-First für Trust/Nahtstellen; alte freie Pflichtreviewer ersetzt durch [Nachtrag](#2026-10-15---reviewer-count-per-tier). · Ende: neu bewerten nach zwei Vorprüfungen ohne zusätzlichen Befund; aktuelle Unabhängigkeit bleibt. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-08).
@@ -87,9 +89,13 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 **technische Voraussetzung** · Gilt: 04.09. erster Block: review_evidence getrennt, Verdict-Token, expliziter Respawn; DPAPI-Dateien 7 Tage/2 MB, nach Archive/Merge entfernen; isolierte Daten und Offline-Restore. · Ende: Retention nur belegter längerer Restore; DB nur gleich verschlüsselt mit Leak-Test; anderer Human-Proof für Berechtigung; alte Server-Werkzeuge historisch. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-04).
 
+**Technischer Routingvertrag** · Gilt: `reliable`/`cheap`/`review` bilden Produktverträge (`auto/coding`, `auto/cheap`, `auto/review`); fehlendes Review-Combo liefert 4xx, keinen stillen Fallback. · Ende: erst wenn ein belegtes unabhängiges Review-Combo denselben Vertrag trägt. **Queen-Retirement:** Neuanlage in UI/API/CLI retired (410, `pa queen spawn` ohne HTTP), Altbestand lesbar. · Ende: nur bei belegter Koordinationslast über Orchestrator+Worker. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-04).
+
 ## 2026-09-02
 
 **technische Voraussetzung; Erweiterungen abgelehnte Agentenvorschläge** · Gilt: 02.09.: keine Produktions-Sourcemaps; Tauri-Plugins; Redis/Kontexttools nur Bedarfsbeleg; Majors einzeln. AP-10b verengt http auf localhost-Board ohne Userinfo; Dependabot-Rhythmus ersetzt durch [Nachtrag](#2026-09-24---ci-01-mergify-queue-und-actions-minuten-nutzer-entscheidung). · Ende: Plugin-/Last-/Token-Beleg; Opener bei LAN Bindung neu prüfen; alte Provider/Release/Cleanup-Zuweisung ist Historie. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-02).
+
+**Technische Audit-Einordnung** · Gilt: die Dismissal-Begründung für `glib` / RUSTSEC-2024-0429 („not used“, KI-9) beruht auf dem Windows-Artefakt. · Ende: sobald ProjectA für Linux ausgeliefert wird, diese Einordnung zurücknehmen und den Alert neu prüfen. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-02).
 
 ## 2026-09-03
 
@@ -98,6 +104,8 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 ## 2026-09-04
 
 **technische Voraussetzung** · Gilt: 04.09. zweiter Block: Spec-Gate, Rohtext-Export, ein Single-Instance-Plugin zuerst; drei DB-Generationen, Diagnose-Allowlist, keine Logs via API; HQ abgeleitet. · Ende: Fixtures bei neuem Schema erweitern; Sperre nur gleichwertig ersetzen; HQ bei ersetzt lebendem Quellregister prüfen. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-04-1).
+
+**Technische UI-Voraussetzung** · Gilt: ein Overlay ohne Verhalten wird nicht angezeigt; `defaultProfileId`, `active` und `webPort` dürfen erst als Funktion erscheinen, wenn ein Startpfad sie liest. · Ende: nie durch bloßes Anzeigen aufheben; entweder verdrahten oder entfernen. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-04-1).
 
 ## 2026-09-06
 
@@ -110,6 +118,8 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 ## 2026-09-03 (abends, Rev 9.1 nach drei externen Reviews)
 
 **technische Voraussetzung; Nutzerbeschlüsse im Volltext getrennt** · Gilt: 03.09. abends, Nachträge 10.–17.09.: red-first, volle Windows-Suite, geschützte Workflows, Skillpfade; Rust/SQLite besitzt Policy/Ledger; Native-Identity/Recovery/Registry/ACKs und projecta_capture bleiben Verträge. · Ende: gleichwertige Fencing-/Crash-/Privacy-Belege; Aktivierung gesperrt. CI ersetzt durch [Nachtrag](#2026-09-25---ci-03-github-actions-cost---windows-only-in-the-queue-red-first-in-the-linux-job-user-decision); PTY am 02.10. auf Backend-Owner/strip aufgelöst; Ollama ersetzt durch [Nachtrag](#22092026--deepseek-worker-richtung-und-startfehler). · [Quelle](archive/decisions-2026-10/journal.md#2026-09-03-abends-rev-91-nach-drei-externen-reviews).
+
+**Technische Abhängigkeitsvoraussetzungen (15.09.)** · Gilt: `@xterm/addon-webgl` exakt 0.18.0 (kein Caret), zusammen mit `@xterm/xterm` aus Dependabot ausgenommen; 0.19 war mit xterm 5.5 inkompatibel. · Ende: geplantes gemeinsames Major-Paket mit belegter Terminalansicht und laufendem Worker. **Skill-Adoption:** nur das MIT-Bundle `ui-ux-pro-max` (CLI 2.15.0), unverändert aus dem Installer; die sechs Begleitpakete bleiben draußen. Audit-Regelquelle, kein Designsystem-Generator neben bestehenden Designverträgen. · Ende: zurücknehmen, wenn 3.6 MB Wachstum oder die Python-Suchabhängigkeit problematisch werden; SKILL.md bleibt ohne Python lesbar. · [Quelle](archive/decisions-2026-10/journal.md#2026-09-03-abends-rev-91-nach-drei-externen-reviews).
 
 ## 22.09.2026 — DeepSeek-Worker-Richtung und Startfehler
 
@@ -209,7 +219,7 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 ## 2026-10-09 - AGENTS-API-CREDITS: Max-plan included Anthropic API credits
 
-**Nutzerbeschluss** · Gilt: 09.10.: AGENTS-API-CREDITS enge enthaltene Anthropic-Ausnahme, begrenzter Workspace, Schlüssel im Tresor; OpenRouter-Bann ersetzt durch [Nachtrag](#2026-10-15---reviewer-count-per-tier). · Ende: unerlaubte Belastung/geänderte Bedingungen/Widerruf; bei Erschöpfung Abos, keine Erweiterung. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-09---agents-api-credits-max-plan-included-anthropic-api-credits).
+**Nutzerbeschluss** · Gilt: 09.10.: AGENTS-API-CREDITS enge enthaltene Anthropic-Ausnahme, begrenzter Workspace, Schlüssel im Tresor; OpenRouter-Bann für Reviews ersetzt durch [Nachtrag](#2026-10-15---reviewer-count-per-tier). · Ende: unerlaubte Belastung/geänderte Bedingungen/Widerruf; bei Erschöpfung Abos, keine Erweiterung. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-09---agents-api-credits-max-plan-included-anthropic-api-credits).
 
 ## 2026-10-11 - DEV-AUTO-1: build Dev installers after each main push
 
@@ -237,7 +247,7 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 ## 2026-10-15 - Reviewer count per tier
 
-**Nutzerbeschluss** · Gilt: 15.10.: A zwei fremde Familien; B zwei (Abo/OpenRouter), beide nicht Autor; C Gates, C+ eins; Fixdelta eins/zwei bei A; freie nur Zusatz; bestehende Rechte bleiben. · Ende: nur Nutzeränderung, Mangel senkt Abnahme nicht; Routen ersetzt durch [Nachtrag](#2026-10-16---owner-karten-1016-cards-k1-k15-release-amendment-review-route-and-routing), E1 ersetzt durch [Nachtrag](#2026-10-20-e1---subscription-alternative-for-the-second-tier-b-reviewer); Dokumentationsauftrag hat eigene Prüferanweisung. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-15---reviewer-count-per-tier).
+**Nutzerbeschluss** · Gilt: 15.10.: A zwei fremde Familien; B zwei (Abo/OpenRouter), beide nicht Autor; C Gates, C+ eins; Fixdelta eins/zwei bei A; freie nur Zusatz; bestehende Rechte bleiben. · Ende: nur Nutzeränderung, Mangel senkt Abnahme nicht; Routen ersetzt durch [Nachtrag](#2026-10-16---owner-karten-1016-cards-k1-k15-release-amendment-review-route-and-routing), E1 ersetzt durch [Nachtrag](#2026-10-20-e1---subscription-alternative-for-the-second-tier-b-reviewer); befristete zusätzliche GPT-Prüfung im [Dokumentationsauftrag](#2026-10-20-dokumentationsauftrag), ohne Aufhebung der Fremdfamilienregel. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-15---reviewer-count-per-tier).
 
 ## 2026-10-15 - VERBUND option C
 
@@ -270,3 +280,9 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 ## 2026-10-20 E1 - subscription alternative for the second tier-B reviewer
 
 **Nutzerbeschluss (bedingte Ausnahme)** · Gilt: 20.10., Review E1: B bei OpenRouter <=0 zwei verschiedene Nicht-Autor-Abo-Familien; freie zählen nie. · Ende: Guthaben kehrt zurück/Nutzer ändert Regel: reguläres Paar; kein aktueller Saldo behauptet. · [Quelle](archive/decisions-2026-10/journal.md#2026-10-20-e1---subscription-alternative-for-the-second-tier-b-reviewer).
+
+## 2026-10-20 (Dokumentationsauftrag)
+
+**Was? Nutzerauftrag vom 20.10., laut Root:** die zusätzliche Projekt-/Aufgabenplaner-App stoppen und Arbeitsstände sichern; Dokumentation und Arbeitsweise vereinfachen, IDs/Anforderungen/Belege/Leser erhalten, keine zweite Roadmap. Die Fabrik-Umstellung bleibt ein eigener Arbeitsstrang. Delegierte Umsetzung nach Root-Auftrag mit GPT-6.1/high oder GPT-6 Astra; tatsächliches Modell je Job belegen. Eine getrennte GPT-Prüfung ergänzt die Fremdfamilienreviews nach AGENTS.md Regel 5; sie ersetzt sie nicht. · Quelle: [PLAN Z2](PLAN.md#z2--setup-und-entwicklung), DOC-CTRL1 (Ticket b3d2f947), DOC-9 (566e3f2f); [kanonischer Nachtrag im noch nicht integrierten DOC-8-Kandidaten](https://github.com/Cuarroc/ProjectA/blob/76e1ef8308b80238759754cd7dfb7320b4110d72/docs/PLAN.md#L293-L320). Root präzisierte die Reviewroute am 20.10. nach erneuter Verfügbarkeit fremder Familien; deren Abnahme bleibt erforderlich.
+**Warum?** Aktive Regeln und Planung sollen kurz, widerspruchsfrei und anhand eigener Belege prüfbar werden; eine kürzere Dokumentation beweist keine schnellere App.
+**Wann zurücknehmen?** Die befristete Modell-/Prüferanweisung endet mit Roots DOC-9-Abnahme des Dokumentationsauftrags; offene Pflichtkriterien bleiben offen. Der Zusatz-App-Stopp wird dadurch nicht aufgehoben: Wiederaufnahme nur nach neuem Nutzerentscheid. Umsetzung, Prüfung, Abnahme, Merge und Nutzbarkeit bleiben getrennte Zustände.
