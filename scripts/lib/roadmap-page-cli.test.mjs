@@ -278,7 +278,7 @@ async function resolvedFetch(source, suppressHead, check) {
     writeFileSync(join(seed, "docs/PLAN.md"), table("B"));
     const b = commit(); git(seed, ["push", "-q", "origin", "main"]);
     git(client, ["fetch", "-q", "--no-write-fetch-head", "origin", "main"], "2026-10-21T15:00:00Z");
-    git(seed, ["push", "-q", "origin", `${a}:${source}`]); git(remote, ["update-ref", "-d", "refs/heads/main"]);
+    git(remote, ["update-ref", source, a]); git(remote, ["update-ref", "-d", "refs/heads/main"]);
     git(client, ["fetch", "-q", suppressHead ? "--no-write-fetch-head" : "--append", "origin", "+main:refs/remotes/origin/main"]);
     assert.notEqual(a, b);
     assert.equal(git(client, ["ls-remote", "origin", "refs/heads/main"]), "");
