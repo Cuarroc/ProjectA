@@ -19,6 +19,13 @@ test("clean tier b pr with approve review at head exits 0", () => {
   assert.match(result.output, /Tier: B/);
   assert.match(result.output, /25/);
 });
+test("one Root size budget label admits a 301 line tier b package", () => {
+  const data = pr();
+  data.additions = 301; data.deletions = 0;
+  data.files = [{ path: "src/example.ts", additions: 301, deletions: 0 }];
+  data.labels = [{ name: "size-budget-450" }];
+  assert.equal(evaluate(data).exit, 0);
+});
 test("review bound to an older head escalates", () => {
   const result = evaluate(pr(), [{ ...review(), name: name.replace("01234567", "abcdefab") }]);
   assert.equal(result.exit, 2);
