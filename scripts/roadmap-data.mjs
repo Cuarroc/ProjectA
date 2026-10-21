@@ -37,40 +37,8 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
     if (matches) {
       const [sha, selector, message] = command("git", ["reflog", "show", "-1", "--format=%H%x09%gD%x09%gs", "--date=unix", "refs/remotes/origin/main"]).split("\t");
       const seconds = selector?.match(/@\{(\d+)\}$/)?.[1];
-      const config = key => {
-        const r = run("git", ["config", "--get-all", key]);
-        if (r.code !== 0 && r.code !== 1) throw new Error(`git config failed (exit ${r.code})`);
-        return r.code === 0 ? r.stdout.trim().split("\n") : [];
-      };
-      const target = "refs/remotes/origin/main", sources = [];
-      const mappingValid = config("remote.origin.fetch").every(spec => {
-        const parts = spec.replace(/^\+/, "").split(":"), [src, dst] = parts;
-        if (parts.length !== 2 || !src.startsWith("refs/") || !dst.startsWith("refs/") || /\s/.test(spec)) return false;
-        const [prefix, suffix] = dst.split("*");
-        if (dst.split("*").length !== src.split("*").length || dst.split("*").length > 2) return false;
-        if (suffix === undefined) { if (dst === target) sources.push(src); }
-        else if (target.startsWith(prefix) && target.endsWith(suffix) && target.length >= prefix.length + suffix.length) {
-          sources.push(src.replace("*", target.slice(prefix.length, target.length - suffix.length)));
-        }
-        return true;
-      });
-      const mappedMain = mappingValid && sources.length === 1 && sources[0] === "refs/heads/main";
-      const event = message?.match(/^fetch(?: (.*))?: /);
-      const args = event?.[1]?.split(" ") || [];
-      // These observed options preserve source selection; suppressed FETCH_HEAD and other options stay unknown.
-      while (["-q", "--quiet", "--append"].includes(args[0])) args.shift();
-      let remote = args.shift();
-      if (event && remote === undefined) {
-        const head = run("git", ["symbolic-ref", "--quiet", "--short", "HEAD"]);
-        if (head.code !== 0 && head.code !== 1) throw new Error(`git symbolic-ref failed (exit ${head.code})`);
-        const defaults = head.code === 0 ? config(`branch.${head.stdout.trim()}.remote`) : [];
-        remote = defaults.length > 1 ? null : defaults[0] || "origin";
-      }
-      const refspec = args[0]?.replace(/^\+/, ""), [source, destination] = refspec?.split(":") || [];
-      // Short main is resolved by the selected branch-kind record; configured fetches need a unique full source.
-      const resolvedSource = source === "main" ? "refs/heads/main" : source;
-      const fromMain = event && remote === "origin" && args.length <= 1 && (refspec === undefined ? mappedMain :
-        resolvedSource === "refs/heads/main" && (destination === undefined ? mappedMain : destination === target) && refspec.split(":").length <= 2);
+      // Persistent config cannot prove a transient -c mapping; require an explicit main source in this event.
+      const fromMain = /^fetch (?:-q |--quiet |--append )*origin \+?(?:refs\/heads\/)?main(?::refs\/remotes\/origin\/main)?: /.test(message || "");
       if (sha === mainSha && seconds && fromMain) fetchedAt = new Date(Number(seconds) * 1000).toISOString();
     }
   } catch (e) {

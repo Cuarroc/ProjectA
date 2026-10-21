@@ -307,6 +307,7 @@ test("a tag named main cannot borrow historical branch freshness", async () => {
   });
 });
 
+// Retain the inherited trailer name; Root reversed configured-positive dating after R1789-R2-G1.
 test("configured origin fetches are dated only by an unambiguous main mapping", async () => {
   for (const mode of ["default", "origin", "quiet", "exact", "conflict", "ambiguous", "unknown"]) {
     const setup = (_dir, git) => {
@@ -319,9 +320,24 @@ test("configured origin fetches are dated only by an unambiguous main mapping", 
     };
     await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
       assert.equal(code, 0, errors);
-      const { stand } = JSON.parse(out), known = ["default", "origin", "quiet", "exact"].includes(mode);
-      assert.equal(stand.fetchedAt, known ? "2026-10-15T12:00:00.000Z" : null, mode);
-      assert.equal(stand.fetchAgeMs, known ? 0 : null, mode);
+      const { stand } = JSON.parse(out);
+      assert.equal(stand.fetchedAt, null, mode);
+      assert.equal(stand.fetchAgeMs, null, mode);
+    });
+  }
+});
+
+test("explicit main fetch options retain coherent freshness", async () => {
+  for (const option of ["-q", "--quiet", "--append"]) for (const source of ["main", "refs/heads/main", "+refs/heads/main:refs/remotes/origin/main"]) {
+    const setup = (_dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".");
+      git("fetch", option, "origin", source);
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
+      assert.equal(code, 0, errors);
+      const { stand } = JSON.parse(out);
+      assert.equal(stand.fetchedAt, "2026-10-15T12:00:00.000Z", `${option} ${source}`);
+      assert.equal(stand.fetchAgeMs, 0);
     });
   }
 });
