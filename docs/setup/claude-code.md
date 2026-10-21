@@ -1,8 +1,8 @@
 # Claude Code
 
-Rolle: Koordinator; Fable 5.1 als Advisor. Nahtstellen und Security routet
-[providers.md](providers.md) zuerst auf Codex `gpt-6-astra`, Claude-Worker nur
-als Ausweichen (E8 in `docs/PLAN.md`, bestätigt 02.10.2026).
+Historisches Rollenbeispiel (02.10.2026, E8 in `docs/PLAN.md`): Koordinator,
+Fable 5.1 als Advisor, Codex zuerst für Nahtstellen/Security.
+Aktuelle Zuweisungen folgen ausschließlich [AGENTS.md](../../AGENTS.md), Abschnitt Routing.
 Zurück zur Übersicht: [README.md](README.md).
 
 ## Pflichtdateien im Repo
@@ -73,15 +73,15 @@ In `~/.claude/settings.json` (nur Namen):
 ## Subagenten und Berichte
 
 Subagenten dürfen `.pa/report_*.md` unter Umständen nicht schreiben. Dann
-geben sie den Bericht als Text zurück, und der Koordinator committet ihn.
+geben sie den Bericht als Text zurück, und der Koordinator trägt ihn in den PR-Text ein.
 Nicht umgehen (kein Schreiben über Umwege).
 
 ## Advisor Fable 5.1
 
-Subagent mit `model: fable` und maximalem Effort. Worker dürfen ihn selbst
-rufen bei Nahtstellen-, Security- und Architekturentscheidungen und wenn sie
-länger als 30 Minuten feststecken; sonst über den Koordinator. Gegenstück:
-GPT-6 Astra über Codex ([codex.md](codex.md)).
+Rezept vom 02.10.2026: Subagent mit `model: fable`, maximalem Effort;
+damaliges Gegenstück GPT-6 Astra über Codex ([codex.md](codex.md)).
+Aktuelle Advisor-Namen und Zugänge: privater Koordinatornachweis; Rollen,
+Unabhängigkeit und Eskalationsrecht: AGENTS.md „Reviews and advisors“.
 
 ## Gotchas
 

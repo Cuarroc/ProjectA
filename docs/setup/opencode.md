@@ -1,6 +1,7 @@
 # OpenCode
 
-Rolle: Docs, Skripte, Zweitreview (GLM; DeepSeek als Worker offen, W2-09b). Stand: OpenCode 1.18.32.
+Rollenbeispiel vom 04.10.2026: Docs, Skripte, Zweitreview (GLM; DeepSeek offen, W2-09b), OpenCode 1.18.32.
+Aktuelles Routing: [AGENTS.md](../../AGENTS.md); Zugang vor Einsatz neu belegen.
 Zurück zur Übersicht: [README.md](README.md).
 
 ## Konfiguration `~/.config/opencode/opencode.jsonc` (nur Struktur)
