@@ -8,6 +8,10 @@ itself. Missing measurements are marked **OPEN**. This report does not accept
 itself: it lists evidence for an independent reader.
 
 Final measured state: `origin/main` @ `a8357d0c` (2026-10-21 16:42Z).
+Follow-up after the external acceptance of 2026-10-21 (§7): final files at
+`origin/main` @ `47ddbebc` (2026-10-21 22:22:55Z). Sections 1–5 keep their
+original measurement time; §6 rows now point to §7 where the follow-up changed
+them.
 
 ## 1. Stop of the side app (aufgaben-app / REF-APP-1)
 
@@ -142,10 +146,35 @@ review lane ran under an existing review-only budget; no quota or cap was raised
 | Point | Impact | Owner | Next step | Pending acceptance | Why open |
 |---|---|---|---|---|---|
 | Token / start-context / UI measurement | size savings proven only in bytes | Root | measure one real session start | §3 OPEN | no instrumentation |
-| Native reader on final main not executed | precondition only (size) | Stabschef | run `development_plan` cargo tests on server | reader check | PC build budget |
-| DOC-3 remainder (v2 plan beyond DOC-3a) | plan still 154 kB | Stabschef | slice after DOC-9 | DOC-3 | sequenced after DOC-1b |
-| Memory notes regrew (31633 → 56088 B) | larger start context again | Root/Stabschef | trim `lage-jetzt` / permissions appends | DOC-5 follow-up | normal operation adds text |
-| FU-2A-SUFFIX, FU-2C-CONCEAL (tier A), FU-1772-GLOB | pre-existing MEDIUMs, gate usability | Stabschef | dispatch after merges | own reviews | new packages |
-| FU-1758-1 roadmap fetch evidence | roadmap freshness wording | Stabschef | dispatch after DOC-9 | own review | blocked by DOC-9 |
+| Native reader on final main | — | — | done: PASS at `47ddbebc` (§7, A3) | external re-check | — |
+| DOC-3 remainder (v2 plan beyond DOC-3a) | — | — | done: Option B, #1791 → `b375265b` (§7, A2); dated text outside Option B stays | external re-check | — |
+| Memory notes regrew (31633 → 56088 B) | larger start context again | Root | `lage-jetzt` trimmed ~42k → ~4.1k chars (§7, item 4); `user-standing-permissions` (21,055 B) not trimmed | DOC-5 follow-up | permissions note not yet trimmed |
+| FU-2A-SUFFIX, FU-2C-CONCEAL (tier A), FU-1772-GLOB | — | Stabschef | FU-2A #1785 → `b07bc2a6`, FU-2C #1786 → `4ccc4a05` merged; FU-1772-GLOB only on a real brief | own reviews | GLOB not needed yet |
+| FU-1758-1 roadmap fetch evidence | — | — | A1b #1793 → `0f3e2ea9` merged with an explicit limit (§7, A1) | external re-check | limit cannot be closed from local Git evidence |
 | Side app: 4 `dispatched` rows, orphan daemon, project registration | small; nothing runs | Elias (delete) / Root | read-only re-check | §1 | deletion needs Elias |
 | HQ snapshot run after rework | DevHQ data may be stale | Root | `npm run hq` on main | — | not run |
+
+## 7. External acceptance follow-up (2026-10-21)
+
+Source: the external acceptance by ChatGPT/Codex at `213d29a3` (file
+`ProjectA_Externe_Abnahme_2026-10-21.md`, SHA-256
+`a77370b7adfb85ae16ebedd01c24b4434f776b8576529536a5e70e976afe13d3`, kept
+outside the repository). Its verdict: the measured cuts are accepted; the
+overall acceptance is not. Each row goes finding → change → counter-check.
+Only separate agents count as review. GLM-5.3 and DeepSeek-v4.1-flash are
+foreign families; the GPT-6.1 observers ran in separate sessions but belong to
+the author's family and never count as the independent review. Final files:
+`origin/main` @ `47ddbebc`. Nothing in this section accepts itself; the
+external re-check decides.
+
+| Finding | Change | Counter-check | State |
+|---|---|---|---|
+| A1 false roadmap freshness (`scripts/roadmap-data.mjs`) | #1789 closed unmerged after round 2 (Root SPLIT, branch kept @`636c85e9`) → A1b #1793, head `8ca2d9b2` → merge `0f3e2ea9` (21:48:39Z) | #1789 R1 @`f3da5d97`: DeepSeek reject, GLM conditional; R2 @`636c85e9`: a Root R1 instruction (date configured fetches) let a transient `-c` override show a false fresh → SPLIT. A1b: plain/configured fetch → UNKNOWN; dated only for an explicit main fetch with its own branch record and reflog event. A1b R1 @`566c296a`: DeepSeek reject (transient `insteadOf`), GLM conditional → one fix round: the newest same-name main record of ANY URL blocks older evidence; dates before 2001 or after "now" → UNKNOWN; both `insteadOf` forms red on `566c296a`, green on `8ca2d9b2`. R2 @`8ca2d9b2`: GLM approve with conditions, DeepSeek request changes, GPT observer request changes. Root decision after the last round: merge with an explicit limit (table in the #1793 PR text) | merged; external re-check OPEN. **Limit:** a deliberate transient `url.<X>.insteadOf` rewrite to a DIFFERENT repository whose path differs from origin only by `.git` leaves byte-identical local Git evidence (measured: FETCH_HEAD, reflog, ref file, config), because Git strips `.git` from the FETCH_HEAD description. Such a fetch can still be dated fresh; no local reader can tell. Known gap (static, GLM-R2-F3): a rewrite fetch that updates the ref and then fails before writing FETCH_HEAD. There is no universal "never false fresh" claim. |
+| A1 old "only fail-safe" disposition of #1758 | Retracted in the PR texts of #1789 and #1793 | GLM R2 confirmed the retraction is present | done in text |
+| A2 PLAN rows vs delivery | DOC-3 Option B (Root decision 18:20Z): #1791 → `b375265b` (19:43:47Z). PLAN reconciliation #1790, head `b8abda0f` → `47ddbebc` (22:22:55Z) | #1791: GLM and DeepSeek approve with conditions; four moved blocks byte-exact (3140/2370/4993/3011 B, SHA-256 match), 235 `parsePlan` entries and 128 nine-column rows identical. #1790: a separate check found two stale rows (FU-1758-1, SIZE-BUDGET-GATE), fixed in one round; Root delta check at `b8abda0f`; author reports 38 DEVFLOW rows byte-identical, 40 decision projections identical, `prepush` exit 0 | merged; external re-check OPEN |
+| A2 the missed DOC-3-before-DOC-9 order | Recorded in PLAN: the order was missed; the DOC-9 report (#1783, `213d29a3`) was delivered and merged, which is not the external acceptance | — | recorded, not undone |
+| A2 dated text outside the Option-B blocks (v2 plan §3.13, §3.15 E10, §§4/4b tables of 06.10, some §10 rows) | Not moved: Option-B boundary with a retained-contract note | GLM F2 / DeepSeek info in #1791 | OPEN for the re-check |
+| A3 native reader on the final files | First proof at `213d29a3` (provisional). Rerun at `47ddbebc` by a different GPT-6.1 session: unchanged `Store::import_project_development_plan` → `guidance::read` → `parse_plan` → Store projection on the real `docs/PLAN.md` (245,849 B, SHA-256 `5212a28d…2eddaa`), isolated new test DB, no app start | 38 DEVFLOW packages `DF-00`…`DF-37` against an independent oracle; revision 1, reimport stays 1, stale revision rejected, close/reopen identical; 13 reader boundary cases identical to the first proof; reader/parser/Store files byte-identical to the first proof. FU-1758-1 and DOC-3 rows are present in the stored source but outside this parser's DEVFLOW scope | PASS (bounded); the rows of the nine-column Z1–Z4 tables are not part of this projection |
+| A4 side-app restart safety | No DB write. Source proof: `dispatched` rows are not selected or released at startup or on automatic retry. PC read-only 18:25Z: 4 workers (2 archived, respawn refused), 0 development launches/runs, no update-recovery file. AgentsRoom ticket f5276c87 pending, unassigned, no board-action or ship trigger. Server: no executable job | Root disposition 18:32Z: closed within these bounds | Residuals: a human can manually respawn the 2 exited workers; which source commit built the installed binary 1.6.6 is UNKNOWN |
+| Item 4 provenance of later model/review grants | Relayed user decisions (no exportable chat log): Root on Claude, delegated agents incl. reviewers GPT-6.1/high (order 2026-10-20 21:56Z); GPT-6 Astra allowed (~22:42Z, chat); the existing Ollama credit for reviews only, no top-up (amount not published) (relay 22:54:03Z); OpenAI context size left automatic (relay 23:12:21Z); Codex may use its full weekly quota | — | stated with limits: "about" times are Root's reading of the chat |
+| Item 4 context/slot snapshot | Start files at `origin/main`: AGENTS.md 30,665 B, CLAUDE.md 3,310 B, STAND.md 3,155 B, PLAN 245,849 B at `47ddbebc` (read in parts). Memory `lage-jetzt` had regrown to ~42k chars; trimmed to ~4.1k chars at 20:31Z, the full previous text kept byte-for-byte as a backup; `user-standing-permissions` (21,055 B) not trimmed | Token count UNKNOWN (no instrumentation). Server 4/12 slots busy at 18:09Z; PC 1.4 GB free RAM at 18:09Z, so no PC builds | stated; permissions note still long |
