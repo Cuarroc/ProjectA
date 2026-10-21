@@ -1,9 +1,9 @@
 # Paketgrößenregel — ursprünglicher Vorschlag
 
-Unveränderter Text aus [`docs/plan/v2.0/plan.md`](../../plan/v2.0/plan.md#6-vorschlag-paketgrößenregel),
+Unveränderter Text aus [`docs/plan/v2.0/plan.md`](https://github.com/Cuarroc/ProjectA/blob/653db64985563c8a3e1603cd6d30906648ada41d/docs/plan/v2.0/plan.md#L641-L684),
 Basis `653db64985563c8a3e1603cd6d30906648ada41d`, Zeilen 641–684.
 Die damaligen Antworten bleiben in [Abschnitt 7](../../plan/v2.0/plan.md#7-entscheidungs-inbox-eine-gebündelte-liste-11-fragen);
-dieser Archivort ändert ihren Status nicht. Maßgeblich ist heute [AGENTS.md, Regel 1](../../../AGENTS.md#die-zehn-core-rules).
+dieser Archivort ändert ihren Status nicht. Maßgeblich ist heute [AGENTS.md, Regel 1](../../../AGENTS.md#the-ten-core-rules).
 Der relative Link `size-evidence.md` im Original bezieht sich auf die [Belegdatei im ursprünglichen Verzeichnis](../../plan/v2.0/size-evidence.md).
 
 ## 6. Vorschlag: Paketgrößenregel

@@ -642,7 +642,7 @@ Vorgabe des Nutzers (06.10.): schnell und effektiv, ohne Leerläufe, lange Warte
 
 Der [ursprüngliche Vorschlag mit Befunden und Absicherung](../../archive/v2-plan-2026-10/size-proposal.md) ist unverändert ausgelagert.
 Die damaligen Antworten bleiben in Abschnitt 7; die Auslagerung ändert ihren Status nicht.
-Maßgeblich ist heute [AGENTS.md, Regel 1](../../../AGENTS.md#die-zehn-core-rules): höchstens 300 Diffzeilen einschließlich Tests, bei einer durch Review erzwungenen Fixrunde höchstens 400.
+Maßgeblich ist heute [AGENTS.md, Regel 1](../../../AGENTS.md#the-ten-core-rules).
 
 ## 7. Entscheidungs-Inbox (eine gebündelte Liste, 11 Fragen)
 
