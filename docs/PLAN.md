@@ -293,41 +293,41 @@ vor Nutzung muss Auto-Top-up aus sein und der Nutzer den Schlüssel selbst im Va
 hinterlegen. OpenCode Zen ist nicht freigegeben.
 
 
-### DOC und Hook-Pakete — Nachtrag 20.10.2026
+### DOC und Hook-Pakete — Nachtrag 21.10.2026
 
-Teilstand DOC-8, kein neuer Gesamtstand: Git/PR/CI am 20.10.2026 23:26–23:57 UTC per
-`git fetch origin`, `git log origin/main -1`, `git ls-remote` und `gh pr view` geprüft:
-main `653db649`; alle sieben unten nummerierten PRs OPEN/Draft, Linux/Windows/red-first
-SKIPPED, kein Mergebeleg. Lokal vorbereitete Arbeit ist nicht gepusht oder abgenommen.
-Ticket-/Nicht-Git-Stände: Root-Auftrag 23:21 UTC; `lage-jetzt` hier nicht verfügbar,
-Speicherinhalte daher nicht unabhängig geprüft. „Angenommen“ ist keine App-Laufzeitabnahme.
-Chief koordiniert, Root nimmt ab und besitzt Ready/Labels/Mergify; der gestoppte
-Planer bleibt gestoppt. Nutzerentscheidungen bleiben erhalten. Diese Zeilen erteilen
-keinen neuen Startauftrag. Je Paket gelten Größenlimit, eigene prepush und Root-Abnahme;
-Code benötigt Rot→Grün und kandidatgebundene Reviews, Dokumentation Leser-/Linkbelege.
-„Danach“ in Abnahme nennt den nächsten Schritt und das Ergebnis nach Integration.
+DOC-8-Teilstand: `gh pr view`, `git fetch origin`, `git ls-remote`
+am 21.10. 00:52 UTC: main `4cb2622d`, DOC-6 gemergt; übrige nummerierte PRs Draft.
+CI-SKIPPED meint nur Draft-Läufe; Code (auch FLK-WIN) braucht weiter Rot→Grün.
+Nicht-Git: Root-Auftrag/Disposition 21.10.; `lage-jetzt` fehlt, Speicher ungeprüft.
+Root nimmt ab, setzt Ready/Labels/Queue; Chief koordiniert, Planer bleibt gestoppt.
+Kein neuer Startauftrag: je Paket Größenregel, eigene prepush und Root-Abnahme;
+Code braucht kandidatgebundene Reviews, Doku Leser-/Links. „Danach“ nennt den
+nächsten Schritt. Technisches Gate zur Quellenbindung bleibt offen;
+Größenpolitik erst nach DOC-4-Merge abgleichen. FU1758-1 erst nach DOC-9.
+C2 bezeichnet Hook-Prüffälle; P9 den Folgeauftrag im ruhenden Terminal.
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| DOC-1 | PLAN archivieren, Leser erhalten | srv-doc-1-plan-archive | – | Server | C | In Prüfung: #1760 `f25d05f8`; Root-Abnahme ausstehend | aktive Pflichten/IDs und native Leser erhalten; danach Root prüft/integriert Archiv | 148253cc |
-| DOC-2 | Entscheidungsindex mit vollständigem Journal | srv-doc-2-decisions-index | – | Server | C | In Prüfung: #1761 `177be650`; Root-Abnahme ausstehend | Quellen/Anker und Journal erhalten; danach Root prüft/integriert Index | 9f78f652 |
-| DOC-3 | Rest des v2-Detailplans vereinfachen | Chief benennt Restowner | DOC-3a | Server | C | Geplant: Restschnitt offen; kein eigener PR | Restumfang/Owner/Leserbelege vor Start festlegen; DOC-3a beendet nicht DOC-3 | unbekannt |
-| DOC-3a | Größenregel-Vorschlag bytegleich auslagern | srv-doc-3a-v2-slice | – | Server | C | In Prüfung: #1762 `67a51691`; Root-Abnahme ausstehend | v2-Zellen/Zeilenversatz erhalten, native Tests; danach Root prüft/integriert ersten Schnitt; Rest DOC-3 bleibt offen | 3f7748a1 |
-| DOC-4 | Betriebsregeln widerspruchsfrei halten | srv-doc-4-rules-reconcile | – | Server | C | In Prüfung: #1759 `6b9d63a4`; Root-Abnahme ausstehend | Kernregeln/Rechte/Limits erhalten; danach Root prüft/integriert Abgleich | 90435bab |
-| DOC-5 | Begrenztes Speicherpaket liefern | bestehender Speicherowner; Root | – | egal | C | Angenommen: Root laut Auftrag 20.10. 23:07:57Z, D24; Nicht-Git | gemeldet: 31633 Bytes/178 Zeilen; Laufzeit, automatische Kontext-/UI-/Tokenlimits separat; GPT-1M-Pflicht entfällt allein; danach Root belegt Restgrenzen | 252b26ed |
-| DOC-6 | Roadmap zeigt Quelle/Alter/Prüflücken | srv-doc-6-roadmap-honest | – | Server | B | In Prüfung: #1758 `c05e6c6b`; Root-Abnahme ausstehend | unbekannte/alte Daten sichtbar; danach Root prüft/integriert Anzeige, kein Laufzeitbeleg | e9df1aff |
-| DOC-7 | Vorbereiteten Dokumentationsschnitt validieren | bestehender Owner j4tybd | Detail unbekannt | egal | unbekannt | Blockiert: laut Auftrag 171 ALL im Index, uncommittet; kein PR | Abhängigkeits-/Werkzeugausgabenvalidierung und volle Gates fehlen; Detailquelle unbekannt; danach Owner belegt Stufe/Schnitt, Root nimmt ab | 69c96921 |
-| DOC-8 | Eine kanonische Zeile je DOC-/Hook-Paket | srv-doc-8-plan-rows; Chief koordiniert | DOC-1 | Server | C | In Prüfung: gestapelter Kandidat auf `f25d05f8`; Elternabnahme ausstehend | Leser/Plancheck/HQ/Links/prepush grün; danach Root integriert Zeilen erst nach Elternabnahme/-merge und retargetet Draft auf main | a40db352 |
-| DOC-9 | Abschlussbericht mit getrennten Lieferständen | Root berichtet; Chief belegt | DOC-1, DOC-2, DOC-3a, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8 | egal | C | Blockiert: Bericht ausstehend; Endabnahme wartet auf DOC-1–8 | Root prüft Gesamtquellen, Rest DOC-3 und Beleglücken; danach Abschlussbericht statt zweiter Roadmap | 566e3f2f |
-| DOC-CTRL1 | Dokumentationsarbeit beaufsichtigen | Chief; Root nimmt ab | – | egal | C | In Arbeit: laut Auftrag Koordinationsowner; native Lage unbekannt | Aufträge/Überlappung/Restpflichten abgleichen; danach Chief liefert belegte Übergabe an Root | b3d2f947 |
-| PA-HOOKS-2a | C2-7/8: Startdialog trotz Auftragsecho erkennen | srv-pa-hooks-2a, gleiche Fix-Lane | – | Server | A | In Prüfung: #1756 `e0cacb41`; Fixrunde gepusht, keine Root-Abnahme belegt | Kandidatgebundene Fixreview offen; danach Dialog sperrt Enter; Root integriert, DOC-8-Zeile vorher abgleichen | e9f093c8 |
-| PA-HOOKS-2b | C2-6/10: historische Titel/Trust/Blockgrund | Root bindet einen Owner | PA-HOOKS-2a | Server | A | Blockiert: erst nach Merge #1756; kein PR | Rot→Grün, legitimen Trust erhalten, Blockgrund bei Ablauf; danach Root prüft/integriert; kein blindes Enter | unbekannt |
-| PA-HOOKS-2c | C2-9: benannte Blockade bis Erholung erhalten | srv-pa-hooks-2c, gleiche Fix-Lane | – | Server | A | In Prüfung: #1757 `579b54f5`; Fixrunde gepusht, keine Root-Abnahme belegt | Kandidatgebundene Fixreview offen; danach nur belegte Erholung hebt Blockade auf; Root integriert | 0bf0a005 |
-| PA-HOOKS-2d | Nur P9: belegter Folgeauftrag im ruhenden Terminal | Root bindet einen Owner | PA-HOOKS-2b | Server | A | Blockiert: Fehlerzeit-Capture/Ursache fehlen; kein PR | Capture mit effektivem Marker, Rot→Grün/PTY, Busy-/Modal-Gegenfälle; danach Root prüft; entfällt als Duplikat, falls 2b P9 belegt löst | unbekannt |
+| DOC-1 | PLAN archivieren, Leser erhalten | srv-doc-1-plan-archive | – | Server | C | In Prüfung: #1760 `a226b995` | Pflichten/IDs/Leser erhalten; danach Root nimmt Archiv ab/integriert | 148253cc |
+| DOC-2 | Entscheidungsindex mit Journal | srv-doc-2-decisions-index | – | Server | C | In Prüfung: #1761 `67a63f11` | Quellen/Anker/Journal erhalten; danach Root nimmt ab/integriert | 9f78f652 |
+| DOC-3 | v2-Rest vereinfachen | Root benennt Restowner | DOC-3a | Server | C | Geplant: Restschnitt ohne PR | Root disponiert/schneidet Rest vor DOC-9; Umfang/Owner/Leserbelege vor Start; DOC-3a beendet DOC-3 nicht | unbekannt |
+| DOC-3a | Größenentwurf bytegleich auslagern | srv-doc-3a-v2-slice | – | Server | C | In Prüfung: #1762 `67a51691` | v2-Zellen/Versatz/native Tests erhalten; danach Root nimmt Teilschnitt ab/integriert | 3f7748a1 |
+| DOC-4 | Betriebsregeln abgleichen | srv-doc-4-rules-reconcile | – | Server | C | In Prüfung: #1759 `729a41ae` | Kernregeln/Rechte/Limits erhalten; danach Root nimmt ab/integriert | 90435bab |
+| DOC-5 | Begrenztes Speicherpaket | Speicherowner; Root | – | egal | C | In Prüfung: Root angenommen laut Auftrag 20.10. 23:07:57Z, Entscheid D24, Nicht-Git | gemeldet 31633 Bytes/178 Zeilen; Nutzerchat 20.10.: OpenAI 828400 Kontexttokens akzeptiert, andere Modelle weiter 1M; Laufzeit/automatische Kontext-/UI-/Tokenlimits separat durch Root zu belegen | 252b26ed |
+| DOC-6 | Quellenalter/Prüflücken zeigen | srv-doc-6-roadmap-honest | – | Server | B | Erledigt: #1758 `3874d77d`, Merge `4cb2622d` 21.10. 00:45:42Z | unbekannte/alte Quellen sichtbar; integriert, keine App-Laufzeitabnahme | e9df1aff |
+| DOC-7 | Issue-/Stand-Archiv validieren | Codebase-Archäologe (Agent) | – | PC/Server | C | In Prüfung: #1764 `4bc27e59`, 171 Diffzeilen | Autor meldet Windows-prepush 0; Beobachter prüfte Inhalt/Leser, nicht volle Gates; R1 srv-review-pr1764-r1-gpt61 fordert Planzeile; danach Root nimmt ab/integriert | 69c96921 |
+| DOC-8 | Kanonische DOC-/Hook-Zeilen | srv-doc-8-plan-rows | DOC-1 | Server | C | In Prüfung: #1763 auf Elternstand `a226b995` | Leser/Plancheck/HQ/Links/prepush grün; danach Root nimmt ab, integriert nach DOC-1-Merge und retargetet Draft auf main | a40db352 |
+| DOC-9 | Abschluss mit Lieferständen | Root berichtet; Chief belegt | DOC-1, DOC-2, DOC-3, DOC-3a, DOC-4, DOC-5, DOC-6, DOC-7, DOC-8 | egal | C | Blockiert: Endabnahme/Bericht offen | Root prüft Gesamtquellen, DOC-3-Rest/Beleglücken; danach Abschlussbericht, keine zweite Roadmap | 566e3f2f |
+| DOC-CTRL1 | Doku beaufsichtigen | Chief; Root nimmt ab | – | egal | C | In Arbeit: laut Auftrag; native Lage unbekannt | Aufträge/Überlappung/Restpflichten prüfen; danach belegte Übergabe an Root | b3d2f947 |
+| PA-HOOKS-2a | Startdialog trotz Echo (C2-7/8) | srv-pa-hooks-2a | – | Server | A | Verschoben: #1756 `e0cacb41`, Root-Split 20.10.; Draft/keine Queue | Historie erhalten; ersetzt durch 2a-v2, nicht angenommen | e9f093c8 |
+| PA-HOOKS-2a-v2 | Mehrdeutige Startmenüs sperren | srv-pa-hooks-2a-v2 | – | Server | A | In Prüfung: #1766 `c20e637f`, geliefert | Rot→Grün; Reviews/Root-Abnahme offen; Nutzerchat 21.10. 00:22Z: bei Zweifel/Schadcodeverdacht fragen, kein pauschales Hook-Vertrauen; danach integrieren | b91a51cd |
+| PA-HOOKS-2b | Titel/Trust/Blockgrund (C2-6/10) | Root bindet Owner | PA-HOOKS-2a-v2 | Server | A | Blockiert: erst nach Merge 2a-v2; kein PR | Rot→Grün, legitimen Trust/Blockgrund bei Ablauf erhalten; danach Root prüft/integriert; kein blindes Enter | unbekannt |
+| PA-HOOKS-2c | Blockade erhalten (C2-9) | srv-pa-hooks-2c | – | Server | A | Verschoben: #1757 `579b54f5`, Root-Split; Draft/keine Queue | Historie erhalten; ersetzt durch 2c-v2, nicht angenommen | 0bf0a005 |
+| PA-HOOKS-2c-v2 | Blockade nur belegt aufheben | srv-pa-hooks-2c-v2 | – | Server | A | Blockiert: Übergabe 21.10. 00:53Z, kein PR | main.rs-Scope/Widerspruch im Recovery-Test durch Root klären; danach Rot→Grün, Reviews/Root-Abnahme/Integration | 2f88e71e |
+| PA-HOOKS-2d | Nur Folgeauftrag P9 | Root bindet Owner | PA-HOOKS-2b | Server | A | Blockiert: Fehlerzeit-Capture/Ursache fehlen; kein PR | Capture mit effektivem Marker, Rot→Grün/PTY, Busy-/Modal-Gegenfälle; danach Root prüft; entfällt falls 2b P9 belegt löst | unbekannt |
 
-DOC-8 übernimmt die fehlenden Zeilen aus R1756-G2/A2 und R1757-A3/G2.
-Die Befunde sind damit im Kandidaten adressiert; Root muss die Integration vor
-`review-ok` belegen. Hook-Codebefunde und PR-Berichtskorrekturen bleiben bei ihren Ownern.
+DOC-8 adressiert R1756-G2/A2 und R1757-A3/G2; Root belegt Integration vor `review-ok`.
+Hook-Code/PR-Berichtskorrekturen bleiben bei ihren Ownern.
 
 ### CI und Durchlauf — Nachtrag 15.10.2026
 
