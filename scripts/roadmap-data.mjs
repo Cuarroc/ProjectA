@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, lstatSync } from "node:fs";
+import { mkdirSync, writeFileSync, lstatSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { buildRoadmap } from "./lib/roadmap-data.mjs";
 import { renderRoadmap } from "./lib/roadmap-page.mjs";
@@ -19,6 +19,23 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   // PLAN and mainSha must name the same tree, so the PLAN comes from origin/main, not the working tree.
   const mainSha = command("git", ["rev-parse", "origin/main"]);
   const plan = command("git", ["show", `${mainSha}:docs/PLAN.md`]);
+  // FETCH_HEAD identifies the source; only the current main ref's fetch reflog dates its acquisition.
+  let fetchedAt = null;
+  try {
+    const path = command("git", ["rev-parse", "--git-path", "FETCH_HEAD"]);
+    const origin = command("git", ["remote", "get-url", "origin"]).replace(/\.git\/?$/, "");
+    const matches = readFileSync(path, "utf8").split("\n").some(line => {
+      const [sha, , source] = line.split("\t");
+      return sha === mainSha && source?.replace(/\.git\/?$/, "") === `branch 'main' of ${origin}`;
+    });
+    if (matches) {
+      const [sha, selector, message] = command("git", ["reflog", "show", "-1", "--format=%H%x09%gD%x09%gs", "--date=unix", "refs/remotes/origin/main"]).split("\t");
+      const seconds = selector?.match(/@\{(\d+)\}$/)?.[1];
+      if (sha === mainSha && seconds && message?.startsWith("fetch ")) fetchedAt = new Date(Number(seconds) * 1000).toISOString();
+    }
+  } catch (e) {
+    if (e.code !== "ENOENT") io.err(`roadmap: fetch evidence unavailable (${e.code || e.message}); source freshness stays unknown\n`);
+  }
   const fields = "number,isDraft,state,mergedAt,labels,body,headRefName,baseRefName,updatedAt";
   // Historical check rollups are large and cannot affect a merged package's state.
   const open = JSON.parse(command("gh", ["pr", "list", "--state", "all", "--search", "is:open", "--limit", "1000", "--json", `${fields},statusCheckRollup`]));
@@ -41,19 +58,19 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   const releases = JSON.parse(command("gh", ["release", "list", "--limit", "1000", "--json", "tagName,publishedAt,isDraft,isPrerelease"]));
   if (!Array.isArray(releases) || releases.length >= 1000) throw new Error("Release list incomplete");
   const now = deps.now || new Date();
-  const data = buildRoadmap({ plan, prs, releases, now, mainSha });
+  const data = buildRoadmap({ plan, prs, releases, now, mainSha, fetchedAt });
   let text = JSON.stringify(data, null, 2) + "\n", target = ".pa/roadmap-data.json";
   if (values.page) {
     target = ".pa/roadmap.html";
     const changes = command("git", ["log", mainSha, "--max-count=20", "--format=%cs%x09%s", "--", "docs/PLAN.md"]).split("\n").filter(l => l.includes("\t") && isoDate(l.split("\t")[0])).map(l => ({ date: l.split("\t")[0], subject: l.split("\t").slice(1).join("\t") }));
     // The plan check reads the same origin/main tree; if it cannot run, findings stay undefined and the page says so.
-    let findings, checked = "";
+    let findings, notChecked, checked = "";
     const code = await (deps.planCheck || planCheck)(["--json"], { out: s => { checked += s; }, err: () => {} }, { run, now, read: p => command("git", ["show", `${mainSha}:${p}`]) });
     // Empty or malformed output must not abort the page; the renderer then marks the findings as not connected.
-    if (code === 0 || code === 1) try { findings = JSON.parse(checked).findings; } catch {}
+    if (code === 0 || code === 1) try { ({ findings, notChecked } = JSON.parse(checked)); } catch {}
     // One line, no payload: the page still renders, but the missing findings must not go unnoticed.
     if (!Array.isArray(findings)) { findings = undefined; io.err(`roadmap: plan check gave no usable findings (exit ${code}); page shows them as not connected\n`); }
-    text = renderRoadmap(data, { releases, changes, findings, now });
+    text = renderRoadmap(data, { releases, changes, findings, notChecked, now });
   }
   if (values.stdout) io.out(text);
   else {
