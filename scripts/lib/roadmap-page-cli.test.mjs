@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { makeRunner } from "./dev-tools.mjs";
+import { makeRunner, cleanEnv } from "./dev-tools.mjs";
 import { main } from "../roadmap-data.mjs";
 
 const now = "2026-10-15T12:00:00Z", page = "roadmap.html";
@@ -12,7 +12,7 @@ const release = { tagName: "v1.0.0", publishedAt: "2026-10-01T00:00:00Z", isDraf
 
 // The write branch works on the current directory, so it runs inside a throwaway repository whose origin/main is HEAD.
 async function inRepo({ ignore = `.pa/${page}\n`, title = "Search", withPlanCheck = false, setup = () => {}, args = ["--page"], planCheck, fake = () => undefined }, check) {
-  const dir = mkdtempSync(join(tmpdir(), "roadmap-page-")), cwd = process.cwd(), real = makeRunner(), out = [], errors = [];
+  const dir = mkdtempSync(join(tmpdir(), "roadmap-page-")), cwd = process.cwd(), real = makeRunner({ env: { ...cleanEnv(), GIT_COMMITTER_DATE: now } }), out = [], errors = [];
   try {
     const git = (...a) => assert.equal(real("git", ["-C", dir, ...a]).code, 0);
     const commit = (msg) => git("-c", "user.name=t", "-c", "user.email=t@users.noreply.github.com", "commit", "-q", "-m", msg);
@@ -24,6 +24,7 @@ async function inRepo({ ignore = `.pa/${page}\n`, title = "Search", withPlanChec
     git("add", ".");
     commit("plan: first");
     setup(dir, git, commit);
+    if (real("git", ["-C", dir, "remote", "get-url", "origin"]).code !== 0) git("remote", "add", "origin", ".");
     git("update-ref", "refs/remotes/origin/main", "HEAD");
     process.chdir(dir);
     const run = (cmd, args) => fake(cmd, args) ?? (cmd === "git" ? real(cmd, args) : { code: 0, stdout: JSON.stringify(args[0] === "release" ? [release] : []) });
@@ -135,5 +136,98 @@ test("page and stdout together print html and write no file", async () => {
     assert.equal(code, 0);
     assert.match(out, /^<!doctype html>/);
     assert.equal(existsSync(join(dir, ".pa")), false);
+  });
+});
+
+test("page preserves the plan check notChecked list alongside findings", async () => {
+  const notChecked = ["GitHub unavailable", "Jobs not observed", "<img src=x>"];
+  const planCheck = async (_argv, io) => { io.out(JSON.stringify({ findings: [], notChecked })); return 0; };
+  await inRepo({ args: ["--page", "--stdout"], planCheck }, ({ code, out }) => {
+    assert.equal(code, 0);
+    assert.match(out, /Nicht geprüft/);
+    for (const text of ["GitHub unavailable", "Jobs not observed", "&lt;img src=x&gt;"]) assert.ok(out.includes(text), text);
+    assert.ok(!out.includes("<img src=x>"));
+  });
+});
+
+test("CLI records fetch time only for the matching origin main FETCH_HEAD", async () => {
+  for (const mode of ["fresh", "old", "missing", "wrong-sha", "wrong-remote", "wrong-branch", "future"]) {
+    const setup = (dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".");
+      if (mode === "missing") return;
+      const time = new Date(mode === "old" ? "2026-10-14T12:00:00Z" : mode === "future" ? "2026-10-16T12:00:00Z" : now);
+      const dated = makeRunner({ env: { ...cleanEnv(), GIT_COMMITTER_DATE: time.toISOString() } });
+      assert.equal(dated("git", ["-C", dir, "fetch", "-q", "origin", "main"]).code, 0);
+      const file = join(dir, ".git/FETCH_HEAD");
+      let text = readFileSync(file, "utf8");
+      if (mode === "wrong-sha") text = text.replace(/^[a-f0-9]+/, "0".repeat(40));
+      if (mode === "wrong-remote") text = text.replace("of .", "of other");
+      if (mode === "wrong-branch") text = text.replace("'main'", "'other'");
+      writeFileSync(file, text);
+      utimesSync(file, time, time);
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out }) => {
+      assert.equal(code, 0, mode);
+      const { stand } = JSON.parse(out);
+      assert.match(stand.mainSha, /^[a-f0-9]{40}$/);
+      assert.equal(stand.planRef, "origin/main");
+      assert.equal(stand.fetchAgeMs, mode === "fresh" ? 0 : mode === "old" ? 86400000 : null, mode);
+      assert.equal(stand.fetchedAt, mode === "fresh" ? "2026-10-15T12:00:00.000Z" : mode === "old" ? "2026-10-14T12:00:00.000Z" : null, mode);
+    });
+  }
+});
+
+test("an unrelated appended fetch cannot refresh origin main evidence", async () => {
+  const setup = (dir, git) => {
+    git("branch", "-M", "main"); git("branch", "other"); git("remote", "add", "origin", ".");
+    const old = makeRunner({ env: { ...cleanEnv(), GIT_COMMITTER_DATE: "2026-10-14T12:00:00Z" } });
+    assert.equal(old("git", ["-C", dir, "fetch", "-q", "origin", "main"]).code, 0);
+    git("fetch", "-q", "--append", "origin", "other");
+    utimesSync(join(dir, ".git/FETCH_HEAD"), new Date(now), new Date(now));
+  };
+  await inRepo({ setup, args: ["--stdout"] }, ({ code, out }) => {
+    assert.equal(code, 0);
+    const { stand } = JSON.parse(out);
+    assert.equal(stand.fetchedAt, "2026-10-14T12:00:00.000Z");
+    assert.equal(stand.fetchAgeMs, 86400000);
+  });
+});
+
+test("fetch evidence failures stay unknown with one diagnostic and no payload", async () => {
+  const fake = (cmd, args) => cmd === "git" && args[0] === "remote" ? { code: 124, stdout: "private.invalid" } : undefined;
+  await inRepo({ fake, args: ["--stdout"] }, ({ code, out, errors }) => {
+    assert.equal(code, 0);
+    assert.equal(JSON.parse(out).stand.fetchedAt, null);
+    assert.equal(errors.split("\n").filter(Boolean).length, 1);
+    assert.match(errors, /^roadmap: fetch evidence unavailable.*exit 124/);
+    assert.ok(!errors.includes("private.invalid"));
+  });
+});
+
+test("fetch evidence normalizes git suffixes on both remote descriptions", async () => {
+  for (const suffix of ["", ".git", ".git/"]) {
+    const setup = (dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".git"); git("fetch", "-q", "origin", "main");
+      const file = join(dir, ".git/FETCH_HEAD");
+      writeFileSync(file, readFileSync(file, "utf8").replace(/of .*\n$/, `of ${suffix}\n`));
+      utimesSync(file, new Date(now), new Date(now));
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out }) => {
+      assert.equal(code, 0);
+      assert.equal(JSON.parse(out).stand.fetchedAt, "2026-10-15T12:00:00.000Z", suffix);
+    });
+  }
+});
+
+test("the real plan checker omission contract reaches the page", async () => {
+  const fake = (cmd, args) => {
+    if (cmd === "gh" && args.includes("300")) return { code: 1, stdout: "" };
+    if (cmd === "git" && args.includes("--format=%cI")) return { code: 0, stdout: now };
+  };
+  await inRepo({ fake, withPlanCheck: true, args: ["--page", "--stdout"] }, ({ code, out, errors }) => {
+    assert.equal(code, 0, errors);
+    assert.match(out, /GitHub-Abfrage fehlgeschlagen; PRs und Planalter-Abgleich nicht geprüft/);
+    assert.match(out, /Laufende Jobs \(kein --events\)/);
+    assert.doesNotMatch(out, /Prüfumfang unbekannt|das Ergebnis der Plan-Prüfung wurde nicht übergeben/);
   });
 });

@@ -16,6 +16,16 @@ const check = (conclusion, isRequired = true) => ({ conclusion, isRequired });
 const build = (packages, prs = [], extra = {}) => buildRoadmap({ plan: { packages, decisions: [] }, prs, releases: [], now, mainSha: "abc1234", ...extra });
 const state = (p, extra = {}) => build([row("APP-1", extra)], [p]).packages[0].state;
 
+test("roadmap records source fetch age separately from generation time", () => {
+  const stand = build([row()], [], { fetchedAt: "2026-10-14T12:00:00Z" }).stand;
+  assert.deepEqual(stand, { generatedAt: "2026-10-15T12:00:00.000Z", mainSha: "abc1234", planRef: "origin/main", fetchedAt: "2026-10-14T12:00:00.000Z", fetchAgeMs: 86400000 });
+  for (const fetchedAt of [undefined, null, "garbage", "2026-10-16T12:00:00Z"]) {
+    const unknown = build([row()], [], { fetchedAt }).stand;
+    assert.equal(unknown.fetchedAt, null);
+    assert.equal(unknown.fetchAgeMs, null);
+  }
+});
+
 test("merged wins over error and human signals", () => {
   assert.equal(state(pr({ state: "MERGED", mergedAt: now, labels: [{ name: "conflict" }, { name: "do-not-merge" }] }), { owner: "Nutzer", ...done }), "Erledigt");
 });
