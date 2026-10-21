@@ -2762,7 +2762,7 @@ mod tests {
         let mut wrong = Vec::new();
         for screen in [
             "Ask Codex to\rdo anything",
-            "Ask Codex to do anything\r                       ",
+            "Ask Codex to do anything\r                        ",
             "Ask Codex to\tdo anything",
             "Ask Codex to\ndo anything",
             "Ask Codex to do anything\x1b[\x18m",
