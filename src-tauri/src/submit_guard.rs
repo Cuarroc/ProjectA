@@ -1152,6 +1152,39 @@ mod tests {
     }
 
     #[test]
+    fn complete_signature_before_visible_suffix_must_ask() {
+        let task = format!(
+            "Explain Update available Update now Skip. {} Finish analysis.",
+            "x".repeat(2300)
+        );
+        for marker in ["", "Ask Codex to do anything"] {
+            for answer_marker in ["", "⏺"] {
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, &task)
+                    .with_readiness_marker(marker)
+                    .with_answer_marker(answer_marker);
+                assert_eq!(
+                    guard.tick(&obs(start, 4, 100, Some(1), "Ask Codex to do anything")),
+                    Some(SubmitAction::WriteTask { write: 1 })
+                );
+                assert_eq!(
+                    guard.tick(&obs(start, 6, 4000, Some(5), &task)),
+                    Some(SubmitAction::Escalate)
+                );
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(
+                        BlockingDialog::CodexUpdateAvailable
+                    ))
+                );
+                assert!(guard.input_pending());
+                assert!(!guard.is_delivered());
+                assert!(!guard.is_confirmed());
+            }
+        }
+    }
+
+    #[test]
     fn complete_task_modal_quotes_ask_the_user() {
         let task = format!("BEGIN-unique-task-fragment {} Explain Update available Update now Skip and Hooks need review Trust all and continue. END-unique-task-suffix", "x".repeat(DIALOG_WINDOW_CHARS + 100));
         assert_guard_decision(&task, &task, false, true);
