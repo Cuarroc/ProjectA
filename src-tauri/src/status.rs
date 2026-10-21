@@ -2540,6 +2540,148 @@ mod tests {
         assert_eq!(engine.verdict_for("wk-1").column, COL_WORKING);
     }
 
+    const STARTUP_PROMPT: &str = "Ask Codex to do anything";
+    const STARTUP_DIALOGS: [crate::submit_guard::BlockingDialog; 2] = [
+        crate::submit_guard::BlockingDialog::CodexHooksReview,
+        crate::submit_guard::BlockingDialog::CodexUpdateAvailable,
+    ];
+
+    fn startup_fixture(detail: &str) -> StatusEngine {
+        let engine = StatusEngine::default();
+        engine.set_override("wk-1", Some(COL_DONE)).unwrap();
+        engine.note_submit_guard("wk-1", Some(detail));
+        assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+        engine
+    }
+
+    #[test]
+    fn startup_block_requires_disappearance_after_stale_composer() {
+        for dialog in STARTUP_DIALOGS {
+            let engine = startup_fixture(dialog.blocked_message());
+            let blocked = engine.verdict_for("wk-1");
+            let at = Instant::now();
+            engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
+            engine.note_output_at("wk-1", STARTUP_PROMPT, at + Duration::from_secs(4));
+            engine.tick_at(at + Duration::from_secs(7));
+            assert_eq!(engine.verdict_for("wk-1"), blocked);
+        }
+    }
+
+    #[test]
+    fn startup_block_keeps_other_dialogs_and_unknown_output() {
+        for dialog in STARTUP_DIALOGS {
+            for screen in [
+                "Update available\nUpdate now\nSkip",
+                "Hooks need review\nTrust all and continue",
+                "unrecognized startup decision",
+            ] {
+                let engine = startup_fixture(dialog.blocked_message());
+                let at = Instant::now() + Duration::from_secs(4);
+                engine.note_output_at(
+                    "wk-1",
+                    &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}\n{screen}"),
+                    at,
+                );
+                engine.tick_at(at + Duration::from_secs(3));
+                assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+                assert!(engine
+                    .verdict_for("wk-1")
+                    .reason
+                    .unwrap()
+                    .contains("Terminal"));
+            }
+        }
+    }
+
+    #[test]
+    fn startup_block_is_invariant_under_read_splits() {
+        let long_modal = format!(
+            "{}\nHooks need review\n{}\nTrust all and continue\n{}\n{STARTUP_PROMPT}",
+            "p".repeat(950),
+            "hook entry ".repeat(115),
+            "x".repeat(4096)
+        );
+        for (bytes, expected) in [
+            (long_modal, COL_NEEDS_YOU),
+            (
+                format!("\x1b[2J\x1b[H{STARTUP_PROMPT}\nUpdate available\nUpdate now\nSkip"),
+                COL_NEEDS_YOU,
+            ),
+            (
+                format!("\x1b]title\x1b[2J\x1b[H{STARTUP_PROMPT}\x07"),
+                COL_NEEDS_YOU,
+            ),
+            (
+                format!("\x1b[2J\x1b[H\x1b[32m{STARTUP_PROMPT}\x1b[0m"),
+                COL_DONE,
+            ),
+        ] {
+            for split in 0..=bytes.len() {
+                let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+                let at = Instant::now();
+                engine.note_output_at("wk-1", &bytes[..split], at);
+                engine.note_output_at("wk-1", &bytes[split..], at);
+                engine.tick_at(at + Duration::from_secs(3));
+                assert_eq!(engine.verdict_for("wk-1").column, expected, "split {split}");
+            }
+            let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+            let at = Instant::now();
+            for byte in bytes.chars() {
+                engine.note_output_at("wk-1", &byte.to_string(), at);
+            }
+            engine.tick_at(at + Duration::from_secs(3));
+            assert_eq!(engine.verdict_for("wk-1").column, expected);
+        }
+    }
+
+    #[test]
+    fn startup_block_retains_delivery_failure_after_recovery() {
+        let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+        let blocked = engine.verdict_for("wk-1");
+        engine.note_submit_guard_failed("wk-1");
+        assert_eq!(engine.verdict_for("wk-1"), blocked);
+        let at = Instant::now();
+        engine.note_output_at("wk-1", &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}"), at);
+        engine.tick_at(at + Duration::from_secs(3));
+        assert_eq!(
+            engine.verdict_for("wk-1"),
+            Verdict::coded(COL_NEEDS_YOU, ReasonCode::DeliveryFailed)
+        );
+        engine.note_submit_guard("wk-1", None);
+        assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+    }
+
+    #[test]
+    fn startup_block_recovers_on_clear_before_idle_boundary() {
+        for dialog in STARTUP_DIALOGS {
+            let engine = startup_fixture(dialog.blocked_message());
+            let at = Instant::now();
+            engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
+            engine.note_output_at(
+                "wk-1",
+                &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}"),
+                at + Duration::from_secs(1),
+            );
+            assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+            engine.tick_at(at + Duration::from_secs(4));
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+        }
+    }
+
+    #[test]
+    fn startup_block_unknown_detail_never_clears_on_output() {
+        for detail in ["unknown startup decision", ""] {
+            let engine = startup_fixture(detail);
+            let blocked = engine.verdict_for("wk-1");
+            let at = Instant::now();
+            engine.note_output_at("wk-1", &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}"), at);
+            engine.tick_at(at + Duration::from_secs(3));
+            assert_eq!(engine.verdict_for("wk-1"), blocked);
+            engine.note_submit_guard("wk-1", None);
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+        }
+    }
+
     #[test]
     fn a_quiet_terminal_becomes_needs_you_after_the_idle_window() {
         let (engine, _recorder) = engine_with_worker();
