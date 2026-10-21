@@ -813,6 +813,7 @@ mod tests {
             (".claude", SkillsDiscovery::Convention),
         ] {
             // cmd needs raw quoting; expand paths in quotes with delayed expansion off.
+            // /D disables registry AutoRun commands, an external timing source.
             let result = std::process::Command::new("cmd.exe")
                 .args(["/D", "/V:OFF", "/C"])
                 .raw_arg("mklink /J \"%PROJECTA_TEST_LINK%\" \"%PROJECTA_TEST_TARGET%\"")
@@ -835,7 +836,7 @@ mod tests {
         }
     }
 
-    // Three independent nextest timings per Windows run, each with both assertions.
+    // Three separate samples (may run concurrently) per Windows run, each with both assertions.
     #[test]
     #[cfg(windows)]
     fn windows_junction_refusal_timing_sample_2() {
