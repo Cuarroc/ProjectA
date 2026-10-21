@@ -1253,7 +1253,7 @@
     }
 
     #[test]
-    fn startup_block_clears_on_delivery_or_output_and_preserves_override() {
+    fn startup_block_requires_delivery_after_output_and_preserves_override() {
         for delivered in [false, true] {
             let engine = crate::status::StatusEngine::default();
             engine.set_override("hooks-worker", Some("done")).unwrap();
@@ -1264,7 +1264,7 @@
             } else {
                 engine.note_output("hooks-worker", "Ask Codex to do anything");
             }
-            assert_eq!(engine.verdict_for("hooks-worker").column, "done");
+            assert_eq!(engine.verdict_for("hooks-worker").column, if delivered { "done" } else { "needs_you" });
         }
     }
 
