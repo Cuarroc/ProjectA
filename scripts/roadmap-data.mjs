@@ -19,19 +19,24 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   // PLAN and mainSha must name the same tree, so the PLAN comes from origin/main, not the working tree.
   const mainSha = command("git", ["rev-parse", "origin/main"]);
   const plan = command("git", ["show", `${mainSha}:docs/PLAN.md`]);
-  // FETCH_HEAD identifies the source; only the current main ref's fetch reflog dates its acquisition.
+  // Historical FETCH_HEAD entries need a matching explicit source in the dated reflog event.
   let fetchedAt = null;
   try {
     const path = command("git", ["rev-parse", "--git-path", "FETCH_HEAD"]);
     const origin = command("git", ["remote", "get-url", "origin"]).replace(/\.git\/?$/, "");
-    const matches = readFileSync(path, "utf8").split("\n").some(line => {
+    const mainSource = `branch 'main' of ${origin}`;
+    // A short main refspec can also resolve to a tag; its latest evidence must not borrow a branch entry.
+    const latestMain = readFileSync(path, "utf8").split("\n").map(line => {
       const [sha, , source] = line.split("\t");
-      return sha === mainSha && source?.replace(/\.git\/?$/, "") === `branch 'main' of ${origin}`;
-    });
+      return { sha, source: source?.replace(/\.git\/?$/, "") };
+    }).findLast(({ source }) => source === mainSource || source === `tag 'main' of ${origin}`);
+    const matches = latestMain?.sha === mainSha && latestMain.source === mainSource;
     if (matches) {
       const [sha, selector, message] = command("git", ["reflog", "show", "-1", "--format=%H%x09%gD%x09%gs", "--date=unix", "refs/remotes/origin/main"]).split("\t");
       const seconds = selector?.match(/@\{(\d+)\}$/)?.[1];
-      if (sha === mainSha && seconds && message?.startsWith("fetch ")) fetchedAt = new Date(Number(seconds) * 1000).toISOString();
+      // Implicit/configured or multiple refspecs cannot prove which source updated this ref.
+      const fromMain = /^fetch (?:-q |--quiet |--append )*origin \+?(?:refs\/heads\/)?main(?::refs\/remotes\/origin\/main)?: /.test(message || "");
+      if (sha === mainSha && seconds && fromMain) fetchedAt = new Date(Number(seconds) * 1000).toISOString();
     }
   } catch (e) {
     if (e.code !== "ENOENT") io.err(`roadmap: fetch evidence unavailable (${e.code || e.message}); source freshness stays unknown\n`);
