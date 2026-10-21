@@ -438,7 +438,8 @@ impl SubmitGuard {
         // Agent output after submission must not trigger startup decisions.
         if !matches!(self.state, StateData::AwaitingWork { .. }) {
             let tail = squash(last_chars(self.dialog_tail(obs), ECHO_SCAN_CHARS));
-            let visible = last_chars(&tail, DIALOG_WINDOW_CHARS);
+            // Check complete signatures across the same scan that may lose echoes.
+            let visible = tail.as_str();
             // Keep the existing readiness dismissal rule, including its P9 limit.
             let visible = if self.readiness_marker.is_empty() {
                 visible
