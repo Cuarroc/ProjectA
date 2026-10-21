@@ -831,6 +831,19 @@ mod tests {
         }
     }
 
+    // Three independent nextest timings per Windows run, each with both assertions.
+    #[test]
+    #[cfg(windows)]
+    fn windows_junction_refusal_timing_sample_2() {
+        windows_junctions_cannot_redirect_skill_destinations_outside_the_worktree();
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn windows_junction_refusal_timing_sample_3() {
+        windows_junctions_cannot_redirect_skill_destinations_outside_the_worktree();
+    }
+
     #[test]
     fn the_other_capabilities_keep_the_destination_they_had() {
         let worktree = Path::new("/tmp/wt");
