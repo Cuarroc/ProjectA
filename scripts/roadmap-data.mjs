@@ -11,6 +11,7 @@ const isoDate = d => { const t = Date.parse(`${d}T00:00:00Z`); return /^\d{4}-\d
 export const main = withExitCodes(async (argv, io, deps = {}) => {
   const { values } = parseArgs({ args: argv, options: { stdout: { type: "boolean" }, page: { type: "boolean" } } });
   const run = deps.run || makeRunner({ timeoutMs: 60000 });
+  const now = deps.now || new Date();
   const command = (cmd, args) => {
     const r = run(cmd, args);
     if (r.code !== 0) throw new Error(`${cmd} ${args.slice(0, 2).join(" ")} failed (exit ${r.code})`);
@@ -19,19 +20,28 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   // PLAN and mainSha must name the same tree, so the PLAN comes from origin/main, not the working tree.
   const mainSha = command("git", ["rev-parse", "origin/main"]);
   const plan = command("git", ["show", `${mainSha}:docs/PLAN.md`]);
-  // FETCH_HEAD identifies the source; only the current main ref's fetch reflog dates its acquisition.
+  // Historical FETCH_HEAD entries need a matching resolved source in the dated reflog event.
   let fetchedAt = null;
   try {
     const path = command("git", ["rev-parse", "--git-path", "FETCH_HEAD"]);
     const origin = command("git", ["remote", "get-url", "origin"]).replace(/\.git\/?$/, "");
-    const matches = readFileSync(path, "utf8").split("\n").some(line => {
+    const mainSource = `branch 'main' of ${origin}`;
+    // Every same-name ref kind and URL blocks older branch evidence.
+    const latestMain = readFileSync(path, "utf8").split("\n").map(line => {
       const [sha, , source] = line.split("\t");
-      return sha === mainSha && source?.replace(/\.git\/?$/, "") === `branch 'main' of ${origin}`;
+      return { sha, source: source?.replace(/\.git\/?$/, "") };
+    }).findLast(({ source }) => {
+      const [, name] = source?.match(/'([^']+)' of (.*)$/) || [];
+      return /(?:^|\/)main(?:\/HEAD)?$/.test(name || "");
     });
+    const matches = latestMain?.sha === mainSha && latestMain.source === mainSource;
     if (matches) {
       const [sha, selector, message] = command("git", ["reflog", "show", "-1", "--format=%H%x09%gD%x09%gs", "--date=unix", "refs/remotes/origin/main"]).split("\t");
       const seconds = selector?.match(/@\{(\d+)\}$/)?.[1];
-      if (sha === mainSha && seconds && message?.startsWith("fetch ")) fetchedAt = new Date(Number(seconds) * 1000).toISOString();
+      // Persistent config cannot prove a transient -c mapping; require an explicit main source in this event.
+      const fromMain = /^fetch (?:-q |--quiet |--append )*origin \+?(?:refs\/heads\/)?main(?::refs\/remotes\/origin\/main)?: /.test(message || "");
+      const time = Number(seconds) * 1000;
+      if (sha === mainSha && seconds && fromMain && time >= Date.UTC(2001, 0, 1) && time <= new Date(now).getTime()) fetchedAt = new Date(time).toISOString();
     }
   } catch (e) {
     if (e.code !== "ENOENT") io.err(`roadmap: fetch evidence unavailable (${e.code || e.message}); source freshness stays unknown\n`);
@@ -57,7 +67,6 @@ export const main = withExitCodes(async (argv, io, deps = {}) => {
   }
   const releases = JSON.parse(command("gh", ["release", "list", "--limit", "1000", "--json", "tagName,publishedAt,isDraft,isPrerelease"]));
   if (!Array.isArray(releases) || releases.length >= 1000) throw new Error("Release list incomplete");
-  const now = deps.now || new Date();
   const data = buildRoadmap({ plan, prs, releases, now, mainSha, fetchedAt });
   let text = JSON.stringify(data, null, 2) + "\n", target = ".pa/roadmap-data.json";
   if (values.page) {

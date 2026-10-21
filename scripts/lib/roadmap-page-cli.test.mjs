@@ -193,6 +193,249 @@ test("an unrelated appended fetch cannot refresh origin main evidence", async ()
   });
 });
 
+test("a foreign refspec cannot date historical main evidence as fresh", async () => {
+  for (const mainFetch of ["--append", "--no-write-fetch-head"]) {
+    const root = mkdtempSync(join(tmpdir(), "roadmap-source-")), cwd = process.cwd();
+    const remote = join(root, "remote.git"), seed = join(root, "seed"), client = join(root, "client");
+    const clock = "2026-10-21T16:00:00Z";
+    const env = { ...cleanEnv(), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" };
+    const git = (dir, args, date = clock) => {
+      const r = makeRunner({ env: { ...env, GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } })("git", ["-C", dir, ...args]);
+      assert.equal(r.code, 0, r.stderr);
+      return r.stdout.trim();
+    };
+    try {
+      for (const dir of [remote, seed, client]) mkdirSync(dir);
+      git(remote, ["init", "--bare", "-q"]);
+      git(seed, ["init", "-q", "-b", "main"]);
+      mkdirSync(join(seed, "docs"));
+      writeFileSync(join(seed, "docs/PLAN.md"), table("A"));
+      const commit = () => {
+        git(seed, ["add", "."]);
+        git(seed, ["-c", "user.name=Fixture", "-c", "user.email=fixture@users.noreply.github.com", "commit", "-q", "-m", "plan"]);
+        return git(seed, ["rev-parse", "HEAD"]);
+      };
+      const a = commit();
+      git(seed, ["branch", "other"]);
+      git(seed, ["remote", "add", "origin", remote]);
+      git(seed, ["push", "-q", "origin", "main", "other"]);
+      git(client, ["init", "-q"]);
+      git(client, ["remote", "add", "origin", remote]);
+      git(client, ["fetch", "-q", "origin", "main"], "2026-10-20T12:00:00Z");
+      writeFileSync(join(seed, "docs/PLAN.md"), table("B"));
+      const b = commit();
+      git(seed, ["push", "-q", "origin", "main"]);
+      git(client, ["fetch", "-q", mainFetch, "origin", "main"], "2026-10-21T15:00:00Z");
+      git(client, ["fetch", "-q", "--append", "origin", "+other:refs/remotes/origin/main"]);
+      assert.notEqual(a, b);
+      assert.equal(git(client, ["ls-remote", "origin", "refs/heads/main"]).split("\t")[0], b);
+      assert.equal(git(client, ["rev-parse", "origin/main"]), a);
+      const fetchHead = readFileSync(join(client, ".git/FETCH_HEAD"), "utf8");
+      assert.ok(fetchHead.includes(`${a}\t\tbranch 'main' of `));
+      assert.equal(fetchHead.includes(`${b}\t\tbranch 'main' of `), mainFetch === "--append");
+      assert.match(git(client, ["reflog", "show", "-1", "--format=%gs", "refs/remotes/origin/main"]), /other:refs\/remotes\/origin\/main/);
+      const real = makeRunner({ env });
+      const run = (cmd, args) => cmd === "gh" ? { code: 0, stdout: "[]" } : real(cmd, args);
+      let out = "", errors = "";
+      process.chdir(client);
+      const code = await main(["--stdout"], { out: s => { out += s; }, err: s => { errors += s; } }, { run, now: clock });
+      const { stand } = JSON.parse(out);
+      assert.equal(code, 0, errors);
+      assert.equal(errors, "");
+      assert.equal(stand.mainSha, a);
+      assert.equal(stand.planRef, "origin/main");
+      assert.equal(stand.fetchedAt, null, JSON.stringify({ remoteMain: b, localOriginMain: a, code, errors, stand }));
+      assert.equal(stand.fetchAgeMs, null);
+    } finally { process.chdir(cwd); rmSync(root, { recursive: true, force: true }); }
+  }
+});
+
+// Real remote namespace changes reproduce R1789-G1 without editing fetch metadata.
+async function resolvedFetch(source, suppressHead, check) {
+  const root = mkdtempSync(join(tmpdir(), "roadmap-resolved-")), cwd = process.cwd();
+  const remote = join(root, "remote.git"), seed = join(root, "seed"), client = join(root, "client");
+  const clock = "2026-10-21T16:00:00Z";
+  const env = { ...cleanEnv(), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" };
+  const git = (dir, args, date = clock) => {
+    const r = makeRunner({ env: { ...env, GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } })("git", ["-C", dir, ...args]);
+    assert.equal(r.code, 0, r.stderr);
+    return r.stdout.trim();
+  };
+  try {
+    for (const dir of [remote, seed, client]) mkdirSync(dir);
+    git(remote, ["init", "--bare", "-q"]); git(seed, ["init", "-q", "-b", "main"]);
+    mkdirSync(join(seed, "docs")); writeFileSync(join(seed, "docs/PLAN.md"), table("A"));
+    const commit = () => {
+      git(seed, ["add", "."]);
+      git(seed, ["-c", "user.name=Fixture", "-c", "user.email=fixture@users.noreply.github.com", "commit", "-q", "-m", "plan"]);
+      return git(seed, ["rev-parse", "HEAD"]);
+    };
+    const a = commit();
+    git(seed, ["branch", "other"]); git(seed, ["remote", "add", "origin", remote]);
+    git(seed, ["push", "-q", "origin", "main", "other"]);
+    git(client, ["init", "-q"]); git(client, ["remote", "add", "origin", remote]);
+    git(client, ["fetch", "-q", "origin", "main"], "2026-10-20T12:00:00Z");
+    writeFileSync(join(seed, "docs/PLAN.md"), table("B"));
+    const b = commit(); git(seed, ["push", "-q", "origin", "main"]);
+    git(client, ["fetch", "-q", "--no-write-fetch-head", "origin", "main"], "2026-10-21T15:00:00Z");
+    git(remote, ["update-ref", source, a]); git(remote, ["update-ref", "-d", "refs/heads/main"]);
+    git(client, ["fetch", "-q", suppressHead ? "--no-write-fetch-head" : "--append", "origin", "+main:refs/remotes/origin/main"]);
+    assert.notEqual(a, b);
+    assert.equal(git(client, ["ls-remote", "origin", "refs/heads/main"]), "");
+    const real = makeRunner({ env }), run = (cmd, args) => cmd === "gh" ? { code: 0, stdout: "[]" } : real(cmd, args);
+    let out = "", errors = ""; process.chdir(client);
+    const code = await main(["--stdout"], { out: s => { out += s; }, err: s => { errors += s; } }, { run, now: clock });
+    const { stand } = JSON.parse(out);
+    assert.equal(code, 0, errors); assert.equal(errors, ""); assert.equal(stand.mainSha, a);
+    check(stand);
+  } finally { process.chdir(cwd); rmSync(root, { recursive: true, force: true }); }
+}
+
+test("a resolved non-branch main cannot borrow historical branch freshness", async () => {
+  for (const source of ["refs/remotes/main", "refs/main"]) for (const suppress of [false, true]) {
+    await resolvedFetch(source, suppress, stand => {
+      assert.equal(stand.fetchedAt, null, `${source}, suppress=${suppress}`);
+      assert.equal(stand.fetchAgeMs, null);
+    });
+  }
+});
+
+test("a tag named main cannot borrow historical branch freshness", async () => {
+  for (const suppress of [false, true]) await resolvedFetch("refs/tags/main", suppress, stand => {
+    assert.equal(stand.fetchedAt, null, `suppress=${suppress}`);
+    assert.equal(stand.fetchAgeMs, null);
+  });
+});
+
+// Retain the inherited trailer name; Root reversed configured-positive dating after R1789-R2-G1.
+test("configured origin fetches are dated only by an unambiguous main mapping", async () => {
+  for (const mode of ["default", "origin", "quiet", "exact", "conflict", "ambiguous", "unknown"]) {
+    const setup = (_dir, git) => {
+      git("branch", "-M", "main"); git("branch", "other"); git("remote", "add", "origin", ".");
+      if (mode === "exact") git("config", "remote.origin.fetch", "+refs/heads/main:refs/remotes/origin/main");
+      git("fetch", ...(mode === "quiet" ? ["--quiet"] : []), ...(mode === "default" ? [] : ["origin"]));
+      if (mode === "conflict") git("config", "remote.origin.fetch", "+refs/heads/other:refs/remotes/origin/main");
+      if (mode === "ambiguous") git("config", "--add", "remote.origin.fetch", "+refs/heads/other:refs/remotes/origin/main");
+      if (mode === "unknown") git("config", "--unset-all", "remote.origin.fetch");
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
+      assert.equal(code, 0, errors);
+      const { stand } = JSON.parse(out);
+      assert.equal(stand.fetchedAt, null, mode);
+      assert.equal(stand.fetchAgeMs, null, mode);
+    });
+  }
+});
+
+test("explicit main fetch options retain coherent freshness", async () => {
+  for (const option of ["-q", "--quiet", "--append"]) for (const source of ["main", "refs/heads/main", "+refs/heads/main:refs/remotes/origin/main"]) {
+    const setup = (_dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".");
+      git("fetch", option, "origin", source);
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
+      assert.equal(code, 0, errors);
+      const { stand } = JSON.parse(out);
+      assert.equal(stand.fetchedAt, "2026-10-15T12:00:00.000Z", `${option} ${source}`);
+      assert.equal(stand.fetchAgeMs, 0);
+    });
+  }
+});
+
+async function transientFetch(remoteArgs, urlOverride) {
+  const root = mkdtempSync(join(tmpdir(), "roadmap-transient-")), cwd = process.cwd();
+  const remote = join(root, "remote.git"), seed = join(root, "seed"), client = join(root, "client");
+  const clock = "2026-10-21T16:00:00Z";
+  const env = { ...cleanEnv(), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null" };
+  const git = (dir, args, date = clock) => {
+    const r = makeRunner({ env: { ...env, GIT_COMMITTER_DATE: date, GIT_AUTHOR_DATE: date } })("git", ["-C", dir, ...args]);
+    assert.equal(r.code, 0, r.stderr);
+    return r.stdout.trim();
+  };
+  try {
+    for (const dir of [remote, seed, client]) mkdirSync(dir);
+    git(remote, ["init", "--bare", "-q"]); git(seed, ["init", "-q", "-b", "main"]);
+    mkdirSync(join(seed, "docs")); writeFileSync(join(seed, "docs/PLAN.md"), table("A"));
+    const commit = () => {
+      git(seed, ["add", "."]);
+      git(seed, ["-c", "user.name=Fixture", "-c", "user.email=fixture@users.noreply.github.com", "commit", "-q", "-m", "plan"]);
+      return git(seed, ["rev-parse", "HEAD"]);
+    };
+    const a = commit();
+    git(seed, ["branch", "other"]); git(seed, ["remote", "add", "origin", remote]);
+    git(seed, ["push", "-q", "origin", "main", "other"]);
+    git(client, ["init", "-q"]); git(client, ["remote", "add", "origin", remote]);
+    git(client, ["fetch", "-q", "origin", "main"], "2026-10-20T12:00:00Z");
+    writeFileSync(join(seed, "docs/PLAN.md"), table("B"));
+    const b = commit(); git(seed, ["push", "-q", "origin", "main"]);
+    git(client, ["fetch", "-q", "--no-write-fetch-head", "origin", "main"], "2026-10-21T15:00:00Z");
+    assert.equal(git(client, ["config", "--get-all", "remote.origin.fetch"]), "+refs/heads/*:refs/remotes/origin/*");
+    const direct = urlOverride?.startsWith("direct") || false;
+    if (urlOverride) {
+      const foreign = join(root, "foreign.git"); mkdirSync(foreign); git(foreign, ["init", "--bare", "-q"]);
+      git(seed, ["push", "-q", foreign, `${a}:refs/heads/main`]);
+      const key = direct ? "remote.origin.url" : `url.${foreign}.insteadOf`, value = direct ? foreign : remote;
+      const args = ["fetch", "-q", "--append", "origin", "+refs/heads/main:refs/remotes/origin/main"];
+      if (urlOverride.endsWith("env")) {
+        Object.assign(env, { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: key, GIT_CONFIG_VALUE_0: value });
+        git(client, args);
+        for (const name of ["GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"]) delete env[name];
+      } else git(client, ["-c", `${key}=${value}`, ...args]);
+    } else git(client, ["-c", "remote.origin.fetch=^refs/heads/main", "-c", "remote.origin.fetch=+refs/heads/other:refs/remotes/origin/main", "fetch", "-q", "--append", ...remoteArgs]);
+    assert.equal(git(client, ["config", "--get-all", "remote.origin.fetch"]), "+refs/heads/*:refs/remotes/origin/*");
+    assert.notEqual(a, b);
+    assert.equal(git(client, ["ls-remote", "origin", "refs/heads/main"]).split("\t")[0], b);
+    assert.equal(git(client, ["rev-parse", "origin/main"]), direct ? b : a);
+    const fetchHead = readFileSync(join(client, ".git/FETCH_HEAD"), "utf8");
+    assert.ok(fetchHead.includes(`${a}\t\tbranch 'main' of `));
+    assert.equal(fetchHead.includes(`${b}\t\tbranch 'main' of `), direct);
+    assert.equal(git(client, ["reflog", "show", "-1", "--format=%gs", "refs/remotes/origin/main"]), direct ? "fetch -q --no-write-fetch-head origin main: fast-forward" : `fetch -q --append${remoteArgs.length ? " origin" : ""}${urlOverride ? " +refs/heads/main:refs/remotes/origin/main" : ""}: forced-update`);
+    const real = makeRunner({ env }), run = (cmd, args) => cmd === "gh" ? { code: 0, stdout: "[]" } : real(cmd, args);
+    let out = "", errors = ""; process.chdir(client);
+    const code = await main(["--stdout"], { out: s => { out += s; }, err: s => { errors += s; } }, { run, now: clock });
+    const { stand } = JSON.parse(out);
+    assert.equal(code, 0, errors); assert.equal(errors, ""); assert.equal(stand.mainSha, direct ? b : a);
+    assert.equal(stand.fetchedAt, null, JSON.stringify({ remoteMain: b, localOriginMain: a, code, errors, stand }));
+    assert.equal(stand.fetchAgeMs, null);
+  } finally { process.chdir(cwd); rmSync(root, { recursive: true, force: true }); }
+}
+
+test("transient origin fetch mapping cannot date historical main as fresh", async () => {
+  await transientFetch(["origin"]);
+});
+
+test("transient bare fetch mapping cannot date historical main as fresh", async () => {
+  await transientFetch([]);
+});
+
+test("transient command URL rewrite cannot date historical main as fresh", async () => {
+  await transientFetch(["origin"], "rewrite-command");
+});
+
+test("transient env URL rewrite cannot date historical main as fresh", async () => {
+  await transientFetch(["origin"], "rewrite-env");
+});
+
+for (const mode of ["command", "env"]) test(`direct ${mode} origin URL override remains unknown`, async () => {
+  await transientFetch(["origin"], `direct-${mode}`);
+});
+
+test("implausible fetch dates stay unknown while the 2001 boundary is valid", async () => {
+  for (const date of ["2000-12-31T23:59:59Z", "2001-01-01T00:00:00Z", "2026-10-16T12:00:00Z"]) {
+    const setup = (dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".");
+      const dated = makeRunner({ env: { ...cleanEnv(), GIT_COMMITTER_DATE: date } });
+      assert.equal(dated("git", ["-C", dir, "fetch", "-q", "origin", "main"]).code, 0);
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
+      assert.equal(code, 0, errors);
+      const { stand } = JSON.parse(out), plausible = date === "2001-01-01T00:00:00Z";
+      assert.equal(stand.fetchedAt, plausible ? "2001-01-01T00:00:00.000Z" : null, date);
+      assert.equal(stand.fetchAgeMs, plausible ? 813758400000 : null, date);
+    });
+  }
+});
+
 test("fetch evidence failures stay unknown with one diagnostic and no payload", async () => {
   const fake = (cmd, args) => cmd === "git" && args[0] === "remote" ? { code: 124, stdout: "private.invalid" } : undefined;
   await inRepo({ fake, args: ["--stdout"] }, ({ code, out, errors }) => {
