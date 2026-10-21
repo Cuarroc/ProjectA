@@ -887,6 +887,7 @@ struct StartupBlock {
     escape: StartupEscape,
     cleared: bool,
     uncertain: bool,
+    concealed: bool,
 }
 
 impl StartupBlock {
@@ -912,6 +913,7 @@ impl StartupBlock {
             escape: StartupEscape::Text,
             cleared: false,
             uncertain: false,
+            concealed: false,
         }
     }
 
@@ -926,7 +928,6 @@ impl StartupBlock {
                         self.uncertain = true;
                         self.escape = String(c == '\u{9d}');
                     }
-                    '\r' | '\n' | '\t' => self.text.push(' '),
                     c if c.is_control() => self.uncertain = true,
                     c => self.text.push(c),
                 },
@@ -948,13 +949,37 @@ impl StartupBlock {
                     if c == 'J' && self.sequence == "2" {
                         self.text.clear();
                         self.cleared = true;
-                        self.uncertain = false;
-                    } else if !(c == 'm'
-                        || (c == 'H' && self.sequence.is_empty() && self.text.trim().is_empty()))
+                        self.uncertain = self.concealed;
+                    } else if c == 'm' {
+                        for code in self.sequence.split(';') {
+                            match code.parse::<u16>().ok().or(code.is_empty().then_some(0)) {
+                                Some(0 | 28) => self.concealed = false,
+                                Some(
+                                    1..=7
+                                    | 9
+                                    | 22..=25
+                                    | 27
+                                    | 29..=37
+                                    | 39..=47
+                                    | 49
+                                    | 90..=97
+                                    | 100..=107,
+                                ) => {}
+                                _ => {
+                                    self.concealed = true;
+                                    self.uncertain = true;
+                                }
+                            }
+                        }
+                    } else if !(c == 'H' && self.sequence.is_empty() && self.text.trim().is_empty())
                     {
                         self.uncertain = true;
                     }
                     self.escape = Text;
+                }
+                Csi if !(' '..='?').contains(&c) => {
+                    self.uncertain = true;
+                    self.escape = if c == '\x1b' { Escape } else { Text };
                 }
                 Csi => {
                     if self.sequence.len() < 32 {
@@ -1007,8 +1032,7 @@ struct WorkerState {
     gh: Option<Verdict>,
     pr_url: Option<String>,
     override_column: Option<&'static str>,
-    /// A task was pasted but the TUI never accepted it after three Enter
-    /// retries. Real output clears this immediately.
+    /// A failed delivery; output clears it only when no startup block is pending.
     submit_guard: Option<Verdict>,
     startup_block: Option<StartupBlock>,
     /// This worker has a blocking decision waiting for the human (Phase 21).
@@ -1696,7 +1720,7 @@ impl StatusEngine {
 
     /// The task prompt remained silent through all synthetic Enter retries.
     /// This is a stronger and more specific signal than the ordinary idle
-    /// heuristic, and stays until output, exit, or archive changes the facts.
+    /// heuristic; startup recovery alone preserves it until delivery or lifecycle reset.
     pub fn note_submit_guard_failed(&self, worker_id: &str) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
@@ -2780,7 +2804,11 @@ mod tests {
                 COL_DONE,
             ),
             (
-                format!("{}{STARTUP_CLEAR}{STARTUP_PROMPT}", "dialog ".repeat(400)),
+                format!("{}\r{STARTUP_CLEAR}{STARTUP_PROMPT}", "dialog ".repeat(400)),
+                COL_DONE,
+            ),
+            (
+                format!("\x1b[8m\x1b[0m{STARTUP_CLEAR}{STARTUP_PROMPT}"),
                 COL_DONE,
             ),
             (
@@ -2805,7 +2833,11 @@ mod tests {
                 COL_DONE,
             ),
         ] {
-            for split in 0..=bytes.len() {
+            for split in bytes
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(bytes.len()))
+            {
                 let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
                 let at = Instant::now();
                 engine.note_output_at("wk-1", &bytes[..split], at);
@@ -2846,6 +2878,8 @@ mod tests {
             engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
             let redraw = format!("{STARTUP_CLEAR}{STARTUP_PROMPT}");
             engine.note_output_at("wk-1", &redraw, at + Duration::from_secs(1));
+            assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
+            engine.tick_at(at + Duration::from_millis(3999));
             assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
             engine.tick_at(at + Duration::from_secs(4));
             assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
