@@ -11,6 +11,21 @@ const SHA = /\b[\da-f]{7,40}\b/i;
 const TRAILER = /^\s*(Test-First|Regression-For|No-Test):\s*(.*)$/;
 const decision = (reasons, approvals = []) => ({ exit: approvals.length ? 3 : reasons.length ? 2 : 0, reasons, approvals });
 
+const riskPredicates = [
+  function seam(path) { return /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store\.rs$|store\/|bin\/pa\.rs$)/i.test(path); },
+  function pty(path) { return /(?:^|[\/._-])pty(?:[\/._-]|$)/i.test(path); },
+  function migration(path) { return /(?:^|[\/._-])migrations?(?:[\/._-]|$)|\.sql$/i.test(path); },
+  function workflow(path) { return /^\.github\/workflows\//i.test(path); },
+];
+export function tierFor(paths) {
+  if (paths.some(path => riskPredicates.some(isRisk => isRisk(path)))) return "A";
+  return paths.every(p => /\.(?:md|mdx|rst|txt)$|(?:^|\/)(?:tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(p)) ? "C" : "B";
+}
+export function sizeLimit(tier, budget = 300, fixRound = false) {
+  const base = tier === "A" || !Number.isSafeInteger(budget) || budget < 1 || budget > 600 ? 300 : budget;
+  return fixRound ? Math.min(base + 100, tier === "A" ? 400 : 600) : base;
+}
+
 // Keep line numbers stable while removing fenced examples from structural checks.
 function proseLines(text) {
   let fence;
@@ -32,7 +47,8 @@ export function parseBrief(text) {
     const m = /^\s*([A-Z][A-Z/-]*)(?:[ \t]+\([^)]*\))?:[ \t]*(.*)$/.exec(line);
     if (m) {
       current = m[1] === "TIER/REVIEW" ? "TIER" : m[1];
-      fields[current] = fields[current] === undefined ? m[2].trim() : "";
+      if (fields[current] === undefined) fields[current] = m[2].trim();
+      else { fields[current] = ""; current = undefined; }
     } else if (current && /^(?:\s+\S|[-*] )/.test(line) && !TRAILER.test(line)) {
       fields[current] += `\n${line.trim()}`;
     } else current = undefined;
@@ -79,8 +95,21 @@ export function lint(text, { prBody = false, baseExists = true } = {}) {
       reasons.push("Naht in FILES, aber SEAM: no");
     }
     if (["UMSETZEN", "NACHBESSERN"].includes(f.OPERATOR)) {
+      const declared = /^([ABC])\b/.exec(f.TIER ?? "")?.[1];
+      if (!declared || (f.TIER.match(/\b[ABC]\b/g) ?? []).length !== 1) reasons.push("TIER braucht genau eine Stufe A, B oder C");
+      const paths = (f.FILES ?? "").replaceAll("\\", "/").match(/[.\w*-]+(?:\/[.\w*-]+)+/g) ?? [];
+      const tier = declared === "A" || tierFor(paths) === "A" ? "A" : declared;
+      let budget = 300;
+      // Form only: a reference in author text grants no authority. Root acceptance
+      // checks the native decision and its time; assess uses coordinator label signals.
+      if (Object.hasOwn(f, "SIZE-BUDGET")) {
+        const m = /^([1-9]\d{0,2})[ \t]*\(Root[ \t]+(?:msg-[a-z0-9]+-[a-z0-9]+|(?:ticket[ \t]+)?[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})(?:;[^()\r\n]*)?\)$/i.exec(f["SIZE-BUDGET"]);
+        if (!m || Number(m[1]) > 600 || tier === "A") reasons.push("SIZE-BUDGET braucht ≤ 600, Root-Ticket/msg und Stufe B/C");
+        else budget = Number(m[1]);
+      }
+      const limit = sizeLimit(tier, budget, f.OPERATOR === "NACHBESSERN");
       const numbers = f.SIZE?.match(/-?\d+(?:[.,]\d+)?/g) ?? [];
-      if (numbers.length !== 1 || !/^\d+$/.test(numbers[0]) || Number(numbers[0]) > 300) reasons.push("SIZE braucht eine ganze Zahl ≤ 300");
+      if (numbers.length !== 1 || !/^\d+$/.test(numbers[0]) || Number(numbers[0]) > limit) reasons.push(`SIZE braucht eine ganze Zahl ≤ ${limit}`);
       const trailers = lines.map((l) => TRAILER.exec(l)).filter(Boolean);
       if (!trailers.some((m) => m[2].trim())) reasons.push("Test-First/Regression-For/No-Test fehlt oder ist leer");
       for (const m of trailers) {

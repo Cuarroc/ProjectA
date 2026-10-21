@@ -1,22 +1,12 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { lint } from "../dev/brief-lint.mjs";
+import { lint, sizeLimit, tierFor } from "../dev/brief-lint.mjs";
 import { isMain, makeRunner, runCli } from "../lib/dev-tools.mjs";
+export { tierFor } from "../dev/brief-lint.mjs";
 
 const FIELDS = "headRefOid,isDraft,additions,deletions,files,body,statusCheckRollup,labels";
 const count = n => Number.isSafeInteger(n) && n >= 0;
-const lock = path => /(?:^|\/)package-lock\.json$|\.lock$/.test(path);
-const riskPredicates = [
-  function seam(path) { return /^src-tauri\/src\/(?:api\.rs$|main\.rs$|store\.rs$|store\/|bin\/pa\.rs$)/i.test(path); },
-  function pty(path) { return /(?:^|[\/._-])pty(?:[\/._-]|$)/i.test(path); },
-  function migration(path) { return /(?:^|[\/._-])migrations?(?:[\/._-]|$)|\.sql$/i.test(path); },
-  function workflow(path) { return /^\.github\/workflows\//i.test(path); },
-];
-export function tierFor(paths) {
-  if (paths.some(path => riskPredicates.some(isRisk => isRisk(path)))) return "A";
-  return paths.every(p => /\.(?:md|mdx|rst|txt)$|(?:^|\/)(?:tests|__tests__)\/|\.(?:test|spec)\.[^.]+$/.test(p)) ? "C" : "B";
-}
 export function familyFor(model) {
   return /^(glm|kimi|claude|gpt|gemini|deepseek)(?:[-_.]|$)/i.exec(model)?.[1].toLowerCase();
 }
@@ -54,14 +44,19 @@ export function assess(pr, reviews, number) {
   }
   const total = pr.files.reduce((n, f) => n + f.additions + f.deletions, 0);
   if (total !== pr.additions + pr.deletions) reasons.push("Dateiliste und PR-Größe stimmen nicht überein");
-  const size = total - pr.files.filter(f => lock(f.path)).reduce((n, f) => n + f.additions + f.deletions, 0);
   const tier = tierFor(pr.files.map(f => f.path));
-  // Like review-ok, only Root/Chief sets this label and records the prior ticket/msg
-  // in a PR comment. Shared-account authority is conventional, not cryptographic.
-  const budgets = pr.labels.filter(l => /^size-budget(?:-|$)/i.test(l.name));
-  const budget = budgets.length === 1 ? Number(/^size-budget-([1-9]\d{0,2})$/.exec(budgets[0].name)?.[1]) : NaN;
-  const limit = tier !== "A" && budget <= 600 ? budget : 300;
-  if (size > limit) reasons.push(`Größe ${size} > ${limit}`);
+  // Like review-ok, these shared-account label signals authenticate nothing.
+  // Only Root/Chief sets them, with a prior ticket/msg or forcing finding IDs in a
+  // PR comment. Root acceptance verifies native decision-before-dispatch evidence
+  // and records it in the report; this check is conventional, not cryptographic.
+  const budgets = pr.labels.filter(l => /^size-budget/i.test(l.name));
+  const match = budgets.length === 1 ? /^size-budget-([1-9]\d{0,2})$/.exec(budgets[0].name) : null;
+  const budget = match && match[0] === budgets[0].name ? Number(match[1]) : NaN;
+  const fixes = pr.labels.filter(l => /^size-fix/i.test(l.name));
+  const limit = sizeLimit(tier, budget, fixes.length === 1 && fixes[0].name === "size-fix-round");
+  // No identity/manifest evidence is supplied: even pure lock/move/generated claims
+  // count in full. In particular these gh fields cannot prove a Dependabot exception.
+  if (total > limit) reasons.push(`Größe ${total} > ${limit}`);
   if (pr.isDraft) reasons.push("PR ist Draft");
   for (const { name } of pr.labels) if (["do-not-merge", "conflict"].includes(name)) reasons.push(`Label: ${name}`);
   for (const check of pr.statusCheckRollup) {
@@ -81,7 +76,9 @@ export function assess(pr, reviews, number) {
   }
   const needed = { A: 2, B: 1, C: 0 }[tier];
   if (families.size < needed) reasons.push(`Tier ${tier}: ${needed} Review-Familie(n) benötigt, ${families.size} vorhanden`);
-  return result(reasons, body.approvals, `### Review (accept-check, bound to head \`${sha}\`)\n- Reviewer: ${reviewers.join(", ") || "none required"}\n- Verdict: approve\n- Tier: ${tier}\n- Größe: ${size} lines (excluding lockfiles)`);
+  const decision = result(reasons, body.approvals, `### Review (accept-check, bound to head \`${sha}\`)\n- Reviewer: ${reviewers.join(", ") || "none required"}\n- Verdict: approve\n- Tier: ${tier}`);
+  decision.output += `- Größe: ${total} lines (raw diff: ${total}; ceiling: ${limit})\n`;
+  return decision;
 }
 export async function main(argv, io, { run = makeRunner({ timeoutMs: 30_000 }) } = {}) {
   let decision;
