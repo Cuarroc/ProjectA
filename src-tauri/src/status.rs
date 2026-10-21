@@ -875,6 +875,7 @@ enum StartupEscape {
     Text,
     Escape,
     Csi,
+    CsiOverflow,
     String(bool),
     StringEscape(bool),
 }
@@ -945,15 +946,45 @@ impl StartupBlock {
                         }
                     };
                 }
+                CsiOverflow if ('@'..='~').contains(&c) => self.escape = Text,
                 Csi if ('@'..='~').contains(&c) => {
                     if c == 'J' && self.sequence == "2" {
                         self.text.clear();
                         self.cleared = true;
                         self.uncertain = self.concealed;
-                    } else if c == 'm' {
-                        for code in self.sequence.split(';') {
-                            match code.parse::<u16>().ok().or(code.is_empty().then_some(0)) {
+                    } else if c == 'm'
+                        && self
+                            .sequence
+                            .bytes()
+                            .all(|b| b.is_ascii_digit() || b == b';')
+                    {
+                        let mut codes = self
+                            .sequence
+                            .split(';')
+                            .map(|code| code.parse::<u16>().ok().or(code.is_empty().then_some(0)));
+                        while let Some(code) = codes.next() {
+                            match code {
                                 Some(0 | 28) => self.concealed = false,
+                                Some(8) => {
+                                    self.concealed = true;
+                                    self.uncertain = true;
+                                }
+                                Some(38 | 48 | 58) => {
+                                    // Extended-color components are payload, never SGR resets.
+                                    let components = match codes.next() {
+                                        Some(Some(5)) => 1,
+                                        Some(Some(2)) => 3,
+                                        _ => 0,
+                                    };
+                                    if components == 0
+                                        || !(0..components)
+                                            .all(|_| matches!(codes.next(), Some(Some(0..=255))))
+                                    {
+                                        self.concealed = true;
+                                        self.uncertain = true;
+                                        break;
+                                    }
+                                }
                                 Some(
                                     1..=7
                                     | 9
@@ -968,26 +999,43 @@ impl StartupBlock {
                                 _ => {
                                     self.concealed = true;
                                     self.uncertain = true;
+                                    break;
                                 }
                             }
                         }
                     } else if !(c == 'H' && self.sequence.is_empty() && self.text.trim().is_empty())
                     {
                         self.uncertain = true;
+                        if c == 'm' {
+                            self.concealed = true;
+                        }
                     }
                     self.escape = Text;
                 }
-                Csi if !(' '..='?').contains(&c) => {
+                Csi | CsiOverflow if matches!(c, '\x18' | '\x1a' | '\x1b') => {
                     self.uncertain = true;
                     self.escape = if c == '\x1b' { Escape } else { Text };
+                }
+                Csi | CsiOverflow if c <= '\x1f' || c == '\x7f' => {
+                    // Non-canceling C0/DEL bytes do not finish a CSI sequence.
+                    self.uncertain = true;
+                }
+                Csi | CsiOverflow if !(' '..='?').contains(&c) => {
+                    self.uncertain = true;
+                    self.concealed = true;
+                    self.escape = Text;
                 }
                 Csi => {
                     if self.sequence.len() < 32 {
                         self.sequence.push(c);
                     } else {
+                        // Never interpret a truncated prefix as a complete reset.
                         self.uncertain = true;
+                        self.concealed = true;
+                        self.escape = CsiOverflow;
                     }
                 }
+                CsiOverflow => {}
                 String(bell) => match c {
                     '\x07' if bell => self.escape = Text,
                     '\u{9c}' => self.escape = Text,
@@ -2721,6 +2769,111 @@ mod tests {
         engine.note_submit_guard("wk-1", Some(detail));
         assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
         engine
+    }
+
+    fn check_startup_concealment(screens: &[String], expected: &'static str) {
+        let mut wrong = Vec::new();
+        for (case, screen) in screens.iter().enumerate() {
+            for split in screen
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain(std::iter::once(screen.len()))
+                .chain(std::iter::once(usize::MAX))
+            {
+                let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+                let blocked = engine.verdict_for("wk-1");
+                let at = Instant::now();
+                if split == usize::MAX {
+                    for c in screen.chars() {
+                        engine.note_output_at("wk-1", &c.to_string(), at);
+                    }
+                } else {
+                    engine.note_output_at("wk-1", &screen[..split], at);
+                    engine.note_output_at("wk-1", &screen[split..], at);
+                }
+                engine.tick_at(at + Duration::from_millis(2999));
+                assert_eq!(engine.verdict_for("wk-1"), blocked);
+                engine.tick_at(at + Duration::from_millis(3000));
+                let wanted = if expected == COL_NEEDS_YOU {
+                    blocked
+                } else {
+                    Verdict::plain(COL_DONE)
+                };
+                if engine.verdict_for("wk-1") != wanted {
+                    wrong.push((case, split));
+                }
+            }
+        }
+        assert!(
+            wrong.is_empty(),
+            "incorrect concealment verdicts: {wrong:?}"
+        );
+    }
+
+    #[test]
+    fn startup_block_color_payloads_never_reset_concealment() {
+        let screens: Vec<_> = ["38;5;0", "38;5;28", "38;2;0;0;0", "48;5;28", "58;5;0"]
+            .map(|color| format!("\x1b[8m\x1b[{color}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_signed_sgr_never_resets_concealment() {
+        let screens: Vec<_> = ["+0", "+28", "0;+28", "+0;0", "28 "]
+            .map(|sgr| format!("\x1b[8m\x1b[{sgr}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_overlong_csi_keeps_concealment_uncertain() {
+        let overflow = format!("\x1b[{}8m", "0;".repeat(16));
+        let screens = [
+            format!("{overflow}{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+            format!("{overflow}{STARTUP_CLEAR}{STARTUP_PROMPT}{STARTUP_CLEAR}{STARTUP_PROMPT}"),
+            format!(
+                "\x1b[8m\x1b[{}0m{STARTUP_CLEAR}{STARTUP_PROMPT}",
+                "1;".repeat(16)
+            ),
+        ];
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_csi_ignores_noncancel_controls_without_losing_concealment() {
+        let screens: Vec<_> = ['\0', '\x07', '\x08', '\t', '\n', '\r', '\x7f']
+            .map(|control| format!("\x1b[8{control}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        check_startup_concealment(&screens, COL_NEEDS_YOU);
+    }
+
+    #[test]
+    fn startup_block_unambiguous_resets_restore_visible_readiness() {
+        let mut screens: Vec<_> = ["0", "28", "", "8;0", "38;5;0;28"]
+            .map(|reset| format!("\x1b[8m\x1b[{reset}m{STARTUP_CLEAR}{STARTUP_PROMPT}"))
+            .into();
+        for uncertain in [
+            "\x1b[38;5;0m".to_string(),
+            "\x1b[+0m".to_string(),
+            format!("\x1b[{}8m", "0;".repeat(16)),
+            "\x1b[8\x7fm".to_string(),
+        ] {
+            for reset in ["0", "28"] {
+                screens.push(format!(
+                    "\x1b[8m{uncertain}\x1b[{reset}m{STARTUP_CLEAR}{STARTUP_PROMPT}"
+                ));
+            }
+        }
+        for prefix in [
+            "\x1b[38;5;28m",
+            "\x1b[38;2;0;0;0m",
+            "\x1b[8\x18m",
+            "\x1b[8\x1am",
+        ] {
+            screens.push(format!("{prefix}{STARTUP_CLEAR}{STARTUP_PROMPT}"));
+        }
+        check_startup_concealment(&screens, COL_DONE);
     }
 
     #[test]
