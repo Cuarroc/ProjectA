@@ -20,6 +20,7 @@ const ALLOWED_ROOT_ENTRIES = Object.freeze([
   "KNOWN_ISSUES.md",
   "LICENSE",
   "PRODUCT.md",
+  "PROJECTA_ABNAHME.md",
   "README.md",
   "SECURITY.md",
   "STAND.md",
