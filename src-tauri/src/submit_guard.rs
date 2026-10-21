@@ -1133,6 +1133,19 @@ mod tests {
     }
 
     #[test]
+    fn menu_only_tasks_do_not_disprove_live_menus() {
+        for (modal, _) in LIVE_STARTUP_MODALS {
+            assert_guard_decision(modal, modal, false, true);
+        }
+        assert_guard_decision(
+            "Update available Update now",
+            "Update available Update now Skip",
+            false,
+            true,
+        );
+    }
+
+    #[test]
     fn short_tasks_preserve_live_modal_and_partial_notice_words() {
         for task in ["a", "e", "ok", "y"] {
             for (modal, _) in LIVE_STARTUP_MODALS {
