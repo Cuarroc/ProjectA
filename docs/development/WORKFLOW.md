@@ -26,12 +26,13 @@ ohne Datum und Befehl gilt als ungeprüft (AGENTS.md, Regel 9).
 ## Pflicht: das Dev-HQ ist dein Cockpit, nicht nur des Menschen
 
 `npm run hq:live` startet das Live-Dev-HQ auf `http://127.0.0.1:4173/live.html`
-— **jeder Agent, der an diesem Repo arbeitet, benutzt es**, nicht nur der
-Mensch. Es zeigt die Flotte, die Queue, offene Fragen, Verdicts, Quota/Budget-
+— das menschliche Cockpit. Agenten nutzen denselben Backend-Vertrag über
+`pa hq runtime` und `pa hq context --project <id>` (AGENTS.md), kein HTML-Scraping.
+Das HQ zeigt die Flotte, die Queue, offene Fragen, Verdicts, Quota/Budget-
 Kapazität, Usage, Provider-Vault-Status und agentengenerierte Empfehlungen in
 Echtzeit gegen die echte Control-API — dieselbe Quelle, aus der `pa board`
-liest. Ein Agent, der stattdessen manuell `pa`-Kommandos zusammenklickt oder
-den Zustand errät, tut doppelte Arbeit, die das HQ schon anzeigt. Ein Scout
+liest. Fehlt HQ v1 in der laufenden App, diese Grenze melden; die Desktop-App
+nicht zur Inspektion starten (AGENTS.md). Ein Scout
 oder Orchestrator kann außerdem über die **Recommendations**-Karte
 Folgearbeit vorschlagen (`POST /api/recommendations`), die ein Mensch oder ein
 anderer Agent später annimmt oder verwirft.
@@ -327,7 +328,7 @@ Kontingent an einer Wand.
 > **Historisch (Stand vor dem 24.09.2026).** Die Tabelle und die
 > Arbeitsteilung darunter beschreiben den OmniRoute-/Free-Tier-Betrieb; Kimi
 > Code, das Ollama-Reviewerpaar und die Advisors fehlen. Die aktuelle
-> Einrichtung und Rollenverteilung je Anbieter steht in
+> Einrichtung je Anbieter steht in
 > [`docs/setup/`](../setup/README.md). Die Einzelbefunde unten (Bilder,
 > Prozessgruppe, Pfadgrenze) sind dort übernommen.
 
@@ -344,8 +345,8 @@ agentische Arbeit, Sicherheitsthemen, alles, was Kontingent schonen soll.
 
 **Historisch:** Der Skill `.cursor/skills/claude-max-orchestration/`
 beschreibt ein früheres Setup und Abo-Modell; er gilt
-nicht mehr. Welches Abo und Modell heute wofür läuft, steht in
-`docs/setup/providers.md`. Das Claude-Abo läuft nie über einen Router wie
+nicht mehr. Routing: `AGENTS.md`; datierte Rezepte: `docs/setup/providers.md`.
+Das Claude-Abo läuft nie über einen Router wie
 OmniRoute (Nutzerentscheidung 25.09.).
 
 Weitere harte Eigenschaften:
@@ -560,5 +561,6 @@ ersetzt die manuelle Zusammenfassung nicht.
 | `docs/dev-hq/lessons.json` | Gedächtnis bekannter Entwicklungsfehler: Symptom → Ursache → Fix; `npm run hq:lesson` |
 | `PRODUCT.md` | **nur Produktwahrheit für Gestaltungsarbeit**: Nutzer, Zweck, Positionierung, Betriebskontext, belegte Grenzen. Liegt laut Werkzeugvorgabe im Wurzelverzeichnis (`impeccable`-Schema). Enthält **keine** Feature-Referenz (→ `README.md`), **keinen** Stand (→ `STAND.md`) und **keine** Arbeitsregeln (→ diese Datei); bei Widerspruch gewinnen jene. |
 
-**Was nur an einem Ort liegt, ist verloren.** Alles Wertvolle gehört ins
-Repo, bevor die Maschine verschwindet, auf der es entstand.
+**Was nur an einem Ort liegt, ist verloren.** Öffentlich geeignete Belege
+gehören ins Repo bzw. in den PR; private Freigaben, Prompts und Zugangsdaten
+bleiben im gesicherten privaten Nachweis, nie im öffentlichen Repo (AGENTS.md).

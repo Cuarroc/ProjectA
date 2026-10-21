@@ -24,17 +24,20 @@ Konfig-Dateien) ist eine Warnung.
 
 ## Wer macht was
 
+Datiertes Setup-Inventar (25.09.–04.10.2026), keine heutigen Zuweisungen.
+Der einzige Routing-Vertrag steht in [AGENTS.md](../../AGENTS.md), Abschnitt Routing;
+Modell, Effort, Zugang und Limit vor jedem Einsatz beobachten.
+
 | Anbieter | Harness | Rolle | Seite |
 |---|---|---|---|
-| Claude (Opus / Fable 5.1) | Claude Code | Koordinator; Fable 5.1 als Advisor; Nahtstellen/Security nur als Ausweichen (Routing: [providers.md](providers.md)) | [claude-code.md](claude-code.md) |
+| Claude (Opus / Fable 5.1) | Claude Code | damaliges Koordinator-/Advisor-Beispiel | [claude-code.md](claude-code.md) |
 | OpenAI GPT-6 Astra | Codex CLI | Advisor (Effort `high` je Aufruf), Worker | [codex.md](codex.md) |
-| Kimi K3 | Kimi Code CLI | **Abo abgelaufen 02.10.2026** — nicht einplanen | [kimi.md](kimi.md) |
+| Kimi K3 | Kimi Code CLI | Ablaufbefund 02.10.; Sperre überholt 14.10., Zugang ungeprüft | [kimi.md](kimi.md) |
 | GLM (DeepSeek offen, W2-09b) | OpenCode | Docs, Skripte, Zweitreview | [opencode.md](opencode.md) |
-| kimi-k3 + glm-5.2 (Ollama Cloud) | `.pa/review_transport.py` | Alltags-Reviewerpaar | [ollama-reviewers.md](ollama-reviewers.md) |
+| kimi-k3 + glm-5.2 (Ollama Cloud) | `.pa/review_transport.py` | damaliges Transportbeispiel, keine feste Paarpflicht | [ollama-reviewers.md](ollama-reviewers.md) |
 | — | Mergify | Merge-Queue für `main` (`.mergify.yml`) | [mergify.md](mergify.md) |
 
-Welcher Anbieter mit welchem Modell und Effort für welche Aufgabe, und wie die
-Abos gleichmäßig ausgeschöpft werden: [providers.md](providers.md).
+Weitere datierte Modell-/Effort-Rezepte: [providers.md](providers.md).
 
 Abos zuerst; OpenRouter nur aus vorhandenem Guthaben, kein Kauf oder Auto-Reload.
 Stufe B: zwei verschiedene Nicht-Autorenfamilien, regulär Abo + OpenRouter;
@@ -67,13 +70,11 @@ Checkliste. Er liegt zweimal im Repo, byte-gleich bis auf Zeilenenden:
 
 ## Advisors
 
-Für harte Entscheidungen und Abschlussreviews gilt das Advisor-Paar
-**Fable 5.1** (Claude-Subagent, maximaler Effort) + **GPT-6 Astra** (Codex CLI,
-`-c model_reasoning_effort=high` je Aufruf; global bleibt `medium`). Worker
-dürfen die Advisors selbst rufen bei Nahtstellen-, Security- und
-Architekturentscheidungen und wenn sie länger als 30 Minuten feststecken; sonst
-über den Koordinator. Rückfragen der Advisors gehen an den Koordinator, der
-den Nutzer fragt. Alltagsreviews laufen über das Ollama-Paar.
+Beispiel vom 02.10.2026: Fable 5.1 (maximaler Effort) + GPT-6 Astra
+(`-c model_reasoning_effort=high` je Aufruf, global damals `medium`).
+Aktuelle Namen/Zugänge stehen im privaten Koordinatornachweis; Rollen,
+Unabhängigkeit und Eskalation regelt AGENTS.md „Reviews and advisors“.
+Es gibt weder eine feste Advisor-Modellpflicht noch eine Ollama-Paarpflicht.
 
 ## Berechtigungen
 

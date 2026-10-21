@@ -1,4 +1,4 @@
-# Anbieter, Modelle, Einsatz — die Routing-Tabelle für den Orchestrator
+# Anbieter, Modelle, Einsatz — datierte Setup-Beispiele
 
 Welche Agenten der Orchestrator einsetzen kann, mit welchem Modell und welchem
 Effort, für welche Art Arbeit. Stand **25.09.2026**, geprüft auf dem
@@ -8,7 +8,8 @@ Codex-Modellnamen aus `~/.codex/models_cache.json` korrigiert.
 **Überholt am 14.10.2026:** Die Zeilen „Kimi-Abo abgelaufen“ und „Claude-Worker
 nur < 70 %“ gelten nicht mehr; die Wahl unter den Anbietern regelt allein
 [AGENTS.md, Abschnitt „Routing“](../../AGENTS.md) (Entscheidung 07.10.2026). Die Einrichtung
-je Harness steht in den Nachbarseiten
+je Harness steht in den Nachbarseiten. Alle Tabellen und Rezepte unten sind
+historische Beispiele, keine aktuellen Zuweisungen oder Zugangsbelege
 ([codex.md](codex.md), [kimi.md](kimi.md), [opencode.md](opencode.md),
 [ollama-reviewers.md](ollama-reviewers.md), [claude-code.md](claude-code.md)).
 
@@ -25,22 +26,23 @@ ersten echten Paket einmal proben.
 
 ## Ziel der Verteilung
 
-1. **Claude spart.** *(Überholt 14.10.2026, siehe AGENTS.md „Routing“.)* Claude (Pro-Abo) ist Orchestrator und sonst nichts
+Historische Verteilung vom 25.09.–02.10.2026, durch AGENTS.md „Routing“ ersetzt:
+
+1. **Claude spart.** *(Überholt 14.10.2026, siehe AGENTS.md „Routing“.)* Claude (Pro-Abo) war Orchestrator und sonst nichts
    Alltägliches. Claude-Worker nur für Nahtstellen oder Security, und nur wenn
    das Wochenlimit unter 70 % steht. Der Orchestrator prüft das Limit vor jedem
    Start (`get_usage` in der Claude-App, sonst die Nutzungsanzeige).
-2. **Die übrigen Abos gleichmäßig ausschöpfen.** Neue Pakete gehen reihum an
-   den Anbieter, der zuletzt am wenigsten bekommen hat; ein Anbieter mit
+2. **Die übrigen Abos gleichmäßig ausschöpfen.** Pakete gingen damals reihum an
+   den Anbieter, der zuletzt am wenigsten bekommen hatte; ein Anbieter mit
    Limit-Treffer (429, „usage limit“) fällt aus der Runde, bis sein Fenster
    zurückgesetzt ist.
 3. **Review nie bei der Autorenfamilie.** Stufe A/B: zwei verschiedene
    Nicht-Autorenfamilien, B nach Regel 5 einschließlich E1 (siehe oben).
    Stufe C: nur Gates; C+ (Skip/Timeout/Retry oder schwächere Assertions in
    Tests): ein Fremdreview. Kostenlose Ollama-Modelle zählen nur ergänzend.
-4. **RAM ist die harte Grenze.** 16 GB, oft unter 2 GB frei. Höchstens
-   2–3 Worker gleichzeitig und höchstens drei `cargo`-Builds, bei knappem RAM
-   zwei (AGENTS.md, „Build slots“); vor jedem Start freien Speicher prüfen
-   (unter 1,5 GB kein neuer Worker, AGENTS.md Regel 9).
+4. **RAM-Beispiel des damaligen PCs:** 16 GB, oft unter 2 GB frei, daher
+   geschätzte 2–3 Worker. Kein globales Workerlimit: aktuelle RAM-/Build-Prüfung
+   nach AGENTS.md „Build slots“ und Regel 9, mit den jeweils beauftragten Host-Grenzen.
 
 ## Übersicht
 
@@ -57,7 +59,10 @@ ersten echten Paket einmal proben.
 
 ## Einsatz nach Aufgabe
 
-| Aufgabe | 1. Wahl | Effort | Ausweichen |
+Damalige Vorschläge (25.09.–02.10.2026), keine feste Anbieterpräferenz;
+heute unter zulässigen Profilen nach beobachtetem Headroom wählen (AGENTS.md).
+
+| Aufgabe | damaliges Beispiel | Effort | damalige Alternative |
 |---|---|---|---|
 | Nahtstelle (`api.rs`, `main.rs`, `store/`, `bin/pa.rs`), Security | Codex `gpt-6-astra` | `high` | Claude-Worker (~~nur < 70 % Wochenlimit~~ — überholt 14.10.2026, siehe AGENTS.md „Routing“) |
 | Rust-Paket ohne Nahtstelle | Codex `gpt-5.6-sol` | `medium`, bei rotem Test `high` | OpenCode `deepseek-v4-pro` |
@@ -70,11 +75,10 @@ ersten echten Paket einmal proben.
 
 Modellnamen in dieser Tabelle, die oben nicht als „geprüft“ stehen, sind nicht
 beobachtet (Prüfung C, F9): vor dem ersten Einsatz mit dem Startcheck bestätigen
-(AGENTS.md, Regel 9). Diese Tabelle ist die einzige Routing-Quelle.
+(AGENTS.md, Regel 9). Nur AGENTS.md „Routing“ ist der Routing-Vertrag.
 
-Die Zuordnung ist eine Empfehlung des Orchestrators, keine Messung. Wer einen
-Anbieter für eine Aufgabenart als besser oder schlechter belegt, trägt den
-Beleg hier ein.
+Die damalige Zuordnung war ein Vorschlag, keine Messung. Aktuelle Freigaben
+und Zugangsbelege führt der Koordinator privat; diese Beispiele erweitern sie nicht.
 
 Effort-Stufen: Codex kennt `low` bis `ultra` für `astra`/`sol`, bis `max` für
 `luna`; global stehen `gpt-6-astra` und `medium` in `~/.codex/config.toml`
@@ -85,8 +89,8 @@ Modell stellt man im TUI mit `/models` oder mit `-m` beim Start.
 
 ## Start-Rezepte
 
-Headless aus der Orchestrator-Sitzung (Hintergrund-Job; meldet sich beim Ende,
-kein Polling nötig):
+Historische Headless-Aufrufbeispiele (25.09.–04.10.2026); nur innerhalb eines
+aktuellen Auftrags und seiner Ausführungs-/Beobachtungsgrenzen verwenden:
 
 ```sh
 codex exec -m gpt-5.6-sol -c model_reasoning_effort=medium --sandbox workspace-write - < spec.md
