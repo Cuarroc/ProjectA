@@ -342,7 +342,7 @@ test("explicit main fetch options retain coherent freshness", async () => {
   }
 });
 
-async function transientFetch(remoteArgs) {
+async function transientFetch(remoteArgs, urlOverride) {
   const root = mkdtempSync(join(tmpdir(), "roadmap-transient-")), cwd = process.cwd();
   const remote = join(root, "remote.git"), seed = join(root, "seed"), client = join(root, "client");
   const clock = "2026-10-21T16:00:00Z";
@@ -370,20 +370,31 @@ async function transientFetch(remoteArgs) {
     const b = commit(); git(seed, ["push", "-q", "origin", "main"]);
     git(client, ["fetch", "-q", "--no-write-fetch-head", "origin", "main"], "2026-10-21T15:00:00Z");
     assert.equal(git(client, ["config", "--get-all", "remote.origin.fetch"]), "+refs/heads/*:refs/remotes/origin/*");
-    git(client, ["-c", "remote.origin.fetch=^refs/heads/main", "-c", "remote.origin.fetch=+refs/heads/other:refs/remotes/origin/main", "fetch", "-q", "--append", ...remoteArgs]);
+    const direct = urlOverride?.startsWith("direct") || false;
+    if (urlOverride) {
+      const foreign = join(root, "foreign.git"); mkdirSync(foreign); git(foreign, ["init", "--bare", "-q"]);
+      git(seed, ["push", "-q", foreign, `${a}:refs/heads/main`]);
+      const key = direct ? "remote.origin.url" : `url.${foreign}.insteadOf`, value = direct ? foreign : remote;
+      const args = ["fetch", "-q", "--append", "origin", "+refs/heads/main:refs/remotes/origin/main"];
+      if (urlOverride.endsWith("env")) {
+        Object.assign(env, { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: key, GIT_CONFIG_VALUE_0: value });
+        git(client, args);
+        for (const name of ["GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"]) delete env[name];
+      } else git(client, ["-c", `${key}=${value}`, ...args]);
+    } else git(client, ["-c", "remote.origin.fetch=^refs/heads/main", "-c", "remote.origin.fetch=+refs/heads/other:refs/remotes/origin/main", "fetch", "-q", "--append", ...remoteArgs]);
     assert.equal(git(client, ["config", "--get-all", "remote.origin.fetch"]), "+refs/heads/*:refs/remotes/origin/*");
     assert.notEqual(a, b);
     assert.equal(git(client, ["ls-remote", "origin", "refs/heads/main"]).split("\t")[0], b);
-    assert.equal(git(client, ["rev-parse", "origin/main"]), a);
+    assert.equal(git(client, ["rev-parse", "origin/main"]), direct ? b : a);
     const fetchHead = readFileSync(join(client, ".git/FETCH_HEAD"), "utf8");
     assert.ok(fetchHead.includes(`${a}\t\tbranch 'main' of `));
-    assert.ok(!fetchHead.includes(`${b}\t\tbranch 'main' of `));
-    assert.equal(git(client, ["reflog", "show", "-1", "--format=%gs", "refs/remotes/origin/main"]), `fetch -q --append${remoteArgs.length ? " origin" : ""}: forced-update`);
+    assert.equal(fetchHead.includes(`${b}\t\tbranch 'main' of `), direct);
+    assert.equal(git(client, ["reflog", "show", "-1", "--format=%gs", "refs/remotes/origin/main"]), direct ? "fetch -q --no-write-fetch-head origin main: fast-forward" : `fetch -q --append${remoteArgs.length ? " origin" : ""}${urlOverride ? " +refs/heads/main:refs/remotes/origin/main" : ""}: forced-update`);
     const real = makeRunner({ env }), run = (cmd, args) => cmd === "gh" ? { code: 0, stdout: "[]" } : real(cmd, args);
     let out = "", errors = ""; process.chdir(client);
     const code = await main(["--stdout"], { out: s => { out += s; }, err: s => { errors += s; } }, { run, now: clock });
     const { stand } = JSON.parse(out);
-    assert.equal(code, 0, errors); assert.equal(errors, ""); assert.equal(stand.mainSha, a);
+    assert.equal(code, 0, errors); assert.equal(errors, ""); assert.equal(stand.mainSha, direct ? b : a);
     assert.equal(stand.fetchedAt, null, JSON.stringify({ remoteMain: b, localOriginMain: a, code, errors, stand }));
     assert.equal(stand.fetchAgeMs, null);
   } finally { process.chdir(cwd); rmSync(root, { recursive: true, force: true }); }
@@ -395,6 +406,34 @@ test("transient origin fetch mapping cannot date historical main as fresh", asyn
 
 test("transient bare fetch mapping cannot date historical main as fresh", async () => {
   await transientFetch([]);
+});
+
+test("transient command URL rewrite cannot date historical main as fresh", async () => {
+  await transientFetch(["origin"], "rewrite-command");
+});
+
+test("transient env URL rewrite cannot date historical main as fresh", async () => {
+  await transientFetch(["origin"], "rewrite-env");
+});
+
+for (const mode of ["command", "env"]) test(`direct ${mode} origin URL override remains unknown`, async () => {
+  await transientFetch(["origin"], `direct-${mode}`);
+});
+
+test("implausible fetch dates stay unknown while the 2001 boundary is valid", async () => {
+  for (const date of ["2000-12-31T23:59:59Z", "2001-01-01T00:00:00Z", "2026-10-16T12:00:00Z"]) {
+    const setup = (dir, git) => {
+      git("branch", "-M", "main"); git("remote", "add", "origin", ".");
+      const dated = makeRunner({ env: { ...cleanEnv(), GIT_COMMITTER_DATE: date } });
+      assert.equal(dated("git", ["-C", dir, "fetch", "-q", "origin", "main"]).code, 0);
+    };
+    await inRepo({ setup, args: ["--stdout"] }, ({ code, out, errors }) => {
+      assert.equal(code, 0, errors);
+      const { stand } = JSON.parse(out), plausible = date === "2001-01-01T00:00:00Z";
+      assert.equal(stand.fetchedAt, plausible ? "2001-01-01T00:00:00.000Z" : null, date);
+      assert.equal(stand.fetchAgeMs, plausible ? 813758400000 : null, date);
+    });
+  }
 });
 
 test("fetch evidence failures stay unknown with one diagnostic and no payload", async () => {
