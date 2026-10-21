@@ -3,7 +3,7 @@
 Quelle: `docs/PLAN.md` auf `653db64985563c8a3e1603cd6d30906648ada41d`.
 Die folgenden Quellblöcke sind unverändert archiviert. Sie sind keine neuen
 Aufträge; aktuelle Aufgaben, Freigaben und Restabnahmen stehen im [Masterplan](../../PLAN.md).
-Gültige Anforderungen und Entscheidungen bleiben als verlinkte Verträge erhalten.
+Gültige Anforderungen und Entscheidungen bleiben als verlinkte Verträge erhalten und ersetzen keine oben im Masterplan bestätigte Entscheidung. Die Quellblöcke sind eingefrorene Historie, keine zweite Statuspflege; abgeschlossene Paketzeilen stehen im [Paketarchiv](completed.md).
 
 ### Serverreserve 3 — begrenzte Werkzeug-Härtung (historisch, erledigt)
 
