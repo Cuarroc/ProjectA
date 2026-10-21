@@ -438,7 +438,8 @@ impl SubmitGuard {
         // Agent output after submission must not trigger startup decisions.
         if !matches!(self.state, StateData::AwaitingWork { .. }) {
             let tail = squash(last_chars(self.dialog_tail(obs), ECHO_SCAN_CHARS));
-            let visible = last_chars(&tail, DIALOG_WINDOW_CHARS);
+            // Check complete signatures across the same scan that may lose echoes.
+            let visible = tail.as_str();
             // Keep the existing readiness dismissal rule, including its P9 limit.
             let visible = if self.readiness_marker.is_empty() {
                 visible
@@ -1143,6 +1144,39 @@ mod tests {
                 assert_eq!(
                     guard.escalation_reason(),
                     Some(EscalationReason::StartupDialog(reason))
+                );
+                assert!(guard.input_pending());
+                assert!(!guard.is_delivered());
+                assert!(!guard.is_confirmed());
+            }
+        }
+    }
+
+    #[test]
+    fn complete_signature_before_visible_suffix_must_ask() {
+        let task = format!(
+            "Explain Update available Update now Skip. {} Finish analysis.",
+            "x".repeat(2300)
+        );
+        for marker in ["", "Ask Codex to do anything"] {
+            for answer_marker in ["", "⏺"] {
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, &task)
+                    .with_readiness_marker(marker)
+                    .with_answer_marker(answer_marker);
+                assert_eq!(
+                    guard.tick(&obs(start, 4, 100, Some(1), "Ask Codex to do anything")),
+                    Some(SubmitAction::WriteTask { write: 1 })
+                );
+                assert_eq!(
+                    guard.tick(&obs(start, 6, 4000, Some(5), &task)),
+                    Some(SubmitAction::Escalate)
+                );
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(
+                        BlockingDialog::CodexUpdateAvailable
+                    ))
                 );
                 assert!(guard.input_pending());
                 assert!(!guard.is_delivered());
