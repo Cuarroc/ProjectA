@@ -1,7 +1,7 @@
 # Codex CLI (GPT-6 Astra)
 
-Rolle: Advisor für harte Entscheidungen, daneben Worker. Stand: Codex CLI
-0.154.0. Zurück zur Übersicht: [README.md](README.md).
+Setup-/Advisor-Rezept vom 04.10.2026 (Codex CLI 0.154.0), keine aktuelle Modellpflicht.
+Routing: [AGENTS.md](../../AGENTS.md). Zurück: [README.md](README.md).
 
 ## Konfiguration `~/.codex/config.toml` (nur Felder)
 
@@ -130,9 +130,8 @@ als `hooks.json.<sha12>.bak` daneben liegen.
 - **Bilder:** `codex -i <datei>` — Codex kann Screenshots ansehen.
 - **Security-Themen:** Codex hat Sicherheitsaufgaben früher verweigert
   („flagged for possible cybersecurity risk", `docs/development/WORKFLOW.md`).
-  Für GPT-6 Astra nicht neu belegt. Das Routing steht in
-  [providers.md](providers.md) — Nahtstelle und Security zuerst an Codex
-  `gpt-6-astra`, Claude-Worker nur als Ausweichen (E8 in `docs/PLAN.md`, vom
-  Nutzer am 02.10.2026 bestätigt).
+  Für GPT-6 Astra nicht neu belegt. Codex zuerst/Claude als Ausweichen war
+  das Rezept vom 02.10.2026 (E8 in `docs/PLAN.md`), keine aktuelle Bindung.
+  Das Routing steht ausschließlich in [AGENTS.md](../../AGENTS.md).
 - **Prozessgruppe:** Codex räumt beim Befehlsende seine Prozessgruppe ab; per
   `&` gestartete Hintergrundprozesse sterben mit. Abhilfe: `setsid`.

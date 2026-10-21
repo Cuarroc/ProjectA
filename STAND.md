@@ -18,22 +18,14 @@ Aktuelle Belege bei jedem Neustart neu lesen:
 
 ### Stand 2026-10-15 (datierter Schnappschuss, keine Live-Quelle)
 
-Gelesen am 2026-10-20T14:31Z, `origin/main` @ `a91ade8b`. Zahlen, die sich
-stündlich ändern (offene PRs, Queue), stehen hier bewusst nicht mehr; sie
-kommen nur aus den Live-Belegen oben.
+[Vollständiger datierter Schnappschuss](docs/archive/stand-2026-10/snapshots.md).
 
-- **Jüngstes veröffentlichtes Release:** v1.6.6 (Patch, Tag auf `a8b00911`;
-  die Version auf `main` steht in `package.json` und
-  `src-tauri/tauri.conf.json`). Release-Lauf `release.yml` 38706858983
-  `success`, veröffentlicht 2026-10-15 09:07Z (`gh release view v1.6.6`:
-  4 Dateien). Davor: v1.6.5. Veröffentlicht heißt nicht installiert.
-  Bis v2.0 kein Patch-Release und kein Tag (Entscheid 15.10., laut Root;
-  Inbox RELEASE-PAUSE in `docs/PLAN.md`); v2.0 braucht ein neues Ja.
-- **Ziel v2.0:** Umfang „eng“ entschieden (Inbox-Karte V2-ENG, früher Karte E1, 2026-10-15); Kriterien und
-  Restpakete in `docs/plan/v2.0/plan.md` (PR #1475).
-- **Plan:** `docs/PLAN.md` ist der einzige Plan (Ziele Z1–Z4).
-- **Wo der Live-Stand steht:** die Notiz `lage-jetzt` (außerhalb von Git, s. o.)
-  und die drei Live-Belege oben. Dieser Schnappschuss ersetzt sie nicht.
+### Aktuelle Quellen für Release und Umfang
+
+- **Releasebedingungen:** [AGENTS.md, Regel 10](AGENTS.md#the-ten-core-rules) und
+  der dort genannte Freigabenachweis der Koordination; Entscheidungsnachweis:
+  [K5 RELEASE-PAUSE vom 16.10.2026](docs/PLAN.md#entscheidungs-inbox).
+- **Aktueller Umfang:** [docs/PLAN.md](docs/PLAN.md).
 
 Server-Automationen (review-feeder, dep-feeder, hold-feeder; 12 Server-Slots) leben in pa-orch und sind in der Projektnotiz `pa-orch-server-dispatch` dokumentiert, nicht im Repo.
 
