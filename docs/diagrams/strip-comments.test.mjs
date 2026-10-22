@@ -2,6 +2,24 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stripComments } from './strip-comments.mjs';
 
+test('stripComments treats processing instructions as opaque before CDATA', () => {
+  const cases = [
+    [
+      '<svg><?probe <![CDATA[ ?><!-- remove --><![CDATA[x]]></svg>',
+      '<svg><?probe <![CDATA[ ?><![CDATA[x]]></svg>',
+    ],
+    [
+      '<svg><?probe <!-- literal --> ?><![CDATA[<!-- keep -->]]><!-- remove --></svg>',
+      '<svg><?probe <!-- literal --> ?><![CDATA[<!-- keep -->]]></svg>',
+    ],
+    [
+      '<svg><!-- <?probe <![CDATA[ ?> --><![CDATA[<?probe <!-- keep --> ?>]]></svg>',
+      '<svg><![CDATA[<?probe <!-- keep --> ?>]]></svg>',
+    ],
+  ];
+  for (const [input, expected] of cases) assert.equal(stripComments(input), expected);
+});
+
 test('stripComments preserves literal comment text in CDATA', () => {
   const cases = [
     [
