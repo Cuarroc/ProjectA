@@ -582,12 +582,12 @@ classify_run() {
             if(n<=length(line) && substr(line,length(line)-n+1)==s) found=1 }
           END{ exit found?0:1 }' || return 2
         [ "$code" -eq 0 ] || return 1
-        printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null || return 2
+        printf '%s\n' "$plain" | grep -E '^[[:space:]]*1 passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h)\))?[[:space:]]*$' >/dev/null || return 2
         return 0
       fi
       printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null && return 1
       [ "$code" -eq 0 ] || return 1
-      printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
+      printf '%s\n' "$plain" | grep -E '^[[:space:]]*[1-9][0-9]* passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h)\))?[[:space:]]*$' >/dev/null
       return
       ;;
   esac
