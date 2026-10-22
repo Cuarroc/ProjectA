@@ -645,6 +645,149 @@ fn failed_audit_answers_500_after_a_write_and_keeps_a_refusal() {
 }
 
 #[test]
+fn planning_assignment_fence_interleaving_rejects_without_assignment_or_event() {
+    let dir = TempDir::new("planning-assignment-fence");
+    std::fs::write(
+        dir.path().join("projecta.dev.json"),
+        serde_json::to_vec(&crate::development_policy::DevelopmentPolicy::defaults()).unwrap(),
+    )
+    .unwrap();
+    let db = dir.path().join("projecta.db");
+    let (store, pool, run, project, target) = tauri::async_runtime::block_on(async {
+        let store = crate::store::Store::open(&db).await.unwrap();
+        let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display())).await.unwrap();
+        let project = store.create_project("plan", &dir.path().to_string_lossy()).await.unwrap().id;
+        let root = store.create_continuous_goal(&project, "root", None, None, true).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator',?,'c','[]','[]','running','coordinator',1,1,1)")
+            .bind(&root.id).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+            .execute(&pool).await.unwrap();
+        let run = store.record_development_run_intent("coordinator", "coordinator", 1).await.unwrap().id;
+        let target = store.create_continuous_task(&root.id, "target", None, vec!["src/target.rs".into()], vec![]).await.unwrap().id;
+        (store, pool, run, project, target)
+    });
+    let (arrived, arrival) = std::sync::mpsc::channel();
+    let (resume, resumed) = std::sync::mpsc::channel();
+    let backend = Arc::new(FakeBackend {
+        native_store: Some(store.clone()),
+        assignment_admission: Mutex::new(Some((arrived, resumed))),
+        ..Default::default()
+    });
+    let server = boot(backend as Arc<dyn ControlBackend>, dir.path(), false).unwrap();
+    let descriptor = server.issue_run_descriptor(&run, "coordinator", 1, 60).unwrap();
+    let before = tauri::async_runtime::block_on(store.continuous_task_assignment(&target)).unwrap();
+    let events = tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap();
+    let path = format!("/api/hq/v1/tasks/{target}/assignment");
+    let body = json!({"teamId":"development","role":"implementer","assignee":"worker","expectedRevision":0}).to_string();
+    let (status, reply) = std::thread::scope(|scope| {
+        // Drop the sender before scoped joins if any assertion unwinds.
+        let release_peer = resume;
+        let request = scope.spawn(|| call(descriptor.port, "POST", &path, Some(&descriptor.token), &body));
+        arrival.recv_timeout(std::time::Duration::from_secs(5))
+            .expect("HTTP request did not reach assignment writer after role/project prechecks");
+        tauri::async_runtime::block_on(
+            sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='coordinator'").execute(&pool),
+        ).unwrap();
+        release_peer.send(()).unwrap();
+        request.join().unwrap()
+    });
+    let audit: Vec<String> = tauri::async_runtime::block_on(
+        sqlx::query_scalar("SELECT detail_json FROM audit_log WHERE action='planning' ORDER BY id").fetch_all(&pool),
+    ).unwrap();
+    let envelopes: Vec<Value> = audit.iter().map(|row| serde_json::from_str(row).unwrap()).collect();
+    assert_eq!((status, envelopes), (403, vec![json!({"project":project,"run":run,
+        "result":"refused: planning target is outside the run project","sourceRef":format!("POST {path}")})]), "{reply}");
+    assert_eq!(tauri::async_runtime::block_on(store.continuous_task_assignment(&target)).unwrap(), before);
+    assert_eq!(tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap()["events"], events["events"]);
+}
+
+#[test]
+fn planning_assignment_native_controls_preserve_authority_revision_and_operator() {
+    let dir = TempDir::new("planning-assignment-controls");
+    std::fs::write(
+        dir.path().join("projecta.dev.json"),
+        serde_json::to_vec(&crate::development_policy::DevelopmentPolicy::defaults()).unwrap(),
+    ).unwrap();
+    let db = dir.path().join("projecta.db");
+    let (store, pool, run, project, target, foreign_project, foreign) = tauri::async_runtime::block_on(async {
+        let store = crate::store::Store::open(&db).await.unwrap();
+        let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display())).await.unwrap();
+        let project = store.create_project("plan", &dir.path().to_string_lossy()).await.unwrap().id;
+        let root = store.create_continuous_goal(&project, "root", None, None, true).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator',?,'c','[]','[]','running','coordinator',1,1,1)")
+            .bind(&root.id).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+            .execute(&pool).await.unwrap();
+        let run = store.record_development_run_intent("coordinator", "coordinator", 1).await.unwrap().id;
+        let target = store.create_continuous_task(&root.id, "target", None, vec!["target.rs".into()], vec![]).await.unwrap().id;
+        let foreign_project = store.create_project("foreign", &dir.path().to_string_lossy()).await.unwrap().id;
+        let root = store.create_continuous_goal(&foreign_project, "foreign", None, None, true).await.unwrap();
+        let foreign = store.create_continuous_task(&root.id, "foreign", None, vec!["foreign.rs".into()], vec![]).await.unwrap().id;
+        (store, pool, run, project, target, foreign_project, foreign)
+    });
+    let backend = Arc::new(FakeBackend { native_store: Some(store.clone()), ..Default::default() });
+    let server = boot(backend as Arc<dyn ControlBackend>, dir.path(), false).unwrap();
+    let descriptor = server.issue_run_descriptor(&run, "coordinator", 1, 60).unwrap();
+    let path = format!("/api/hq/v1/tasks/{target}/assignment");
+    let body = json!({"teamId":"development","role":"implementer","assignee":"worker","expectedRevision":0}).to_string();
+    let (status, reply) = call(descriptor.port, "POST", &path, Some(&descriptor.token), &body);
+    assert_eq!(status, 200, "{reply}");
+    assert_eq!(reply["assignment"]["taskId"], target);
+    assert_eq!(reply["assignment"]["role"], "implementer");
+    assert_eq!(reply["assignment"]["revision"], 1);
+    tauri::async_runtime::block_on(async {
+        let before = store.continuous_task_assignment(&target).await.unwrap();
+        let events = store.continuous_changes(&project, 0).await.unwrap();
+        let foreign_events = store.continuous_changes(&foreign_project, 0).await.unwrap();
+        for (run, owner, fence, task, role) in [
+            ("missing", "coordinator", 1, target.as_str(), "reviewer"),
+            (run.as_str(), "wrong-owner", 1, target.as_str(), "reviewer"),
+            (run.as_str(), "coordinator", 2, target.as_str(), "reviewer"),
+            (run.as_str(), "coordinator", 1, "missing", "reviewer"),
+            (run.as_str(), "coordinator", 1, foreign.as_str(), "reviewer"),
+            (run.as_str(), "coordinator", 1, target.as_str(), " coordinator "),
+        ] {
+            let request = crate::store::team_assignments::AssignmentRequest {
+                team_id: "development".into(),
+                role: role.into(),
+                assignee: "worker".into(),
+                expected_revision: 1,
+            };
+            let error = store.assign_continuous_task_with_authority(
+                Some(PlanningAuthority { run, owner, fence }), task, request,
+            ).await.unwrap_err();
+            assert_eq!(error, "planning target is outside the run project");
+            assert_eq!(store.continuous_task_assignment(&target).await.unwrap(), before);
+            assert!(store.continuous_task_assignment(&foreign).await.unwrap().is_none());
+            assert_eq!(store.continuous_changes(&project, 0).await.unwrap()["events"], events["events"]);
+            assert_eq!(store.continuous_changes(&foreign_project, 0).await.unwrap()["events"], foreign_events["events"]);
+        }
+        sqlx::query("UPDATE continuous_team_assignments SET role='reviewer' WHERE task_id='coordinator'").execute(&pool).await.unwrap();
+        let request = crate::store::team_assignments::AssignmentRequest {
+            team_id: "development".into(),
+            role: "reviewer".into(),
+            assignee: "worker".into(),
+            expected_revision: 1,
+        };
+        let error = store.assign_continuous_task_with_authority(
+            Some(PlanningAuthority { run: &run, owner: "coordinator", fence: 1 }),
+            &target, request,
+        ).await.unwrap_err();
+        assert_eq!(error, "planning target is outside the run project");
+        assert_eq!(store.continuous_task_assignment(&target).await.unwrap(), before);
+        assert_eq!(store.continuous_changes(&project, 0).await.unwrap()["events"], events["events"]);
+    });
+    let raw = std::fs::read_to_string(server.descriptor_path()).unwrap();
+    let operator = serde_json::from_str::<Value>(&raw).unwrap()["token"].as_str().unwrap().to_string();
+    let body = json!({"teamId":"development","role":" coordinator ","assignee":"worker","expectedRevision":1}).to_string();
+    let (status, reply) = call(descriptor.port, "POST", &path, Some(&operator), &body);
+    assert_eq!(status, 200, "{reply}");
+    assert_eq!(reply["assignment"]["taskId"], target);
+    assert_eq!(reply["assignment"]["role"], "coordinator");
+    assert_eq!(reply["assignment"]["revision"], 2);
+}
+
+#[test]
 fn planning_task_fence_interleaving_rejects_without_task_or_event() {
     let dir = TempDir::new("planning-task-fence");
     std::fs::write(

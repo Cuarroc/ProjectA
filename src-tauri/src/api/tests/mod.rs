@@ -398,6 +398,7 @@
         native_store: Option<crate::store::Store>,
         goal_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
         task_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
+        assignment_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
         /// M4-R19-08: `(run, result, sourceRef)` of every planning audit when
         /// no `native_store` writes the real trail.
         audited: Mutex<Vec<(String, String, String)>>,
@@ -695,6 +696,13 @@
             request: crate::store::team_assignments::AssignmentRequest,
         ) -> Result<crate::store::team_assignments::TeamAssignment, String> {
             self.record_planning_authority(&format!("assign:{task_id}"), authority);
+            if let Some(store) = &self.native_store {
+                if let Some((arrived, resume)) = self.assignment_admission.lock().unwrap().take() {
+                    arrived.send(()).map_err(|error| error.to_string())?;
+                    resume.recv_timeout(Duration::from_secs(5)).map_err(|error| error.to_string())?;
+                }
+                return tauri::async_runtime::block_on(store.assign_continuous_task_with_authority(authority, task_id, request));
+            }
             if request.expected_revision != 0 {
                 return Err("team assignment revision conflict".into());
             }
