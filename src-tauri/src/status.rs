@@ -882,7 +882,7 @@ enum StartupEscape {
 
 struct StartupBlock {
     verdict: Verdict,
-    marker: Option<String>, // Unknown messages or missing markers await delivery.
+    marker: Option<String>, // Unsupported/untyped causes or missing markers await delivery.
     text: String,
     sequence: String,
     escape: StartupEscape,
@@ -892,11 +892,9 @@ struct StartupBlock {
 }
 
 impl StartupBlock {
-    fn new(detail: &str) -> Self {
+    fn new(detail: &str, cause: Option<crate::submit_guard::BlockingDialog>) -> Self {
         use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
-        let marker = [CodexHooksReview, CodexUpdateAvailable]
-            .iter()
-            .any(|dialog| dialog.blocked_message() == detail)
+        let marker = matches!(cause, Some(CodexHooksReview | CodexUpdateAvailable))
             .then(|| {
                 crate::profiles::default_profiles()
                     .into_iter()
@@ -1778,11 +1776,24 @@ impl StatusEngine {
         });
     }
 
-    /// Startup blocks need positive recovery evidence; delivery clears both guards.
+    /// Only supported typed causes can recover from positive terminal evidence.
+    pub fn note_startup_blocked(
+        &self,
+        worker_id: &str,
+        cause: crate::submit_guard::BlockingDialog,
+    ) {
+        self.update(worker_id, |state| {
+            if state.status == STATUS_RUNNING {
+                state.startup_block = Some(StartupBlock::new(cause.blocked_message(), Some(cause)));
+            }
+        });
+    }
+
+    /// Untyped details await confirmed delivery (`None`), which clears both guards.
     pub fn note_submit_guard(&self, worker_id: &str, detail: Option<&str>) {
         self.update(worker_id, |state| {
             if state.status == STATUS_RUNNING {
-                state.startup_block = detail.map(StartupBlock::new);
+                state.startup_block = detail.map(|detail| StartupBlock::new(detail, None));
                 if detail.is_none() {
                     state.submit_guard = None;
                 }
@@ -2763,10 +2774,10 @@ mod tests {
         crate::submit_guard::BlockingDialog::CodexUpdateAvailable,
     ];
 
-    fn startup_fixture(detail: &str) -> StatusEngine {
+    fn startup_fixture(cause: crate::submit_guard::BlockingDialog) -> StatusEngine {
         let engine = StatusEngine::default();
         engine.set_override("wk-1", Some(COL_DONE)).unwrap();
-        engine.note_submit_guard("wk-1", Some(detail));
+        engine.note_startup_blocked("wk-1", cause);
         assert_eq!(engine.verdict_for("wk-1").column, COL_NEEDS_YOU);
         engine
     }
@@ -2780,7 +2791,7 @@ mod tests {
                 .chain(std::iter::once(screen.len()))
                 .chain(std::iter::once(usize::MAX))
             {
-                let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+                let engine = startup_fixture(STARTUP_DIALOGS[0]);
                 let blocked = engine.verdict_for("wk-1");
                 let at = Instant::now();
                 if split == usize::MAX {
@@ -2879,7 +2890,7 @@ mod tests {
     #[test]
     fn startup_block_requires_disappearance_after_stale_composer() {
         for dialog in STARTUP_DIALOGS {
-            let engine = startup_fixture(dialog.blocked_message());
+            let engine = startup_fixture(dialog);
             let blocked = engine.verdict_for("wk-1");
             let at = Instant::now();
             engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
@@ -2898,7 +2909,7 @@ mod tests {
                 "unrecognized startup decision",
                 "\u{9d}\x1b[2J\x1b[HAsk Codex to do anything",
             ] {
-                let engine = startup_fixture(dialog.blocked_message());
+                let engine = startup_fixture(dialog);
                 let at = Instant::now() + Duration::from_secs(4);
                 let redraw = format!("{STARTUP_CLEAR}{STARTUP_PROMPT}\n{screen}");
                 engine.note_output_at("wk-1", &redraw, at);
@@ -2925,7 +2936,7 @@ mod tests {
             "\x1b[8m\x1b[2J\x1b[HAsk Codex to do anything",
             "Ask Codex to do anything\x1b[1D",
         ] {
-            let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+            let engine = startup_fixture(STARTUP_DIALOGS[0]);
             let at = Instant::now();
             for c in format!("{STARTUP_CLEAR}{screen}").chars() {
                 engine.note_output_at("wk-1", &c.to_string(), at);
@@ -2991,14 +3002,14 @@ mod tests {
                 .map(|(i, _)| i)
                 .chain(std::iter::once(bytes.len()))
             {
-                let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+                let engine = startup_fixture(STARTUP_DIALOGS[0]);
                 let at = Instant::now();
                 engine.note_output_at("wk-1", &bytes[..split], at);
                 engine.note_output_at("wk-1", &bytes[split..], at);
                 engine.tick_at(at + Duration::from_secs(3));
                 assert_eq!(engine.verdict_for("wk-1").column, expected, "split {split}");
             }
-            let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+            let engine = startup_fixture(STARTUP_DIALOGS[0]);
             let at = Instant::now();
             for byte in bytes.chars() {
                 engine.note_output_at("wk-1", &byte.to_string(), at);
@@ -3010,7 +3021,7 @@ mod tests {
 
     #[test]
     fn startup_block_retains_delivery_failure_after_recovery() {
-        let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+        let engine = startup_fixture(STARTUP_DIALOGS[0]);
         let blocked = engine.verdict_for("wk-1");
         engine.note_submit_guard_failed("wk-1");
         assert_eq!(engine.verdict_for("wk-1"), blocked);
@@ -3026,7 +3037,7 @@ mod tests {
     #[test]
     fn startup_block_recovers_on_clear_before_idle_boundary() {
         for dialog in STARTUP_DIALOGS {
-            let engine = startup_fixture(dialog.blocked_message());
+            let engine = startup_fixture(dialog);
             let at = Instant::now();
             engine.note_output_at("wk-1", "Hooks need review\nTrust all and continue", at);
             let redraw = format!("{STARTUP_CLEAR}{STARTUP_PROMPT}");
@@ -3040,9 +3051,33 @@ mod tests {
     }
 
     #[test]
+    fn startup_block_untyped_known_messages_never_authorize_recovery() {
+        for detail in [
+            "Codex-Startdialog: Hooks need review; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            "Codex-Startdialog: Update available; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            "unknown startup decision",
+            "",
+        ] {
+            let engine = StatusEngine::default();
+            engine.set_override("wk-1", Some(COL_DONE)).unwrap();
+            engine.note_submit_guard("wk-1", Some(detail));
+            let blocked = engine.verdict_for("wk-1");
+            assert_eq!(blocked.column, COL_NEEDS_YOU);
+            let at = Instant::now();
+            engine.note_output_at("wk-1", "\x1b[2J\x1b[HAsk Codex to do anything", at);
+            engine.tick_at(at + Duration::from_secs(3));
+            assert_eq!(engine.verdict_for("wk-1"), blocked, "untyped: {detail}");
+            engine.note_submit_guard("wk-1", None);
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+        }
+    }
+
+    #[test]
     fn startup_block_unknown_detail_never_clears_on_output() {
         for detail in ["unknown startup decision", ""] {
-            let engine = startup_fixture(detail);
+            let engine = StatusEngine::default();
+            engine.set_override("wk-1", Some(COL_DONE)).unwrap();
+            engine.note_submit_guard("wk-1", Some(detail));
             let blocked = engine.verdict_for("wk-1");
             let at = Instant::now();
             engine.note_output_at("wk-1", &format!("\x1b[2J\x1b[H{STARTUP_PROMPT}"), at);
@@ -3055,7 +3090,7 @@ mod tests {
 
     #[test]
     fn startup_block_clears_on_lifecycle_change() {
-        let engine = startup_fixture(STARTUP_DIALOGS[0].blocked_message());
+        let engine = startup_fixture(STARTUP_DIALOGS[0]);
         engine.note_submit_guard_failed("wk-1");
         engine.observe_worker(&worker("wk-1", STATUS_EXITED));
         assert_eq!(
