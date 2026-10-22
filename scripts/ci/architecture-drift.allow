@@ -32,7 +32,7 @@ API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.sto
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.continuous_task_assignment(task_id))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.control_continuous(project_id,action))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_continuous_goal_with_authority(authority,project_id,objective,acceptance_criteria,source_goal_id,admit,))
-API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_continuous_task(goal_id,objective,profile_id,owned_paths,dependencies,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_continuous_task_with_authority(authority,goal_id,objective,profile_id,owned_paths,dependencies,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.create_project(name,repo_path))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.development_records_snapshot(project_id))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(self.store.emergency_stop_active())

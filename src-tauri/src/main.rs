@@ -2825,15 +2825,17 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
-    fn create_continuous_task(
+    fn create_continuous_task_with_authority(
         &self,
+        authority: Option<crate::api::PlanningAuthority<'_>>,
         goal_id: &str,
         objective: &str,
         profile_id: Option<String>,
         owned_paths: Vec<String>,
         dependencies: Vec<String>,
     ) -> Result<store::ContinuousTask, String> {
-        tauri::async_runtime::block_on(self.store.create_continuous_task(
+        tauri::async_runtime::block_on(self.store.create_continuous_task_with_authority(
+            authority,
             goal_id,
             objective,
             profile_id,
@@ -2841,7 +2843,6 @@ impl ControlBackend for ApiBackend {
             dependencies,
         ))
     }
-
     fn assign_continuous_task(
         &self,
         task_id: &str,

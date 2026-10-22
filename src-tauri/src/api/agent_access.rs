@@ -709,6 +709,14 @@ mod tests {
             serde_json::to_value(review).map_err(|error| error.to_string())
         }
         unavailable! {
+            fn create_continuous_task_with_authority(
+                _authority: Option<crate::api::PlanningAuthority<'_>>,
+                _goal_id: &str,
+                _objective: &str,
+                _profile_id: Option<String>,
+                _owned_paths: Vec<String>,
+                _dependencies: Vec<String>
+            ) -> Result<crate::store::ContinuousTask, String>;
             fn create_continuous_goal_with_authority(
                 _authority: Option<crate::api::PlanningAuthority<'_>>,
                 _project_id: &str,
