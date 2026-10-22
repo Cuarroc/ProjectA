@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { saveMotionMode } from "../motion/motionMode";
 import { EXIT_MS } from "../motion/useExitTransition";
+import { ToastRegion } from "./Toast";
 import { useToast } from "./useToast";
 
 type Api = Omit<ReturnType<typeof useToast>, "region">;
@@ -43,6 +44,36 @@ describe("useToast queue", () => {
     expect(screen.getByText("Zweite").parentElement).toHaveAttribute("data-state", "closing");
     act(() => { vi.advanceTimersByTime(EXIT_MS); });
     expect(screen.queryByText("Zweite")).toBeNull();
+  });
+
+  it("dismisses once after a synchronous action error and keeps the error observable", () => {
+    vi.useFakeTimers();
+    const failure = new Error("Toast action failed");
+    const onAction = vi.fn(() => { throw failure; });
+    const onDismiss = vi.fn();
+    const errors: unknown[] = [];
+    const onWindowError = (event: ErrorEvent) => {
+      errors.push(event.error);
+      if (event.error === failure) event.preventDefault();
+    };
+    window.addEventListener("error", onWindowError);
+    try {
+      render(<ToastRegion toasts={[{ id: 7, text: "Gespeichert", tone: "ok", action: { label: "Rückgängig", onAction } }]} ttl={1000} onDismiss={onDismiss} />);
+      const undo = screen.getByRole("button", { name: "Rückgängig" });
+      fireEvent.click(undo);
+      fireEvent.click(undo);
+      expect(onAction).toHaveBeenCalledTimes(1);
+      expect(new Set(errors)).toEqual(new Set([failure]));
+      expect(screen.getByText("Gespeichert").parentElement).toHaveAttribute("data-state", "closing");
+      expect(onDismiss).not.toHaveBeenCalled();
+      act(() => { vi.advanceTimersByTime(EXIT_MS); });
+      expect(screen.queryByText("Gespeichert")).toBeNull();
+      expect(onDismiss.mock.calls).toEqual([[7]]);
+      act(() => { vi.advanceTimersByTime(2000); });
+      expect(onDismiss.mock.calls).toEqual([[7]]);
+    } finally {
+      window.removeEventListener("error", onWindowError);
+    }
   });
 
   it("shows at most three toasts and the fourth waits until one leaves", () => {
