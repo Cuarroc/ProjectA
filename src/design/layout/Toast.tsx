@@ -32,7 +32,15 @@ function ToastView({ toast, ttl, onDismiss }: { toast: ToastItem; ttl: number; o
     <div className={`g-toast g-toast--${toast.tone}`} data-state={closing ? "closing" : "open"} aria-hidden={closing || undefined} role={toast.tone === "bad" ? "alert" : "status"}>
       <span>{toast.text}</span>
       {toast.action && (
-        <button type="button" className="g-toast__act" onClick={() => { if (acted.current) return; acted.current = true; toast.action?.onAction(); setOpen(false); }}>
+        <button type="button" className="g-toast__act" onClick={() => {
+          if (acted.current) return;
+          acted.current = true;
+          try {
+            toast.action?.onAction();
+          } finally {
+            setOpen(false);
+          }
+        }}>
           {toast.action.label}
         </button>
       )}
