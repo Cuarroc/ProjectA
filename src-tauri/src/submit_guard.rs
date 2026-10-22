@@ -1943,6 +1943,30 @@ mod tests {
     }
 
     #[test]
+    fn withheld_codex_trust_message_preserves_dialog_policy() {
+        assert_eq!(
+            BlockingDialog::CodexTrust.blocked_message(),
+            "Codex-Startdialog: Verzeichnisvertrauen nicht automatisch bestätigt; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden."
+        );
+        assert_eq!(BlockingDialog::CodexTrust.keystrokes(), "\r");
+        assert!(!BlockingDialog::CodexTrust.requires_user());
+        for (dialog, message) in [
+            (
+                BlockingDialog::CodexHooksReview,
+                "Codex-Startdialog: Hooks need review; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            ),
+            (
+                BlockingDialog::CodexUpdateAvailable,
+                "Codex-Startdialog: Update available; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            ),
+        ] {
+            assert_eq!(dialog.blocked_message(), message);
+            assert_eq!(dialog.keystrokes(), "");
+            assert!(dialog.requires_user());
+        }
+    }
+
+    #[test]
     fn hooks_review_never_sends_keys_even_with_option_three_selected() {
         let start = Instant::now();
         let mut guard = SubmitGuard::new(start, TASK);
