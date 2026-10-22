@@ -793,12 +793,25 @@
                 }
                 let _ = authority;
                 let goal = tauri::async_runtime::block_on(store.create_continuous_goal(
-                    project_id, objective, acceptance_criteria, source_goal_id, admit,
+                    project_id,
+                    objective,
+                    acceptance_criteria,
+                    source_goal_id,
+                    admit,
                 ))?;
-                self.planned.lock().unwrap().push(format!("goal:{project_id}"));
+                self.planned
+                    .lock()
+                    .unwrap()
+                    .push(format!("goal:{project_id}"));
                 return Ok(goal);
             }
-            self.create_continuous_goal(project_id, objective, acceptance_criteria, source_goal_id, admit)
+            self.create_continuous_goal(
+                project_id,
+                objective,
+                acceptance_criteria,
+                source_goal_id,
+                admit,
+            )
         }
         fn create_continuous_goal(
             &self,
