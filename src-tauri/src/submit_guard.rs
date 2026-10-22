@@ -1165,7 +1165,13 @@ mod tests {
                 BlockingDialog::CodexHooksReview,
             ),
         ] {
-            for stage in 0..=2 {
+            for (stage, suffix) in [
+                (0, String::new()),
+                (1, String::new()),
+                (2, String::new()),
+                (0, "x ".repeat(1050)),
+            ] {
+                let title = format!("{title} {suffix}");
                 let start = Instant::now();
                 let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker("ready");
                 if stage >= 1 {
@@ -1177,9 +1183,9 @@ mod tests {
                 if stage == 2 {
                     assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
                 }
-                assert_eq!(guard.tick(&obs(start, 4, 400, Some(4), title)), None);
+                assert_eq!(guard.tick(&obs(start, 4, 4000, Some(4), &title)), None);
                 assert_eq!(
-                    guard.tick(&obs(start, 120, 400, Some(4), title)),
+                    guard.tick(&obs(start, 120, 4000, Some(4), &title)),
                     Some(SubmitAction::Escalate)
                 );
                 assert_eq!(
