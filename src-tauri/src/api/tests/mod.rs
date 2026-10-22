@@ -1052,6 +1052,15 @@
             rollback_reason: Option<&str>,
         ) -> Result<Value, String> {
             self.record_planning_authority(&format!("import:{project_id}"), authority);
+            if let Some(store) = &self.native_store {
+                return tauri::async_runtime::block_on(crate::development_plan_access::import(
+                    store,
+                    project_id,
+                    plan_id,
+                    expected_projection_revision,
+                    rollback_reason,
+                ));
+            }
             self.plan_imports.lock().unwrap().push((
                 project_id.into(),
                 plan_id.into(),
