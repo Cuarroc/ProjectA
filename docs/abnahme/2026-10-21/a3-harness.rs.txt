@@ -1,0 +1,152 @@
+
+#[cfg(test)]
+mod a3_external_proof {
+    use super::*;
+    use serde_json::{json, Value};
+    use std::os::unix::fs::{symlink, PermissionsExt};
+    use std::fs;
+
+    fn reader_case(root: &Path, path: &str, expected: &str, label: &str, cases: &mut Vec<Value>) {
+        let result = development_runs::guidance::read(root, path);
+        let actual = match result { Ok((text, digest)) => json!({"state":"ok","bytes":text.len(),"sha256":digest}), Err(error) => json!({"state":"error","error":error}) };
+        println!("A3 reader {label}: {actual}");
+        cases.push(json!({"case":label,"expected":expected,"result":actual}));
+        if expected == "ok" { assert_eq!(actual["state"], "ok", "{label}"); }
+        else { assert_eq!(actual["error"], expected, "{label}"); }
+    }
+
+    #[tokio::test]
+    async fn real_frozen_plan_native_reader_projection() -> Result<(), String> {
+        let evidence = PathBuf::from(std::env::var("A3_EVIDENCE_DIR").unwrap());
+        let root = PathBuf::from(std::env::var("A3_FROZEN_ROOT").unwrap()).canonicalize().unwrap();
+        let expected: Value = serde_json::from_slice(&fs::read(evidence.join("expected.json")).unwrap()).unwrap();
+        let data = evidence.join("run-data");
+        fs::create_dir(&data).unwrap();
+        let fixture = data.join("reader-fixtures"); fs::create_dir(&fixture).unwrap();
+        let outside = data.join("outside.txt");fs::write(&outside, b"outside fixture").unwrap();
+        fs::create_dir(fixture.join("directory")).unwrap();
+        fs::write(fixture.join("exact-limit"), vec![b'x'; 262144]).unwrap();
+        fs::write(fixture.join("over-limit"), vec![b'x'; 262145]).unwrap();
+        fs::write(fixture.join("invalid-utf8"), [0xff, 0xfe]).unwrap();
+        fs::write(fixture.join("unreadable"), b"fixture").unwrap();
+        fs::set_permissions(fixture.join("unreadable"), fs::Permissions::from_mode(0)).unwrap();
+        symlink(&outside, fixture.join("escape-link")).unwrap();
+        symlink(fixture.join("exact-limit"), fixture.join("inside-link")).unwrap();
+        let fifo = std::ffi::CString::new(fixture.join("pipe").to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+        let mut cases = Vec::new();
+        for (path, error, label) in [
+            ("absent", "missing", "missing-file"),
+            ("directory/child", "missing", "missing-child"),
+            ("invalid\0path", "unreadable", "nul-path"),
+            ("directory", "not_regular_file", "directory"),
+            ("pipe", "not_regular_file", "fifo"),
+            ("exact-limit", "ok", "262144-byte-inclusive-limit"),
+            ("over-limit", "oversized", "262145-byte-rejected"),
+            ("invalid-utf8", "invalid_utf8", "invalid-utf8"),
+            ("unreadable", "unreadable", "permission-denied"),
+            ("escape-link", "outside_project", "external-symlink"),
+            ("../outside.txt", "outside_project", "parent-escape"),
+            ("inside-link", "ok", "internal-symlink"),
+        ] { reader_case(&fixture, path, error, label, &mut cases); }
+        reader_case(&fixture, outside.to_str().unwrap(), "outside_project", "absolute-outside", &mut cases);
+        fs::set_permissions(fixture.join("unreadable"), fs::Permissions::from_mode(0o600)).unwrap();
+        fs::write(evidence.join("reader-cases.json"), serde_json::to_vec_pretty(&cases).unwrap()).unwrap();
+
+        let (source, digest) = development_runs::guidance::read(&root, "docs/PLAN.md").map_err(|e| format!("REAL PLAN reader failed: {e}"))?;
+        assert_eq!(source.len() as u64, expected["bytes"].as_u64().unwrap());
+        assert_eq!(digest, expected["sha256"].as_str().unwrap());
+        let (agents, agents_digest) = development_runs::guidance::read(&root, "AGENTS.md").unwrap();
+        println!("A3 REAL READ bytes={} sha256={digest}; AGENTS bytes={} sha256={agents_digest}", source.len(), agents.len());
+        fs::write(evidence.join("real-read.json"), serde_json::to_vec_pretty(&json!({"bytes":source.len(),"sha256":digest,"agentsBytes":agents.len(),"agentsSha256":agents_digest})).unwrap()).unwrap();
+        let plan = expected["planId"].as_str().unwrap();
+        let parsed = crate::development_plan::parse_plan("a3-pure-project-fixture", plan, "docs/PLAN.md", &source).map_err(|e| {
+            fs::write(evidence.join("real-parse-error.json"), serde_json::to_vec_pretty(&e).unwrap()).unwrap();
+            format!("REAL PLAN parse failed: {}:{}: {}", e.source_path,e.source_line,e.reason)
+        })?;
+        assert_eq!(parsed.source_revision, format!("sha256:{digest}"));
+        assert_eq!(parsed.packages.len(), 38);
+        fs::write(evidence.join("pure-projection.json"), serde_json::to_vec_pretty(&parsed).unwrap()).unwrap();
+        println!("A3 REAL PARSE packages={} source_revision={}", parsed.packages.len(),parsed.source_revision);
+
+        let db = data.join("isolated-projecta.db"); assert!(!db.exists());
+        let store = Store::open(&db).await?;
+        let project = store.create_project(expected["projectName"].as_str().unwrap(), root.to_str().unwrap()).await?;
+        assert_eq!(store.get_project(&project.id).await?.unwrap().repo_path, root.to_str().unwrap());
+        let first = store.import_project_development_plan(&project.id, plan, 0, None).await.map_err(|e| {
+            fs::write(evidence.join("real-import-error.txt"), &e).unwrap();
+            format!("REAL PLAN Store import failed: {e}")
+        })?;
+        assert_eq!(first.projection_revision, 1);
+        assert_eq!(first.source_revision, format!("sha256:{digest}"));
+        assert_eq!(first.project_id, project.id);
+        assert_eq!(first.plan_id, plan);
+        assert_eq!(first.source_path, "docs/PLAN.md");
+        assert_eq!(first.source.as_bytes(), source.as_bytes());
+        assert_eq!(first.packages.len(), 38);
+        for (stored, row) in first.packages.iter().zip(expected["rows"].as_array().unwrap()) {
+            let p = &stored.package;
+            assert_eq!(p.package_id, row["id"].as_str().unwrap());
+            assert_eq!(p.title, row["title"].as_str().unwrap());
+            assert_eq!(p.acceptance, row["acceptance"].as_str().unwrap());
+            assert_eq!(p.source_line as u64, row["sourceLine"].as_u64().unwrap());
+            assert_eq!(p.project_id, project.id); assert_eq!(p.plan_id, plan);
+            assert_eq!(p.source_path, "docs/PLAN.md"); assert_eq!(p.source_revision, first.source_revision);
+            assert!(p.parent_id.is_none()); assert!(!stored.removed && !stored.no_new_dispatch);
+        }
+        assert_eq!(first.packages[0].package.package_id, "DF-00");
+        assert_eq!(first.packages[0].package.title, "Bestandsabgleich · Architekt · DOC · S");
+        assert_eq!(first.packages[37].package.package_id, "DF-37");
+        assert_eq!(store.development_plan_current(&project.id, plan).await?, first);
+        assert_eq!(store.development_plan_at(&project.id, plan, 1).await?, first);
+        assert_eq!(store.import_project_development_plan(&project.id, plan, 1, None).await?, first);
+        let stale = store.import_project_development_plan(&project.id, plan, 0, None).await.unwrap_err();
+        assert_eq!(stale, "plan projection revision conflict: expected 0, current 1");
+        let other = store.create_project("A3 second isolated scope", root.to_str().unwrap()).await?;
+        assert!(store.development_plan_current(&other.id, plan).await.is_err());
+        let second = store.import_project_development_plan(&other.id, plan, 0, None).await?;
+        assert_eq!(second.projection_revision, 1); assert_ne!(first.project_id, second.project_id);
+        assert_eq!(second.source_revision, first.source_revision);
+        let other_plan = store.import_project_development_plan(&project.id, "a3-other-plan", 0, None).await?;
+        assert_eq!(other_plan.projection_revision, 1); assert_ne!(first.plan_id, other_plan.plan_id);
+        assert!(other_plan.packages.iter().all(|p| p.package.plan_id=="a3-other-plan"));
+        let unknown = store.import_project_development_plan("a3-unknown", plan, 0, None).await.unwrap_err();
+        assert_eq!(unknown, "plan source docs/PLAN.md: unknown project");
+        let mut import_errors=vec![json!({"case":"stale-cas","error":stale}),json!({"case":"unknown-project","error":unknown})];
+        for (label,path,fragment) in [
+            ("empty-root", "".to_string(), "registered path is empty"),
+            ("relative-root", "relative/path".to_string(), "registered path must be absolute"),
+            ("missing-root", data.join("missing-root").to_str().unwrap().to_string(), "project_root_unavailable:"),
+            ("file-root", outside.to_str().unwrap().to_string(), "registered path is not a directory"),
+            ("missing-plan", fixture.to_str().unwrap().to_string(), "plan source docs/PLAN.md: missing"),
+        ] {
+            let p=store.create_project(label,&path).await?;
+            let error=store.import_project_development_plan(&p.id,plan,0,None).await.unwrap_err();
+            assert!(error.contains(fragment),"{label}: {error}");
+            assert!(store.development_plan_current(&p.id,plan).await.is_err());
+            import_errors.push(json!({"case":label,"error":error}));
+        }
+        for (label, bytes, fragment) in [
+            ("oversized-plan", vec![b'x';262145], "plan source docs/PLAN.md: oversized"),
+            ("invalid-utf8-plan", vec![0xff], "plan source docs/PLAN.md: invalid_utf8"),
+            ("malformed-plan", b"not a plan".to_vec(), "invalid plan source docs/PLAN.md:1: unsupported source: no plan packages"),
+        ] {
+            let path=data.join(label);fs::create_dir_all(path.join("docs")).unwrap();fs::write(path.join("docs/PLAN.md"),bytes).unwrap();
+            let p=store.create_project(label,path.to_str().unwrap()).await?;
+            let error=store.import_project_development_plan(&p.id,plan,0,None).await.unwrap_err();assert_eq!(error,fragment);
+            assert!(store.development_plan_current(&p.id,plan).await.is_err());
+            import_errors.push(json!({"case":label,"error":error}));
+        }
+        fs::write(evidence.join("store-error-cases.json"),serde_json::to_vec_pretty(&import_errors).unwrap()).unwrap();
+        fs::write(evidence.join("stored-projection.json"),serde_json::to_vec_pretty(&first).unwrap()).unwrap();
+        store.close_test_pool().await;
+        let reopened=Store::open(&db).await?;
+        assert_eq!(reopened.development_plan_current(&project.id,plan).await?,first);
+        assert_eq!(reopened.development_plan_at(&project.id,plan,1).await?,first);
+        reopened.close_test_pool().await;
+        let summary=json!({"result":"PASS","productionMethodsUnchanged":true,"registeredProject":project.id,"planId":plan,"sourcePath":"docs/PLAN.md","sourceRevision":first.source_revision,"projectionRevision":first.projection_revision,"packageCount":first.packages.len(),"boundedIds":["DF-00","DF-01","DF-15","DF-36","DF-37"],"allIds":first.packages.iter().map(|p|p.package.package_id.clone()).collect::<Vec<_>>(),"readerCases":cases.len(),"storeErrorCases":import_errors.len(),"sameSourceReimportRevision":1,"reopenedProjectionRevision":1,"scopeChecks":["project","plan"],"fixtureRegistration":true,"realOriginalPlanBytes":true});
+        fs::write(evidence.join("summary.json"),serde_json::to_vec_pretty(&summary).unwrap()).unwrap();
+        println!("A3 RESULT {summary}");
+        Ok(())
+    }
+}
