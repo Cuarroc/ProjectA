@@ -51,21 +51,13 @@ macro_rules! planning_writer_adapters {
         }
         fn create_continuous_goal_with_authority(
             &self,
-            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
             project_id: &str,
             objective: &str,
             acceptance_criteria: Option<String>,
             source_goal_id: Option<String>,
             admit: bool,
-        ) -> Result<crate::store::ContinuousGoal, String> {
-            self.create_continuous_goal(
-                project_id,
-                objective,
-                acceptance_criteria,
-                source_goal_id,
-                admit,
-            )
-        }
+        ) -> Result<crate::store::ContinuousGoal, String>;
         fn create_continuous_task_with_authority(
             &self,
             _authority: Option<crate::api::PlanningAuthority<'_>>,
