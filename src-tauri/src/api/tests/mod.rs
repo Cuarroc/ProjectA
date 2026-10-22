@@ -397,6 +397,7 @@
         native_claim: Option<(String, String, i64)>,
         native_store: Option<crate::store::Store>,
         goal_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
+        task_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
         /// M4-R19-08: `(run, result, sourceRef)` of every planning audit when
         /// no `native_store` writes the real trail.
         audited: Mutex<Vec<(String, String, String)>>,
@@ -836,6 +837,15 @@
             dependencies: Vec<String>,
         ) -> Result<ContinuousTask, String> {
             self.record_planning_authority(&format!("task:{goal_id}"), authority);
+            if let Some(store) = &self.native_store {
+                if let Some((arrived, resume)) = self.task_admission.lock().unwrap().take() {
+                    arrived.send(()).map_err(|error| error.to_string())?;
+                    resume.recv_timeout(Duration::from_secs(5)).map_err(|error| error.to_string())?;
+                }
+                return tauri::async_runtime::block_on(store.create_continuous_task_with_authority(
+                    authority, goal_id, objective, profile_id, owned_paths, dependencies,
+                ));
+            }
             self.planned.lock().unwrap().push(format!("task:{goal_id}"));
             Ok(ContinuousTask {
                 assignment: None,

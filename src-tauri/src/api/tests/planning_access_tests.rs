@@ -511,6 +511,8 @@ fn planning_refusal_and_write_each_append_one_scoped_envelope() {
             .execute(&pool).await.unwrap();
         sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
             .execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_goal_budget(project_id,root_goal_id) VALUES(?,'goal')")
+            .bind(&project.id).execute(&pool).await.unwrap();
         let run = store
             .record_development_run_intent("coordinator", "coordinator", 1)
             .await
@@ -531,7 +533,7 @@ fn planning_refusal_and_write_each_append_one_scoped_envelope() {
     let descriptor = server
         .issue_run_descriptor(&run, "coordinator", 1, 60)
         .expect("scoped credential");
-    let task = r#"{"objective":"step","ownedPaths":[],"dependencies":[]}"#;
+    let task = r#"{"objective":"step","ownedPaths":["src/step.rs"],"dependencies":[]}"#;
     let rows = || -> Vec<(String, Value)> {
         tauri::async_runtime::block_on(async {
             sqlx::query_as::<_, (String, String)>(
@@ -576,10 +578,11 @@ fn planning_refusal_and_write_each_append_one_scoped_envelope() {
     );
     assert_eq!(status, 200);
     let all = rows();
-    assert_eq!(all.len(), 2, "{all:?}");
-    assert_eq!(all[1].1["project"], project_id.as_str());
-    assert_eq!(all[1].1["result"], "accepted");
-    assert_eq!(all[1].1["sourceRef"], "POST /api/hq/v1/goals/goal/tasks");
+    assert_eq!(all.len(), 3, "{all:?}");
+    assert_eq!(all[1].0, "task_create");
+    assert_eq!(all[2].1["project"], project_id.as_str());
+    assert_eq!(all[2].1["result"], "accepted");
+    assert_eq!(all[2].1["sourceRef"], "POST /api/hq/v1/goals/goal/tasks");
 }
 
 /// M4-R19-08: a role refusal is audited too, and an operator-token write is
@@ -639,6 +642,150 @@ fn failed_audit_answers_500_after_a_write_and_keeps_a_refusal() {
         foreign,
     );
     assert_eq!(status, 403, "{reply}");
+}
+
+#[test]
+fn planning_task_fence_interleaving_rejects_without_task_or_event() {
+    let dir = TempDir::new("planning-task-fence");
+    std::fs::write(
+        dir.path().join("projecta.dev.json"),
+        serde_json::to_vec(&crate::development_policy::DevelopmentPolicy::defaults()).unwrap(),
+    )
+    .unwrap();
+    let db = dir.path().join("projecta.db");
+    let (store, pool, run, project, goal) = tauri::async_runtime::block_on(async {
+        let store = crate::store::Store::open(&db).await.unwrap();
+        let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display()))
+            .await
+            .unwrap();
+        let project = store
+            .create_project("plan", &dir.path().to_string_lossy())
+            .await
+            .unwrap()
+            .id;
+        let root = store
+            .create_continuous_goal(&project, "root", None, None, true)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator',?,'c','[]','[]','running','coordinator',1,1,1)")
+            .bind(&root.id).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+            .execute(&pool).await.unwrap();
+        let run = store
+            .record_development_run_intent("coordinator", "coordinator", 1)
+            .await
+            .unwrap()
+            .id;
+        (store, pool, run, project, root.id)
+    });
+    let (arrived, arrival) = std::sync::mpsc::channel();
+    let (resume, resumed) = std::sync::mpsc::channel();
+    let backend = Arc::new(FakeBackend {
+        native_store: Some(store.clone()),
+        task_admission: Mutex::new(Some((arrived, resumed))),
+        ..Default::default()
+    });
+    let server = boot(backend as Arc<dyn ControlBackend>, dir.path(), false).unwrap();
+    let descriptor = server
+        .issue_run_descriptor(&run, "coordinator", 1, 60)
+        .unwrap();
+    let events = tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap();
+    let path = format!("/api/hq/v1/goals/{goal}/tasks");
+    let body = json!({"objective":"step","ownedPaths":["src/step.rs"],"dependencies":[]}).to_string();
+    let (status, reply, before) = std::thread::scope(|scope| {
+        // Unwinding must disconnect the waiting backend before scope joins the request.
+        let release_peer = resume;
+        let request = scope.spawn(|| {
+            call(
+                descriptor.port,
+                "POST",
+                &path,
+                Some(&descriptor.token),
+                &body,
+            )
+        });
+        // Arrival proves the real HTTP role and project prechecks succeeded.
+        arrival
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("HTTP request did not reach the task writer after scope prechecks");
+        tauri::async_runtime::block_on(
+            sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='coordinator'")
+                .execute(&pool),
+        )
+        .unwrap();
+        let before = tauri::async_runtime::block_on(store.continuous_context(&project, 0)).unwrap().tasks;
+        release_peer.send(()).unwrap();
+        let (status, reply) = request.join().unwrap();
+        (status, reply, before)
+    });
+    let audit: Vec<String> = tauri::async_runtime::block_on(
+        sqlx::query_scalar("SELECT detail_json FROM audit_log WHERE action='planning' ORDER BY id")
+            .fetch_all(&pool),
+    )
+    .unwrap();
+    let refused = format!("refused: {}", "planning target is outside the run project");
+    let envelopes: Vec<Value> = audit
+        .iter()
+        .map(|row| serde_json::from_str(row).unwrap())
+        .collect();
+    assert_eq!(
+        (status, envelopes.clone()),
+        (
+            403,
+            vec![
+                json!({"project":project,"run":run,"result":refused,"sourceRef":format!("POST {path}")})
+            ]
+        ),
+        "{reply}"
+    );
+    assert_eq!(
+        tauri::async_runtime::block_on(store.continuous_context(&project, 0)).unwrap().tasks,
+        before
+    );
+    assert_eq!(
+        tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap()["events"],
+        events["events"]
+    );
+    // The unchanged credential succeeds again once the live fence is restored.
+    tauri::async_runtime::block_on(
+        sqlx::query("UPDATE continuous_tasks SET claim_fence=1 WHERE id='coordinator'")
+            .execute(&pool),
+    )
+    .unwrap();
+    let (status, reply) = call(
+        descriptor.port,
+        "POST",
+        &path,
+        Some(&descriptor.token),
+        &body,
+    );
+    assert_eq!(status, 200, "{reply}");
+    assert_eq!(reply["task"]["goalId"], goal);
+    let raw = std::fs::read_to_string(server.descriptor_path()).unwrap();
+    let operator = serde_json::from_str::<Value>(&raw).unwrap()["token"].as_str().unwrap().to_string();
+    let operator_body = json!({"objective":"operator","ownedPaths":["src/operator.rs"]}).to_string();
+    let (status, reply) = call(descriptor.port, "POST", &path, Some(&operator), &operator_body);
+    assert_eq!(status, 200, "{reply}");
+    let (foreign_goal, foreign_task) = tauri::async_runtime::block_on(async {
+        let foreign_dir = dir.path().join("foreign");
+        std::fs::create_dir(&foreign_dir).unwrap();
+        std::fs::copy(dir.path().join("projecta.dev.json"), foreign_dir.join("projecta.dev.json")).unwrap();
+        let foreign = store.create_project("foreign", &foreign_dir.to_string_lossy()).await.unwrap();
+        let root = store.create_continuous_goal(&foreign.id, "foreign", None, None, true).await.unwrap();
+        let task = store.create_continuous_task(&root.id, "foreign", None, vec!["foreign.rs".into()], vec![]).await.unwrap();
+        (root.id, task.id)
+    });
+    let before = tauri::async_runtime::block_on(store.continuous_context(&project, 0)).unwrap().tasks;
+    let events = tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap();
+    for (path, body, expected) in [
+        (format!("/api/hq/v1/goals/{foreign_goal}/tasks"), body.clone(), 403),
+        (path, json!({"objective":"foreign dependency","ownedPaths":["src/dependent.rs"],"dependencies":[foreign_task]}).to_string(), 404),
+    ] {
+        let (status, reply) = call(descriptor.port, "POST", &path, Some(&descriptor.token), &body);
+        assert_eq!(status, expected, "{reply}");
+        assert_eq!(tauri::async_runtime::block_on(store.continuous_context(&project, 0)).unwrap().tasks, before);
+        assert_eq!(tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap()["events"], events["events"]);
+    }
 }
 
 #[test]
