@@ -417,10 +417,7 @@ pub enum UpdaterState {
 }
 
 /// Everything the API can ask the app to do.
-///
-/// Behind this trait the app reaches into Tauri state - the store, the PTY
-/// manager, the status engine - none of which exists in a test. The tests hand
-/// the server a fake instead and are done in milliseconds.
+/// The app uses Tauri state; tests supply a backend with optional real SQLite.
 pub trait ControlBackend: Send + Sync {
     planning_access::planning_writer_adapters!();
     fn agent_record_page(
@@ -2301,6 +2298,9 @@ fn only_keys(body: &Value, allowed: &[&str]) -> Result<(), String> {
 }
 
 fn continuous_error(err: String) -> Response {
+    if err == crate::store::development_runs::PLANNING_REFUSED {
+        return Response::error(403, err);
+    }
     let vocabulary_status = error_status(&err, StatusPolicy::Core);
     if vocabulary_status != 500 {
         return Response::error(vocabulary_status, err);

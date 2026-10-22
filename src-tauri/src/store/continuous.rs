@@ -29,6 +29,14 @@ const FOUR_SEAMS: [&str; 4] = [
     "src-tauri/src/bin/pa.rs",
 ];
 
+/// Scoped planning credentials; absence is an operator write.
+#[derive(Clone, Copy)]
+pub struct PlanningAuthority<'a> {
+    pub run: &'a str,
+    pub owner: &'a str,
+    pub fence: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct ContinuousGoal {
@@ -215,6 +223,26 @@ impl Store {
         source_goal_id: Option<String>,
         admit: bool,
     ) -> Result<ContinuousGoal, String> {
+        self.create_continuous_goal_with_authority(
+            None,
+            project_id,
+            objective,
+            acceptance_criteria,
+            source_goal_id,
+            admit,
+        )
+        .await
+    }
+
+    pub async fn create_continuous_goal_with_authority(
+        &self,
+        authority: Option<PlanningAuthority<'_>>,
+        project_id: &str,
+        objective: &str,
+        acceptance_criteria: Option<String>,
+        source_goal_id: Option<String>,
+        admit: bool,
+    ) -> Result<ContinuousGoal, String> {
         // File I/O precedes the writer lock; freeze this policy snapshot only if
         // the project still resolves to the same path under the lock.
         let prepared = self
@@ -222,6 +250,19 @@ impl Store {
             .await;
         let mut work = begin_goal_task_audit(&self.pool).await?;
         let outcome = async {
+            if let Some(authority) = authority {
+                super::development_runs::require_planning_authority(
+                    &mut work,
+                    authority.run,
+                    authority.owner,
+                    authority.fence,
+                    super::development_runs::PlanningTarget::Project(project_id),
+                )
+                .await?;
+                if admit && source_goal_id.is_none() {
+                    return Err(super::development_runs::PLANNING_REFUSED.into());
+                }
+            }
             let objective = required_text(objective, "objective")?;
             let (repo_path, loaded) = prepared?;
             if goal_task_project_path(&mut work, project_id).await? != repo_path {

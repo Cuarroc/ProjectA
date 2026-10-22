@@ -792,7 +792,7 @@
                     resume.recv().unwrap();
                 }
                 let _ = authority;
-                let goal = tauri::async_runtime::block_on(store.create_continuous_goal(
+                let goal = tauri::async_runtime::block_on(store.create_continuous_goal_with_authority(authority,
                     project_id,
                     objective,
                     acceptance_criteria,

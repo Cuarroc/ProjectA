@@ -14,10 +14,9 @@
 //! would multiply planning authority). Every target project, goal or task is
 //! confined to the coordinator run's project before routing.
 //!
-//! Role and authority are read before the write, in a separate transaction,
-//! like on every agent route. A fence that moves in between lets that one
-//! write through. The credential's authority reaches the backend writer
-//! entry points, but their store writes do not yet check it atomically.
+//! Goal/replan writers recheck authority under their SQLite writer lock.
+//! Task, assignment and import writers still rely on the separate precheck;
+//! their remaining fence races belong to the subsequent M4B packages.
 //!
 //! Every refusal and every successful write appends one audit envelope
 //! (M4-R19-08, `audit`): the run's project, the run, the result, the route.
@@ -30,11 +29,9 @@
 use super::*;
 use crate::store::development_launches::DispatchRole;
 
-/// Run, owner and fence from the scoped credential; `None` is the operator.
-pub type PlanningAuthority<'a> = (&'a str, &'a str, i64);
+pub use crate::store::PlanningAuthority;
 
-// Shared by the trait defaults and ApiBackend to preserve legacy backends
-// while threading authority to the writer boundary. No atomic check yet.
+// Trait defaults preserve legacy backends until each writer checks authority.
 macro_rules! planning_writer_adapters {
     () => {
         fn import_development_plan_with_authority(
@@ -254,7 +251,7 @@ fn decide(inner: &Inner, request: &Request, run: &str, owner: &str, fence: i64) 
         inner,
         request,
         VerdictProof::Absent,
-        Some((run, owner, fence)),
+        Some(PlanningAuthority { run, owner, fence }),
     )
 }
 
