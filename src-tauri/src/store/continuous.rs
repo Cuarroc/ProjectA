@@ -260,7 +260,11 @@ impl Store {
                     super::development_runs::PlanningTarget::Project(project_id),
                 )
                 .await?;
-                if admit && source_goal_id.is_none() {
+                if admit
+                    && source_goal_id
+                        .as_deref()
+                        .is_none_or(|id| id.trim().is_empty())
+                {
                     return Err(super::development_runs::PLANNING_REFUSED.into());
                 }
             }

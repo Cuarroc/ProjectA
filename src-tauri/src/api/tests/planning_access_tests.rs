@@ -692,6 +692,8 @@ fn planning_goal_fence_interleaving_rejects_without_goal_or_event() {
         json!({"projectId":project,"objective":"replan","sourceGoalId":before[0].id,"admit":true})
             .to_string();
     let (status, reply) = std::thread::scope(|scope| {
+        // Unwinding must disconnect the waiting backend before scope joins the request.
+        let release_peer = resume;
         let request = scope.spawn(|| {
             call(
                 descriptor.port,
@@ -702,13 +704,15 @@ fn planning_goal_fence_interleaving_rejects_without_goal_or_event() {
             )
         });
         // Arrival proves the real HTTP role and project prechecks succeeded.
-        arrival.recv().unwrap();
+        arrival
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .expect("HTTP request did not reach the goal writer after scope prechecks");
         tauri::async_runtime::block_on(
             sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='coordinator'")
                 .execute(&pool),
         )
         .unwrap();
-        resume.send(()).unwrap();
+        release_peer.send(()).unwrap();
         request.join().unwrap()
     });
     let audit: Vec<String> = tauri::async_runtime::block_on(
