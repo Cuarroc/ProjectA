@@ -123,6 +123,7 @@ impl BlockingDialog {
 
     pub fn blocked_message(self) -> &'static str {
         match self {
+            Self::CodexTrust => "Codex-Startdialog: Verzeichnisvertrauen nicht automatisch bestätigt; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
             Self::CodexHooksReview => "Codex-Startdialog: Hooks need review; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
             Self::CodexUpdateAvailable => "Codex-Startdialog: Update available; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
             _ => "",
