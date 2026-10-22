@@ -395,6 +395,7 @@
         plan_imports: Mutex<Vec<PlanImportRecord>>,
         native_claim: Option<(String, String, i64)>,
         native_store: Option<crate::store::Store>,
+        goal_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
         /// M4-R19-08: `(run, result, sourceRef)` of every planning audit when
         /// no `native_store` writes the real trail.
         audited: Mutex<Vec<(String, String, String)>>,
@@ -775,6 +776,29 @@
             } else {
                 Ok(())
             }
+        }
+        fn create_continuous_goal_with_authority(
+            &self,
+            authority: Option<PlanningAuthority<'_>>,
+            project_id: &str,
+            objective: &str,
+            acceptance_criteria: Option<String>,
+            source_goal_id: Option<String>,
+            admit: bool,
+        ) -> Result<ContinuousGoal, String> {
+            if let Some(store) = &self.native_store {
+                if let Some((arrived, resume)) = self.goal_admission.lock().unwrap().take() {
+                    arrived.send(()).unwrap();
+                    resume.recv().unwrap();
+                }
+                let _ = authority;
+                let goal = tauri::async_runtime::block_on(store.create_continuous_goal(
+                    project_id, objective, acceptance_criteria, source_goal_id, admit,
+                ))?;
+                self.planned.lock().unwrap().push(format!("goal:{project_id}"));
+                return Ok(goal);
+            }
+            self.create_continuous_goal(project_id, objective, acceptance_criteria, source_goal_id, admit)
         }
         fn create_continuous_goal(
             &self,
