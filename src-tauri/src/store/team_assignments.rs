@@ -1,5 +1,6 @@
 //! Durable team coordination; assignments never grant approval authority.
-use super::{now_unix_secs, Store};
+use super::development_runs::{require_planning_authority, PlanningTarget, PLANNING_REFUSED};
+use super::{now_unix_secs, PlanningAuthority, Store};
 use crate::development_policy::DevelopmentPolicy;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Sqlite, SqliteConnection, Transaction};
@@ -27,8 +28,19 @@ pub struct AssignmentRequest {
 }
 
 impl Store {
+    #[cfg(test)]
     pub async fn assign_continuous_task(
         &self,
+        task: &str,
+        request: AssignmentRequest,
+    ) -> Result<TeamAssignment, String> {
+        self.assign_continuous_task_with_authority(None, task, request)
+            .await
+    }
+
+    pub async fn assign_continuous_task_with_authority(
+        &self,
+        authority: Option<PlanningAuthority<'_>>,
         task: &str,
         request: AssignmentRequest,
     ) -> Result<TeamAssignment, String> {
@@ -40,13 +52,20 @@ impl Store {
             .checked_add(1)
             .filter(|value| *value > 0)
             .ok_or("expectedRevision must be non-negative and below the maximum integer")?;
-        let mut tx = self.pool.begin().await.map_err(db)?;
-        // Serialize against both competing assignments and claims before reads.
-        sqlx::query("UPDATE continuous_tasks SET updated_at=updated_at WHERE id=?")
-            .bind(task)
-            .execute(&mut *tx)
-            .await
-            .map_err(db)?;
+        let mut tx = super::continuous::begin_write(&self.pool, "begin team assignment").await?;
+        if let Some(authority) = authority {
+            require_planning_authority(
+                &mut tx,
+                authority.run,
+                authority.owner,
+                authority.fence,
+                PlanningTarget::Task(task),
+            )
+            .await?;
+            if role == "coordinator" {
+                return Err(PLANNING_REFUSED.into());
+            }
+        }
         let row:Option<AssignmentAdmissionRow>=sqlx::query_as("SELECT g.project_id,p.policy_json,g.status,g.deadline_at,t.status,t.claim_owner,t.attempts FROM continuous_tasks t JOIN continuous_goals g ON g.id=t.goal_id JOIN projects project ON project.id=g.project_id JOIN continuous_root_policies p ON p.root_goal_id=g.root_goal_id WHERE t.id=?")
             .bind(task).fetch_optional(&mut *tx).await.map_err(db)?;
         let Some((project, encoded, goal_status, deadline, status, owner, attempts)) = row else {

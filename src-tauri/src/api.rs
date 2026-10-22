@@ -553,13 +553,6 @@ pub trait ControlBackend: Send + Sync {
     ) -> Result<ContinuousClaim, String> {
         Err("continuous backend unavailable".to_string())
     }
-    fn assign_continuous_task(
-        &self,
-        _task_id: &str,
-        _request: crate::store::team_assignments::AssignmentRequest,
-    ) -> Result<crate::store::team_assignments::TeamAssignment, String> {
-        Err("team assignment backend unavailable".into())
-    }
     fn continuous_task_assignment(
         &self,
         _task_id: &str,

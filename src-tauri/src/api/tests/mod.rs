@@ -701,7 +701,7 @@
                     arrived.send(()).map_err(|error| error.to_string())?;
                     resume.recv_timeout(Duration::from_secs(5)).map_err(|error| error.to_string())?;
                 }
-                return tauri::async_runtime::block_on(store.assign_continuous_task(task_id, request));
+                return tauri::async_runtime::block_on(store.assign_continuous_task_with_authority(authority, task_id, request));
             }
             if request.expected_revision != 0 {
                 return Err("team assignment revision conflict".into());
