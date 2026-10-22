@@ -86,6 +86,34 @@ Ein Fehlschlag mit anschließendem PASS beweist weder einen harmlosen Flake noch
 Ursache, Fix oder Abschluss von KI-24. Weiter auf Windows messen, bevor Fristen
 oder Wiederholungen geändert werden; kein Produktfix-Paket aus diesem Nachtrag.
 
+### Offener CI-Befund: selftest-win-signal ohne Timeout-Schlusszeile (22.10.2026)
+
+Weiter **offen**, Stufe niedrig, nur Prüfung: [Run 39834041335,
+Linux-1-Job 120017507651](https://github.com/Cuarroc/ProjectA/actions/runs/39834041335/job/120017507651)
+scheiterte in Queue #1847 für #1835 (`fc1d4662`) auf Basis `fa4f2d9a`,
+Queue-Kopf `84f8d345421c338748a7261a68406f62b6d3e5f4`, am Gate
+`selftest-win-signal` mit `never-finishing-run-times-out-with-3 (rc=3)`.
+Jobfehler und Quellprädikat wurden von der Koordination unabhängig gelesen;
+laut Roots Prüfung des Rohprotokolls stimmte der erwartete Exit-Code 3,
+aber die exakte stdout-Zeile `conclusion=timeout` fehlte. Diese Rohbeobachtung
+stammt von Root; `gh` verweigerte die Ausgabe wegen roher Terminal-Steuerzeichen.
+`scripts/test-win-signal.sh` prüft beide Bedingungen und verwendet für diesen
+Poll eine Sekunde Zeitlimit ohne Wartepause (`WIN_SIGNAL_SLEEP=0`). Ein
+Timing-Wettlauf oder Flake ist eine Hypothese, keine bewiesene Ursache oder
+Entwarnung; Timeout, Wiederholungen und Assertion bleiben unverändert.
+
+Der erfolgreiche [main-Lauf 39832698357](https://github.com/Cuarroc/ProjectA/actions/runs/39832698357)
+auf `fa4f2d9a` traf in `linux_1` nur die Auswahlentscheidung; die eigentlichen
+Gates waren `SKIPPED`. Er belegt keinen erfolgreichen Lauf dieses Selbsttests.
+Root reihte über Queue #1848 erneut ein; #1835 wurde am 22.10. um 19:07:35Z
+als `5a07fc0895ff6bb813df265fa9d730d38d1b1ed9` gemergt. Der Merge allein
+beweist weder einen PASS dieses Selbsttests noch Ursache oder Fix; hier wird
+kein solcher PASS behauptet. Run-/Jobstatus, Auswahl und Merge wurden per
+`gh run view` und `gh pr view` am 22.10. erneut gelesen (Exit 0).
+Folgeauftrag `d2d1a8a8-0882-435e-902b-c3cad4e695fb` bleibt offen, niedrig,
+nur Prüfung; kein Fix in TASK/ASSIGN. Dieser Eintrag dokumentiert den CI-Befund;
+die bestehenden R908-Testzeitfenster sind damit nicht als neuer Fehler belegt.
+
 ## Behoben
 
 Historische Befunde samt vollständigen Belegen stehen im
