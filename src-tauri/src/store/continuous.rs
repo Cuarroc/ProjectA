@@ -1346,6 +1346,69 @@ mod tests {
         (dir, store, project.id)
     }
     #[tokio::test]
+    async fn planning_goal_authority_refuses_blank_or_missing_root_source() {
+        let (_dir, store, project) = store().await;
+        // Explicit operator None admits a root under the fixture's valid policy.
+        let root = store
+            .create_continuous_goal_with_authority(None, &project, "root", None, None, true)
+            .await
+            .unwrap();
+        assert!(root.admitted);
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator',?,'c','[]','[]','running','coordinator',1,1,1)")
+            .bind(&root.id).execute(&store.pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+            .execute(&store.pool).await.unwrap();
+        let run = store
+            .record_development_run_intent("coordinator", "coordinator", 1)
+            .await
+            .unwrap();
+        let authority = Some(PlanningAuthority {
+            run: &run.id,
+            owner: "coordinator",
+            fence: 1,
+        });
+        // A successful public write proves this authority is live and scoped correctly.
+        let replan = store
+            .create_continuous_goal_with_authority(
+                authority,
+                &project,
+                "replan",
+                None,
+                Some(root.id.clone()),
+                true,
+            )
+            .await
+            .unwrap();
+        assert_eq!(replan.root_goal_id, root.id);
+        assert_eq!(replan.deadline_at, root.deadline_at);
+        let goals = store.list_continuous_goals(&project).await.unwrap();
+        let events = store.continuous_changes(&project, 0).await.unwrap()["events"].clone();
+        for source in [None, Some("  ".to_string())] {
+            let error = store
+                .create_continuous_goal_with_authority(
+                    authority,
+                    &project,
+                    "new root",
+                    None,
+                    source.clone(),
+                    true,
+                )
+                .await
+                .unwrap_err();
+            assert_eq!(
+                error,
+                super::super::development_runs::PLANNING_REFUSED,
+                "source={source:?}"
+            );
+            assert_eq!(store.list_continuous_goals(&project).await.unwrap(), goals);
+            assert_eq!(
+                store.continuous_changes(&project, 0).await.unwrap()["events"],
+                events
+            );
+        }
+    }
+
+    #[tokio::test]
     async fn goal_task_audit_policy_precedes_writer_lock() {
         for change_path in [false, true] {
             let (dir, store, project) = store().await;
