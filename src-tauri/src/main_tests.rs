@@ -1269,6 +1269,40 @@
     }
 
     #[test]
+    fn startup_block_typed_events_recover_only_supported_causes() {
+        use crate::submit_guard::BlockingDialog::*;
+        for (dialog, expected) in [
+            (CodexHooksReview, "done"),
+            (CodexUpdateAvailable, "done"),
+            (ClaudeTrustMove, "needs_you"),
+            (ClaudeTrust, "needs_you"),
+            (KimiTrust, "needs_you"),
+            (CodexTrust, "needs_you"),
+        ] {
+            for failed in [false, true] {
+                let engine = crate::status::StatusEngine::default();
+                engine.set_override("hooks-worker", Some("done")).unwrap();
+                super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::StartupBlocked(dialog));
+                assert_eq!(engine.verdict_for("hooks-worker").column, "needs_you");
+                if failed {
+                    super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::Escalated);
+                }
+                let at = std::time::Instant::now();
+                engine.note_output_at("hooks-worker", "\x1b[2J\x1b[HAsk Codex to do anything", at);
+                engine.tick_at(at + std::time::Duration::from_millis(2999));
+                assert_eq!(engine.verdict_for("hooks-worker").column, "needs_you");
+                engine.tick_at(at + std::time::Duration::from_secs(3));
+                assert_eq!(engine.verdict_for("hooks-worker").column, if failed { "needs_you" } else { expected }, "{dialog:?}");
+                if failed && expected == "done" {
+                    assert_eq!(engine.verdict_for("hooks-worker").reason.as_deref(), Some("Die Eingabe wurde nicht abgeschickt — drücke im Terminal von Hand Enter"));
+                }
+                super::note_guard_status(&engine, "hooks-worker", &super::SubmitGuardEvent::Delivered);
+                assert_eq!(engine.verdict_for("hooks-worker").column, "done");
+            }
+        }
+    }
+
+    #[test]
     fn codex_startup_block_is_named_in_status_and_activity() {
         use crate::submit_guard::BlockingDialog::{CodexHooksReview, CodexUpdateAvailable};
         for (dialog, title) in [(CodexHooksReview, "Hooks need review"), (CodexUpdateAvailable, "Update available")] {
