@@ -482,6 +482,8 @@ impl SubmitGuard {
             }
             // Bare historical headings are not live panels. Complete menus
             // above remain blocking even when retained before the baseline.
+            // Assumes dismissed headings are not repainted after the baseline;
+            // a repaint remains indistinguishable from a live partial panel.
             let fresh = squash(last_chars(obs.tail_since_write, ECHO_SCAN_CHARS));
             let fresh = last_chars(&fresh, DIALOG_WINDOW_CHARS);
             let partial = if matches!(self.state, StateData::IdleWatching { .. })
@@ -504,19 +506,13 @@ impl SubmitGuard {
             .filter_map(|(title, kind)| lower.rfind(title).map(|p| (p, kind)))
             .max_by_key(|(p, _)| *p)
             {
-                let before_echo = match self.state {
-                    StateData::IdleWatching { .. } => true,
-                    StateData::AwaitingEcho { bytes_at_write, .. } => {
-                        !self.echo_seen(obs, bytes_at_write)
-                    }
-                    _ => false,
-                };
                 let window = last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS);
                 let headings = startup_dialog_spans(&squash(window));
                 let later_trust = blocking_dialog_position(window).is_some_and(|(p, dialog)| {
                     !dialog.requires_user() && headings.iter().all(|(_, end, _)| *end <= p)
                 });
-                if before_echo && later_trust {
+                // After a write, an incomplete task paste can quote both markers.
+                if matches!(self.state, StateData::IdleWatching { .. }) && later_trust {
                     if let Some(answer) = self.dialog_action(obs) {
                         return Some(answer);
                     }
@@ -1221,7 +1217,11 @@ mod tests {
                 let screen = format!("{title} {trust}");
                 assert_eq!(
                     guard.tick(&obs(start, 4, 400, Some(4), &screen)),
-                    Some(SubmitAction::AnswerDialog(BlockingDialog::CodexTrust)),
+                    if stage == 0 {
+                        Some(SubmitAction::AnswerDialog(BlockingDialog::CodexTrust))
+                    } else {
+                        None
+                    },
                     "title={title}, stage={stage}"
                 );
                 assert_eq!(guard.input_pending(), stage == 1);
