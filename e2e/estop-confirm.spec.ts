@@ -60,12 +60,14 @@ test("classic settings keep the confirmation inside the 900x600 viewport", async
   expect(confirmBox!.x + confirmBox!.width).toBeLessThanOrEqual(900);
 });
 
-test("header hint fits at 900 pixels and preserves both layouts' confirmation controls", async ({ page }, testInfo) => {
+test("header hint fits at 900 pixels and preserves both layouts' confirmation controls", async ({ context }, testInfo) => {
   for (const viewport of [{ width: 900, height: 600 }, { width: 1440, height: 900 }]) {
     for (const theme of ["dark", "light"]) {
       for (const shell of [true, false]) {
         const label = `${shell ? "header" : "classic"}-${viewport.width}-${theme}`;
         await test.step(label, async () => {
+          const page = await context.newPage();
+          await page.emulateMedia({ colorScheme: theme as "dark" | "light" });
           await page.addInitScript(({ theme, shell }) => {
             localStorage.setItem("projecta.settings.glassTheme", theme);
             localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", shell ? "1" : "0");
@@ -73,7 +75,8 @@ test("header hint fits at 900 pixels and preserves both layouts' confirmation co
           await page.setViewportSize(viewport);
           await page.goto("/#/einstellungen");
           if (!shell) await page.getByRole("tab", { name: "Einstellungen" }).click();
-          await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+          if (shell) await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+          expect(await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches)).toBe(theme === "dark");
 
           const control = page.getByTestId("emergency-stop");
           const raise = page.getByRole("button", { name: "Not-Aus auslösen" });
@@ -127,6 +130,7 @@ test("header hint fits at 900 pixels and preserves both layouts' confirmation co
           await expect(dialog).toHaveCount(0);
           await expect(raise).toBeFocused();
           expect(await page.evaluate(() => window.__PROJECTA_E2E_IPC_CALLS__?.filter((c) => c === "set_emergency_stop"))).toEqual([]);
+          await page.close();
         });
       }
     }
