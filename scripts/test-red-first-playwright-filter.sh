@@ -261,6 +261,7 @@ executed=$'  ✓  1 e2e/evidence.spec.ts:2:1 › requested root test (1ms)\n'
 # Synthetic single-unit durations from Playwright msToString, without long waits.
 for duration in 1.1m 1.1h 1.1d; do
   expect_output_cls "named-duration-$duration" 0 "${executed/(1ms)/($duration)}"$'\n'"  1 passed ($duration)" 0 "$SPEC"
+  expect_output_cls "unnamed-duration-$duration" 0 "  1 passed ($duration)" 0 'e2e/evidence.spec.ts'
 done
 expect_output_cls named-ansi-cr-summary 0 "$executed"$'\n  \033[32m1 passed\033[0m (100ms)\r\n' 0 "$SPEC"
 expect_output_cls named-eleven-passed-is-invalid 2 "$executed"$'\n  11 passed (1.2s)\n' 0 "$SPEC"
@@ -295,6 +296,8 @@ npx.chmod(0o755)
 mktemp = bin_dir / 'mktemp'
 mktemp.write_text("""#!/usr/bin/env python3
 import os, signal, subprocess, sys
+if os.environ['RF_MODE'] == 'allocation-error':
+    sys.exit(23)
 if os.environ['RF_MODE'].startswith('early-'):
     os.kill(os.getppid(), getattr(signal, 'SIG' + os.environ['RF_MODE'][6:]))
 sys.exit(subprocess.call(['/usr/bin/mktemp', *sys.argv[1:]]))
@@ -315,13 +318,16 @@ fi
 exit "$code"
 '''
 failed = False
+unowned = probe / 'unowned.config'
+unowned.write_text('preserve caller file')
 for config in ('playwright.config.ts', 'tools/denkraum/playwright.config.mjs'):
     for mode, expected in [('normal', 0), ('error', 23), ('INT', 130), ('TERM', 143),
-                           ('early-INT', 130), ('early-TERM', 143)]:
+                           ('early-INT', 130), ('early-TERM', 143), ('allocation-error', 23)]:
         proof = probe / ('outer-exit-' + Path(config).suffix + '-' + mode)
         env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ['PATH'],
                    RF_MODE=mode, RF_CONFIG=config, RF_EXIT_PROOF=str(proof))
         result = subprocess.run(['bash', '-c', driver], cwd=probe, env=env, timeout=15)
+        assert unowned.read_text() == 'preserve caller file'
         leftovers = list((probe / config).parent.glob('red-first-list.*'))
         if result.returncode != expected or not proof.exists() or leftovers:
             print(f'FAIL: cleanup {config} {mode}: status={result.returncode}, '
