@@ -3053,8 +3053,8 @@ mod tests {
     #[test]
     fn startup_block_untyped_known_messages_never_authorize_recovery() {
         for detail in [
-            "Codex-Startdialog: Hooks need review; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
-            "Codex-Startdialog: Update available; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            STARTUP_DIALOGS[0].blocked_message(),
+            STARTUP_DIALOGS[1].blocked_message(),
             "unknown startup decision",
             "",
         ] {
