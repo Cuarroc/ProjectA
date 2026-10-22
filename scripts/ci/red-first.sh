@@ -307,20 +307,20 @@ node_name_run() {
 # R741-A3: --list nonzero exit or JSON errors[] → INVALID; clean empty match → ABSENT.
 
 playwright_denkraum_list_unfiltered() {
-  local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp
-  cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")"
-  # Indented so sed /^}/ extractors do not cut early.
-  printf '%s\n' \
-    "  import base from './$(basename "$config")';" \
-    "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
-    "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
-    "  return o;} export default strip(base);" > "$cfg_tmp"
-  set +e
-  npx playwright test -c "$cfg_tmp" "$path" --list --reporter=json
-  local code=$?
-  set -e
-  rm -f "$cfg_tmp"
-  return "$code"
+  # Isolate owned-file traps so the caller keeps its EXIT and signal handlers.
+  (
+    local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp
+    cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")" || exit
+    trap 'rm -f -- "$cfg_tmp"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    printf '%s\n' \
+      "  import base from './$(basename "$config")';" \
+      "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
+      "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
+      "  return o;} export default strip(base);" > "$cfg_tmp" || exit
+    npx playwright test -c "$cfg_tmp" "$path" --list --reporter=json
+  )
 }
 
 playwright_denkraum_resolve_identity() {
@@ -582,12 +582,12 @@ classify_run() {
             if(n<=length(line) && substr(line,length(line)-n+1)==s) found=1 }
           END{ exit found?0:1 }' || return 2
         [ "$code" -eq 0 ] || return 1
-        printf '%s\n' "$plain" | grep -E '(^|[[:space:]])1 passed' >/dev/null || return 2
+        printf '%s\n' "$plain" | grep -E '^[[:space:]]*1 passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h)\))?[[:space:]]*$' >/dev/null || return 2
         return 0
       fi
       printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null && return 1
       [ "$code" -eq 0 ] || return 1
-      printf '%s\n' "$plain" | grep -E '(^|[[:space:]])[1-9][0-9]* passed' >/dev/null
+      printf '%s\n' "$plain" | grep -E '^[[:space:]]*[1-9][0-9]* passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h)\))?[[:space:]]*$' >/dev/null
       return
       ;;
   esac

@@ -183,6 +183,10 @@ import { test } from '@playwright/test';
 test('requested root test', async () => { throw new Error('expected failure'); });
 EOF
 expect_cls root-failing-title 1
+# Legacy unnamed runs must remain red for a real failing test.
+SPEC='e2e/evidence.spec.ts'
+expect_cls root-unnamed-failing 1
+SPEC='e2e/evidence.spec.ts::requested root test'
 write_root_spec <<'EOF'
 import { test } from '@playwright/test';
 test.skip('requested root test', async () => {});
@@ -218,6 +222,94 @@ set +e
 classify_run "$no_tests" 1 "$SPEC"; cls_no=$?
 set -e
 if [ "$cls_no" -ne 2 ]; then echo "FAIL: root zero-selected want 2 got $cls_no" >&2; fail=1; fi
+# A title containing a pass count is not a reporter summary.
+SPEC='e2e/evidence.spec.ts::1 passed'
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test.skip('1 passed', async () => {});
+EOF
+expect_cls root-skipped-pass-title 2
+SPEC='e2e/evidence.spec.ts'
+expect_cls root-unnamed-skipped-pass-title 1
+write_root_cfg 'grep: /never selected/,'
+expect_cls root-unnamed-zero-selected 1
+write_root_cfg ''
+SPEC='tools/denkraum/evidence.spec.mjs::1 passed'
+write_spec <<'EOF'
+import { test } from '@playwright/test';
+test.skip('1 passed', async () => {});
+EOF
+expect_cls denkraum-skipped-pass-title 2
+
+expect_output_cls() {
+  local label="$1" want="$2" cls
+  if classify_run "$3" "$4" "$5"; then cls=0; else cls=$?; fi
+  if [ "$cls" -ne "$want" ]; then
+    echo "FAIL: $label want cls=$want got $cls" >&2; fail=1
+  else echo "ok   $label"; fi
+}
+SPEC='e2e/evidence.spec.ts::requested root test'
+executed=$'  ✓  1 e2e/evidence.spec.ts:2:1 › requested root test (1ms)\n'
+expect_output_cls named-ansi-cr-summary 0 "$executed"$'\n  \033[32m1 passed\033[0m (100ms)\r\n' 0 "$SPEC"
+expect_output_cls named-eleven-passed-is-invalid 2 "$executed"$'\n  11 passed (1.2s)\n' 0 "$SPEC"
+expect_output_cls named-title-token-is-invalid 2 "$executed"$'  - 1 passed extra\n' 0 "$SPEC"
+expect_output_cls named-failure-status-stays-red 1 "$executed"$'\n  1 passed (1ms)\n' 1 "$SPEC"
+expect_output_cls unnamed-ansi-cr-summary 0 $'  \033[32m12 passed\033[0m (1.2s)\r\n' 0 'e2e/evidence.spec.ts'
+expect_output_cls unnamed-list-token-is-red 1 '  - 1 passed extra' 0 'e2e/evidence.spec.ts'
+[ "$fail" -ne 0 ] || echo 'ok   playwright-summary-line-contract'
+
+# Control only the external executable boundary; the real matrix above remains.
+RF_LIST_HELPER="$(declare -f playwright_denkraum_list_unfiltered)"
+export RF_LIST_HELPER
+if python3 - "$PROBE" <<'PYTEST'
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+probe = Path(sys.argv[1])
+assert not list(probe.rglob('red-first-list.*')), 'real Playwright left owned configs'
+bin_dir = probe / "bin"
+bin_dir.mkdir()
+npx = bin_dir / "npx"
+npx.write_text("""#!/usr/bin/env python3
+import os, signal, sys
+mode = os.environ['RF_MODE']
+if mode in ('INT', 'TERM'):
+    os.kill(os.getppid(), getattr(signal, 'SIG' + mode))
+sys.exit({'normal': 0, 'error': 23, 'INT': 130, 'TERM': 143}[mode])
+""")
+npx.chmod(0o755)
+driver = r'''
+eval "$RF_LIST_HELPER"
+trap 'printf outer-exit > "$RF_EXIT_PROOF"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+before="$(trap -p EXIT INT TERM)"
+if playwright_denkraum_list_unfiltered e2e/evidence.spec.ts "$RF_CONFIG"; then
+  code=0
+else
+  code=$?
+fi
+[ "$before" = "$(trap -p EXIT INT TERM)" ] || exit 99
+exit "$code"
+'''
+failed = False
+for config in ('playwright.config.ts', 'tools/denkraum/playwright.config.mjs'):
+    for mode, expected in [('normal', 0), ('error', 23), ('INT', 130), ('TERM', 143)]:
+        proof = probe / ('outer-exit-' + Path(config).suffix + '-' + mode)
+        env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ['PATH'],
+                   RF_MODE=mode, RF_CONFIG=config, RF_EXIT_PROOF=str(proof))
+        result = subprocess.run(['bash', '-c', driver], cwd=probe, env=env, timeout=15)
+        leftovers = list((probe / config).parent.glob('red-first-list.*'))
+        if result.returncode != expected or not proof.exists() or leftovers:
+            print(f'FAIL: cleanup {config} {mode}: status={result.returncode}, '
+                  f'outer EXIT={proof.exists()}, remaining={len(leftovers)}', file=sys.stderr)
+            failed = True
+sys.exit(1 if failed else 0)
+PYTEST
+then echo 'ok   playwright-owned-config-lifecycle'
+else fail=1; fi
 # The named shell assertion is green only when the entire matrix passed.
 [ "$fail" -ne 0 ] || echo 'ok   root-e2e-exact-title-contract'
 [ "$fail" -eq 0 ] || exit 1
