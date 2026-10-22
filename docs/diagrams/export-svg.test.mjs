@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripComments } from './strip-comments.mjs';
+import './strip-comments.test.mjs';
 
 const script = fileURLToPath(new URL('./export-svg.mjs', import.meta.url));
 
