@@ -645,6 +645,63 @@ fn failed_audit_answers_500_after_a_write_and_keeps_a_refusal() {
 }
 
 #[test]
+fn planning_assignment_fence_interleaving_rejects_without_assignment_or_event() {
+    let dir = TempDir::new("planning-assignment-fence");
+    std::fs::write(
+        dir.path().join("projecta.dev.json"),
+        serde_json::to_vec(&crate::development_policy::DevelopmentPolicy::defaults()).unwrap(),
+    )
+    .unwrap();
+    let db = dir.path().join("projecta.db");
+    let (store, pool, run, project, target) = tauri::async_runtime::block_on(async {
+        let store = crate::store::Store::open(&db).await.unwrap();
+        let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display())).await.unwrap();
+        let project = store.create_project("plan", &dir.path().to_string_lossy()).await.unwrap().id;
+        let root = store.create_continuous_goal(&project, "root", None, None, true).await.unwrap();
+        sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator',?,'c','[]','[]','running','coordinator',1,1,1)")
+            .bind(&root.id).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+            .execute(&pool).await.unwrap();
+        let run = store.record_development_run_intent("coordinator", "coordinator", 1).await.unwrap().id;
+        let target = store.create_continuous_task(&root.id, "target", None, vec!["src/target.rs".into()], vec![]).await.unwrap().id;
+        (store, pool, run, project, target)
+    });
+    let (arrived, arrival) = std::sync::mpsc::channel();
+    let (resume, resumed) = std::sync::mpsc::channel();
+    let backend = Arc::new(FakeBackend {
+        native_store: Some(store.clone()),
+        assignment_admission: Mutex::new(Some((arrived, resumed))),
+        ..Default::default()
+    });
+    let server = boot(backend as Arc<dyn ControlBackend>, dir.path(), false).unwrap();
+    let descriptor = server.issue_run_descriptor(&run, "coordinator", 1, 60).unwrap();
+    let before = tauri::async_runtime::block_on(store.continuous_task_assignment(&target)).unwrap();
+    let events = tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap();
+    let path = format!("/api/hq/v1/tasks/{target}/assignment");
+    let body = json!({"teamId":"development","role":"implementer","assignee":"worker","expectedRevision":0}).to_string();
+    let (status, reply) = std::thread::scope(|scope| {
+        // Drop the sender before scoped joins if any assertion unwinds.
+        let release_peer = resume;
+        let request = scope.spawn(|| call(descriptor.port, "POST", &path, Some(&descriptor.token), &body));
+        arrival.recv_timeout(std::time::Duration::from_secs(5))
+            .expect("HTTP request did not reach assignment writer after role/project prechecks");
+        tauri::async_runtime::block_on(
+            sqlx::query("UPDATE continuous_tasks SET claim_fence=2 WHERE id='coordinator'").execute(&pool),
+        ).unwrap();
+        release_peer.send(()).unwrap();
+        request.join().unwrap()
+    });
+    let audit: Vec<String> = tauri::async_runtime::block_on(
+        sqlx::query_scalar("SELECT detail_json FROM audit_log WHERE action='planning' ORDER BY id").fetch_all(&pool),
+    ).unwrap();
+    let envelopes: Vec<Value> = audit.iter().map(|row| serde_json::from_str(row).unwrap()).collect();
+    assert_eq!((status, envelopes), (403, vec![json!({"project":project,"run":run,
+        "result":"refused: planning target is outside the run project","sourceRef":format!("POST {path}")})]), "{reply}");
+    assert_eq!(tauri::async_runtime::block_on(store.continuous_task_assignment(&target)).unwrap(), before);
+    assert_eq!(tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap()["events"], events["events"]);
+}
+
+#[test]
 fn planning_task_fence_interleaving_rejects_without_task_or_event() {
     let dir = TempDir::new("planning-task-fence");
     std::fs::write(
