@@ -808,22 +808,6 @@
                     .push(format!("goal:{project_id}"));
                 return Ok(goal);
             }
-            self.create_continuous_goal(
-                project_id,
-                objective,
-                acceptance_criteria,
-                source_goal_id,
-                admit,
-            )
-        }
-        fn create_continuous_goal(
-            &self,
-            project_id: &str,
-            objective: &str,
-            _acceptance_criteria: Option<String>,
-            source_goal_id: Option<String>,
-            admit: bool,
-        ) -> Result<ContinuousGoal, String> {
             self.planned
                 .lock()
                 .unwrap()
