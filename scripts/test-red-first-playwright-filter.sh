@@ -228,6 +228,7 @@ import subprocess
 import sys
 
 probe = Path(sys.argv[1])
+assert not list(probe.rglob('red-first-list.*')), 'real Playwright left owned configs'
 bin_dir = probe / "bin"
 bin_dir.mkdir()
 npx = bin_dir / "npx"
@@ -256,7 +257,7 @@ exit "$code"
 failed = False
 for config in ('playwright.config.ts', 'tools/denkraum/playwright.config.mjs'):
     for mode, expected in [('normal', 0), ('error', 23), ('INT', 130), ('TERM', 143)]:
-        proof = probe / ('outer-exit-' + mode)
+        proof = probe / ('outer-exit-' + Path(config).suffix + '-' + mode)
         env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ['PATH'],
                    RF_MODE=mode, RF_CONFIG=config, RF_EXIT_PROOF=str(proof))
         result = subprocess.run(['bash', '-c', driver], cwd=probe, env=env, timeout=15)

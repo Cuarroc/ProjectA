@@ -307,20 +307,20 @@ node_name_run() {
 # R741-A3: --list nonzero exit or JSON errors[] → INVALID; clean empty match → ABSENT.
 
 playwright_denkraum_list_unfiltered() {
-  local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp
-  cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")"
-  # Indented so sed /^}/ extractors do not cut early.
-  printf '%s\n' \
-    "  import base from './$(basename "$config")';" \
-    "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
-    "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
-    "  return o;} export default strip(base);" > "$cfg_tmp"
-  set +e
-  npx playwright test -c "$cfg_tmp" "$path" --list --reporter=json
-  local code=$?
-  set -e
-  rm -f "$cfg_tmp"
-  return "$code"
+  # Isolate owned-file traps so the caller keeps its EXIT and signal handlers.
+  (
+    local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp
+    cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")" || exit
+    trap 'rm -f -- "$cfg_tmp"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    printf '%s\n' \
+      "  import base from './$(basename "$config")';" \
+      "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
+      "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
+      "  return o;} export default strip(base);" > "$cfg_tmp" || exit
+    npx playwright test -c "$cfg_tmp" "$path" --list --reporter=json
+  )
 }
 
 playwright_denkraum_resolve_identity() {
