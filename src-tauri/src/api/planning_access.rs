@@ -16,7 +16,8 @@
 //!
 //! Role and authority are read before the write, in a separate transaction,
 //! like on every agent route. A fence that moves in between lets that one
-//! write through; the planning writes themselves do not take the fence.
+//! write through. The credential's authority reaches the backend writer
+//! entry points, but their store writes do not yet check it atomically.
 //!
 //! Every refusal and every successful write appends one audit envelope
 //! (M4-R19-08, `audit`): the run's project, the run, the result, the route.
@@ -28,6 +29,68 @@
 //! plans as before.
 use super::*;
 use crate::store::development_launches::DispatchRole;
+
+/// Run, owner and fence from the scoped credential; `None` is the operator.
+pub type PlanningAuthority<'a> = (&'a str, &'a str, i64);
+
+// Shared by the trait defaults and ApiBackend to preserve legacy backends
+// while threading authority to the writer boundary. No atomic check yet.
+macro_rules! planning_writer_adapters {
+    () => {
+        fn import_development_plan_with_authority(
+            &self,
+            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            project_id: &str,
+            plan_id: &str,
+            expected_projection_revision: i64,
+            rollback_reason: Option<&str>,
+        ) -> Result<Value, String> {
+            self.import_development_plan(
+                project_id,
+                plan_id,
+                expected_projection_revision,
+                rollback_reason,
+            )
+        }
+        fn create_continuous_goal_with_authority(
+            &self,
+            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            project_id: &str,
+            objective: &str,
+            acceptance_criteria: Option<String>,
+            source_goal_id: Option<String>,
+            admit: bool,
+        ) -> Result<crate::store::ContinuousGoal, String> {
+            self.create_continuous_goal(
+                project_id,
+                objective,
+                acceptance_criteria,
+                source_goal_id,
+                admit,
+            )
+        }
+        fn create_continuous_task_with_authority(
+            &self,
+            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            goal_id: &str,
+            objective: &str,
+            profile_id: Option<String>,
+            owned_paths: Vec<String>,
+            dependencies: Vec<String>,
+        ) -> Result<crate::store::ContinuousTask, String> {
+            self.create_continuous_task(goal_id, objective, profile_id, owned_paths, dependencies)
+        }
+        fn assign_continuous_task_with_authority(
+            &self,
+            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            task_id: &str,
+            request: crate::store::team_assignments::AssignmentRequest,
+        ) -> Result<crate::store::team_assignments::TeamAssignment, String> {
+            self.assign_continuous_task(task_id, request)
+        }
+    };
+}
+pub(crate) use planning_writer_adapters;
 
 /// Plan import, goal and task creation, team assignment. Reordering and
 /// priorities have no route of their own; the legacy `/api/queue` and the
@@ -187,7 +250,12 @@ fn decide(inner: &Inner, request: &Request, run: &str, owner: &str, fence: i64) 
              assigns only implementer, reviewer and integrator work",
         );
     }
-    route(inner, request, VerdictProof::Absent)
+    route(
+        inner,
+        request,
+        VerdictProof::Absent,
+        Some((run, owner, fence)),
+    )
 }
 
 /// `POST /api/hq/v1/goals` with `admit: true` and no `sourceGoalId` opens a
