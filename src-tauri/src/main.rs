@@ -2783,6 +2783,8 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
+    api::planning_access::planning_writer_adapters!();
+
     fn import_development_plan(
         &self,
         project_id: &str,
