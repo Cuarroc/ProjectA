@@ -215,6 +215,7 @@ async fn root_policy(tx: &mut SqliteConnection, root: &str) -> Result<Developmen
 }
 
 impl Store {
+    #[cfg(test)]
     pub async fn create_continuous_goal(
         &self,
         project_id: &str,
