@@ -58,6 +58,34 @@ vorkommen — die Einstufung „nur Linux" heißt genau das und ist per
 | KI-29 | F-SEC-4, Restrisiko des OmniRoute-Schlüssel-Syncs: wer den Opt-in einschaltet, schickt die Vault-Schlüssel an den Listener auf dem OmniRoute-Port, ohne dessen Identität zu prüfen | niedrig (bewusst in Kauf genommen) | Default ist seit W1-24 (PR #62) „kein Push"; W1-24b (PR #98) hat daraus ein ausdrückliches Opt-in-Setting gemacht, das im UI das Restrisiko benennt (`.pa/report_w1-24b.md`, „Hinweise und Folgearbeiten"). Eine Listener-Identität gibt es nicht: `/api/version` bräche Builds, die es weglassen, und ein Management-Token als Bearer gäbe es einem Horcher mit (PLAN, frühere Entscheidung Nr. 13). Solange der Sync aus bleibt, besteht kein Risiko. Paket W1-24c. |
 | KI-31 | In-App-Update aus einem main-Build blockiert den nächsten Start (`update-recovery.json`, `IdentityMismatch`) | hoch (Release-Blocker R-1; Journal-Pfad behoben, siehe Stand) | Nach einem echten Update vergleicht die Startprüfung den Hash der laufenden exe mit dem Hash des Update-Pakets und den Datenbank-Snapshot-Hash mit der Live-Datenbank; beides passt nach dem Update nicht mehr, die App startet nicht. Befund aus PR #457 und Berater Fable 5.1 (05.10.). **Hinweis 2026-10-14:** „Release-Blocker R-1“ bezog sich auf v1.5.0; v1.5.0 bis v1.6.3 sind seither veröffentlicht (`gh release list`), die Bezeichnung ist also historisch. Der Rest unten ist unverändert offen und nicht neu geprüft. **Workaround:** kein In-App-Update aus main-Builds vor W3-02j; die Datei `update-recovery.json` im App-Datenordner zu entfernen löst den Block. **Stand 2026-10-05:** für Updates, die über den Journal-Pfad installiert werden, behoben durch W3-02j (PR #462, Trust-on-first-run-Handshake: die Startprüfung übernimmt exe- und Datenbank-Identität als Erbe des Journals). **Offen:** ein echter Lauf „Update installieren und neu starten“ auf dem Windows-PC ist nicht belegt; Updates, die nicht über den Journal-Pfad installiert wurden, deckt der Fix nicht ab. Der Workaround gilt bis dahin für diese Fälle. |
 
+### KI-24: Windows-Wiederauftreten und erfolgreicher Wiederanlauf (22.10.2026)
+
+Neuer Befund, weiter **offen/beobachten**, Ursache unbewiesen: [Run 39754937862,
+Windows-1-Job 119744455069](https://github.com/Cuarroc/ProjectA/actions/runs/39754937862/job/119744455069)
+in Queue #1826 für #1825, Basis `3bdfa0817615aeee7b10112f8bdc110627ce292b`,
+Queue-Kopf `8cc33f5811713dd7717a0b6d75dcedced1dd3c33`.
+Einziger fehlgeschlagener Test: `store::continuous::tests::goal_task_audit_uses_one_connection`,
+`src-tauri/src/store/continuous.rs:1454:10`, Fehler
+`audit must not acquire a second pooled connection while holding the writer: Elapsed(())`;
+danach scheiterte die Entfernung des eigenen temporären Verzeichnisses mit `os error 32`.
+nextest: 13.674 s, inneres Testprotokoll: 12.76 s; Windows-1-Batch: 455.475 s,
+1183 ausgeführt, 1182 bestanden, 1 fehlgeschlagen, 1200 übersprungen.
+Der zusätzliche rote Sammeljob `gates (windows)` (119750089057) ist kein zweiter Testfehler.
+
+**PASSED ON REQUEUE:** [Run 39758048587, Windows-1-Job 119754964410](https://github.com/Cuarroc/ProjectA/actions/runs/39758048587/job/119754964410),
+Queue #1827, Kopf `8948bac08386746415807d42455b3c3c27542b9e`: derselbe Test
+bestand um 09:51:52Z in 1.508 s; Zusammenfassung 09:54:15Z: 1183/1183 bestanden,
+1200 übersprungen, Batch 200.864 s. Windows-1, Windows-2, native Windows-Tests,
+Sammeljob `gates (windows)` und der gesamte CI-Lauf endeten erfolgreich.
+Der eigenständige Requeue-Kommentar [6337774341](https://github.com/Cuarroc/ProjectA/pull/1825#issuecomment-6337774341)
+kam um 09:46:30Z, Queue #1827 entstand um 09:46:45Z; #1825 wurde um 09:59:50Z
+als `0fa721bd133ff15ec57de84d8e52ebc939596bdd` gemergt. Keine verbleibende Merge-Sperre für #1825.
+Quellen: vorhandene GitHub-Läufe und Jobprotokolle, am 22.10. per `gh run view`
+und `gh pr view` erneut gelesen (Exit 0); keine neue lokale Windows-Messung.
+Ein Fehlschlag mit anschließendem PASS beweist weder einen harmlosen Flake noch
+Ursache, Fix oder Abschluss von KI-24. Weiter auf Windows messen, bevor Fristen
+oder Wiederholungen geändert werden; kein Produktfix-Paket aus diesem Nachtrag.
+
 ## Behoben
 
 Historische Befunde samt vollständigen Belegen stehen im
