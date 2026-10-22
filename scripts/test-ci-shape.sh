@@ -42,23 +42,43 @@ check() {
 }
 
 # mutate name file sed-expression -> $MUTATED; returns non-zero when the
-# expression changed nothing. Not called in $( ): a subshell would swallow
-# both the message and the failure count (review PR #149, kimi-k3 F1).
+# expression changed nothing, counting the failure. Not called in $( ):
+# a subshell would swallow both the message and the failure count (review PR #149, kimi-k3 F1).
 MUTATED=""
 mutate() {
   MUTATED="$tmp/$1.${2##*.}"
-  sed -E "$3" "$2" > "$MUTATED" || return 2
-  ! cmp -s "$2" "$MUTATED"
+  if ! sed -E "$3" "$2" > "$MUTATED"; then
+    echo "FEHLER $1: mutation failed"
+    fails=$((fails + 1))
+    return 2
+  fi
+  if cmp -s "$2" "$MUTATED"; then
+    echo "FEHLER $1: mutation changed nothing (stale test?)"
+    fails=$((fails + 1))
+    return 1
+  fi
 }
 
-# case_m name ci|mg sed-expression reason-regex: mutate ci.yml or
-# .mergify.yml, expect ci-shape to fail for the given reason. A mutation that
-# no longer changes anything is a stale test and fails loudly.
+# Compare all bytes outside the intended job/step/direct job-name field.
+outside_scope() {
+  awk -v wanted="$1" -v selector="$2" '
+    /^  [^ ]/ { job = $1; step = "" }
+    /^      - / { step = $0 }
+    job == wanted ":" && (selector == "" ||
+      (selector == "job-name" && /^    name:/) ||
+      step == "      - name: " selector) { next }
+    { print }
+  ' "$3"
+}
+
+# case_m name ci|mg sed-expression reason-regex [job [step|job-name]]
 case_m() {
   local name="$1" which="$2" expr="$3" reason="$4" src
   if [ "$which" = ci ]; then src="$CI"; else src="$MG"; fi
-  if ! mutate "$name" "$src" "$expr"; then
-    echo "FEHLER $name: mutation changed nothing (stale test?)"
+  mutate "$name" "$src" "$expr" || return
+  if [ -n "${5:-}" ] && ! cmp -s \
+    <(outside_scope "$5" "${6:-}" "$src") <(outside_scope "$5" "${6:-}" "$MUTATED"); then
+    echo "FEHLER $name: mutation changed outside its intended scope"
     fails=$((fails + 1))
     return
   fi
@@ -70,10 +90,21 @@ case_m() {
 }
 
 check real-files pass "$CI" "$MG"
+# A following job makes accidental end-of-file mutations observable.
+cp "$CI" "$tmp/ci.yml"
+CI="$tmp/ci.yml"
+printf '\n  scope_9:\n    name: untouched sibling\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo untouched\n' >> "$CI"
+check extra-sibling-job pass "$CI" "$MG"
 
 # Block-sequence headers may carry a YAML comment or anchor.
 for header in 'steps-header-comment:# protected steps' 'steps-header-anchor:&protected_steps'; do
-  mutate "${header%%:*}" "$CI" "s/^    steps:$/    steps: ${header#*:}/" || exit 1
+  decoration="${header#*:}"
+  mutate "${header%%:*}" "$CI" "s/^    steps:$/    steps: ${decoration//&/\\&}/" || continue
+  if ! grep -qxF "    steps: $decoration" "$MUTATED"; then
+    echo "FEHLER ${header%%:*}: incorrect header fixture"
+    fails=$((fails + 1))
+    continue
+  fi
   check "${header%%:*}" pass "$MUTATED" "$MG"
 done
 
@@ -97,27 +128,33 @@ for variant in '-2:equivalent-step-indentation--2' \
   # The event guards must remain mandatory at every accepted indentation.
   for rf_step in 'red-first - plan' 'red-first - proof against merge base'; do
     mutate "indented-event-$shift-$rf_step" "$reindented" \
-      "/name: $rf_step\$/,/^[[:space:]]*run:/ s/github.event_name == 'pull_request'/true/" || exit 1
+      "/name: $rf_step\$/,/^[[:space:]]*run:/ s/github.event_name == 'pull_request'/true/" || continue
     check "indented-event-$shift-$rf_step" fail "$MUTATED" "$MG" "step '$rf_step' 'if' lacks github.event_name"
   done
 done
 
 # The harness itself: a no-op mutation must be reported, not pass silently.
-if mutate harness-noop "$CI" 's/NEVER_MATCHES_9f3c/x/'; then
+before_noop=$fails
+if mutate harness-noop "$CI" 's/NEVER_MATCHES_9f3c/x/' > "$tmp/noop.out"; then
   echo "FEHLER harness: a no-op mutation was not detected"
   fails=$((fails + 1))
+elif [ "$fails" -ne "$((before_noop + 1))" ] || ! grep -qxF \
+  'FEHLER harness-noop: mutation changed nothing (stale test?)' "$tmp/noop.out"; then
+  echo "FEHLER harness: no-op must count one failure and retain its diagnostic"
+  fails=$((fails + 1))
 else
+  fails=$before_noop # The expected failure was asserted; keep earlier failures.
   echo "ok   harness detects a no-op mutation"
 fi
 
 # ci.yml: the Windows job always on windows-latest again (PR runs pay the
 # Windows rate) - not a safety bug, but the cost structure is gone.
-case_m windows-runs-on-fixed ci '/^  windows-part:/,/^  [a-z-]+:$/ s/^(    runs-on:).*/\1 windows-latest/' \
-  "runs-on must choose by event"
+case_m windows-runs-on-fixed ci '/^  windows-part:/,/^  [A-Za-z0-9_-]+:$/ s/^(    runs-on:).*/\1 windows-latest/' \
+  "runs-on must choose by event" windows-part
 # ... and the same with the three words only in a trailing comment
 # (review PR #149, kimi-k3 F2).
-case_m windows-runs-on-comment-only ci '/^  windows-part:/,/^  [a-z-]+:$/ s/^(    runs-on:).*/\1 windows-latest # ubuntu-latest mergify\/merge-queue\//' \
-  "runs-on must choose by event"
+case_m windows-runs-on-comment-only ci '/^  windows-part:/,/^  [A-Za-z0-9_-]+:$/ s/^(    runs-on:).*/\1 windows-latest # ubuntu-latest mergify\/merge-queue\//' \
+  "runs-on must choose by event" windows-part
 # ci.yml: the guard that turns "Windows lane would run on Linux" red is gone.
 case_m windows-guard-missing ci "s/runner\\.os != 'Windows'/runner.os != 'Linux'/" \
   "guard"
@@ -178,7 +215,7 @@ case_m review-ok-missing-in-both mg '/label = review-ok/d' \
 case_m merge-condition-missing mg '/^    merge_conditions:/,/^[a-z]/ { /check-success = gates \(windows\)/d }' \
   "merge_conditions lacks 'check-success = gates \\(windows\\)'"
 # ci.yml (CI-04): the main-red job no longer waits for both gate jobs.
-case_m main-red-without-needs ci '/^  main-red:/,$ s/^    needs: \[linux, windows\]$/    needs: []/' \
+case_m main-red-without-needs ci '/^  main-red:/,/^  [A-Za-z0-9_-]+:/ s/^    needs: \[linux, windows\]$/    needs: []/' \
   "main-red.*needs"
 # ... or fires without always(), so a red gates job would skip the guard.
 case_m main-red-without-always ci 's/if: \$\{\{ always\(\) &&/if: ${{/' \
@@ -202,7 +239,7 @@ case_m main-red-without-ran-wiring ci 's#\$\{\{ needs\.linux\.outputs\.lane_run 
   "main-red.*needs.linux.outputs.lane_run"
 # ... or the guards race: without a job-level concurrency group a stale red
 # run can freeze again after a newer green run lifted it (S-5/O-5).
-case_m main-red-without-concurrency ci '/^  main-red:/,$ s/^      group: main-red-guard$//' \
+case_m main-red-without-concurrency ci '/^  main-red:/,/^  [A-Za-z0-9_-]+:/ s/^      group: main-red-guard$//' \
   "main-red.*concurrency"
 # V161-FU-3 / R934-A2: both red-first steps must pin RF_BASE_BRANCH and fetch
 # refs/heads/$RF_BASE_BRANCH — removing either must turn ci-shape red.
@@ -244,9 +281,10 @@ done
 
 # Independent mutations for the remaining protected conditions, including
 # siblings previously removed together or covered only by another diagnostic.
-for job_id in linux red-first; do
-  case_m "$job_id-check-renamed" ci "/^  $job_id:/,/^  [a-z-]+:/ s/name: [a-z-]+/name: renamed/" \
-    "job $job_id does not report"
+for variant in linux:linux-check-renamed red-first:red-first-check-renamed; do
+  job_id="${variant%%:*}"
+  case_m "${variant#*:}" ci "/^  $job_id:/,/^  [A-Za-z0-9_-]+:/ s/^    name: .*/    name: renamed/" \
+    "job $job_id does not report" "$job_id" job-name
 done
 for key in queue_conditions merge_conditions auto_merge_conditions; do
   case_m "$key-missing" mg "s/^([[:space:]]*)$key:/\\1unused_conditions:/" "$key is empty or missing"
@@ -256,25 +294,25 @@ for key in queue_conditions merge_conditions auto_merge_conditions; do
   done
 done
 for runner in ubuntu-latest windows-latest 'mergify/merge-queue/'; do
-  case_m "runner-without-${runner//\//-}" ci "/^    runs-on:/ s#$runner#removed#g" "runs-on must choose by event"
+  case_m "runner-without-${runner//\//-}" ci "/^  windows-part:/,/^  [A-Za-z0-9_-]+:/ { /^    runs-on:/ s#$runner#removed#g; }" "runs-on must choose by event" windows-part
 done
 case_m plan-command-missing ci 's#bash scripts/ci/red-first.sh --plan#true#' "red-first - plan' missing"
 case_m red-first-verdict-missing ci 's#bash scripts/ci/red-first-verdict.sh#true#' "does not call scripts/ci/red-first-verdict.sh"
 for sha in HEAD_SHA BASE_SHA; do
-  case_m "plan-without-$sha-fetch" ci "/git fetch.*\\\"\\\$$sha\\\"/d" "missing $sha fetch"
+  case_m "plan-without-$sha-fetch" ci "/^      - name: red-first - plan\$/,/^      - / { /git fetch.*\\\"\\\$$sha\\\"/d; }" "missing $sha fetch" linux_1 'red-first - plan'
 done
-case_m main-red-missing ci '/^  main-red:/,$d' "job main-red missing"
-case_m main-red-name-missing ci '/^  main-red:/,$ { /^    name:/d; }' "does not report 'main-red-guard'"
+case_m main-red-missing ci '/^  main-red:/,/^  [A-Za-z0-9_-]+:/ { /^  main-red:/d; /^  [A-Za-z0-9_-]+:/!d; }' "job main-red missing" main-red
+case_m main-red-name-missing ci '/^  main-red:/,/^  [A-Za-z0-9_-]+:/ { /^    name:/d; }' "does not report 'main-red-guard'" main-red job-name
 case_m main-red-command-missing ci 's#bash scripts/ci/main-red-guard.sh#true#' "does not call scripts/ci/main-red-guard.sh"
 for leg in linux windows; do
-  case_m "main-red-without-$leg" ci "/^  main-red:/,\$ s/needs: \\[linux, windows\\]/needs: [$([ "$leg" = linux ] && echo windows || echo linux)]/" \
+  case_m "main-red-without-$leg" ci "/^  main-red:/,/^  [A-Za-z0-9_-]+:/ s/needs: \\[linux, windows\\]/needs: [$([ "$leg" = linux ] && echo windows || echo linux)]/" \
     "main-red: 'needs' lacks $leg"
-  case_m "main-red-without-$leg-ran" ci "/^  main-red:/,\$ s/needs.$leg.outputs.lane_run/true/" \
+  case_m "main-red-without-$leg-ran" ci "/^  main-red:/,/^  [A-Za-z0-9_-]+:/ s/needs.$leg.outputs.lane_run/true/" \
     "${leg^^}_RAN must read"
 done
 for job_id in linux_1 windows-part; do
-  case_m "$job_id-output-missing" ci "/^  $job_id:/,/^  [a-z_-]+:/ { /^      lane_run:/d; }" "output 'lane_run' missing"
-  case_m "$job_id-plan-id-missing" ci "/^  $job_id:/,/^  [a-z_-]+:/ { /^        id: plan/d; }" "step id 'plan' missing"
+  case_m "$job_id-output-missing" ci "/^  $job_id:/,/^  [A-Za-z0-9_-]+:/ { /^      lane_run:/d; }" "output 'lane_run' missing" "$job_id"
+  case_m "$job_id-plan-id-missing" ci "/^  $job_id:/,/^  [A-Za-z0-9_-]+:/ { /^        id: plan/d; }" "step id 'plan' missing" "$job_id"
 done
 for leg in linux_1 linux_2; do
   case_m "linux-needs-without-$leg" ci "/^  linux:/,/^  windows-part:/ s/needs: \\[linux_1, linux_2\\]/needs: [$leg]/" "both legs required"
