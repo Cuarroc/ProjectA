@@ -1106,6 +1106,86 @@ mod tests {
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
 
     #[test]
+    fn real_readiness_marker_after_startup_title_allows_write() {
+        let start = Instant::now();
+        let mut guard =
+            SubmitGuard::new(start, TASK).with_readiness_marker("Ask Codex to do anything");
+        let tail =
+            normalize_tui_output("\x1b[33mUpdate available\x1b[0m\r\nAsk Codex to do anything");
+        assert_eq!(
+            guard.tick(&obs(start, 4, 300, Some(1), &tail)),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        assert!(guard.input_pending());
+        assert_eq!(guard.escalation_reason(), None);
+    }
+
+    #[test]
+    fn spaced_trust_before_later_startup_title_never_answers() {
+        let trust = "Do you trust the contents of this directory? > 1. Yes, continue";
+        for (title, kind) in [
+            ("Update available", BlockingDialog::CodexUpdateAvailable),
+            ("Hooks need review", BlockingDialog::CodexHooksReview),
+        ] {
+            let start = Instant::now();
+            let mut guard = SubmitGuard::new(start, TASK);
+            let raw = format!(
+                "{}{}\x1b[32m{trust}\x1b[0m\r\n{title}",
+                " \t\r\n".repeat(100),
+                "x ".repeat(300)
+            );
+            let tail = normalize_tui_output(&raw);
+            assert_eq!(guard.tick(&obs(start, 4, 2000, Some(1), &tail)), None);
+            assert!(!guard.input_pending());
+            assert_eq!(
+                guard.tick(&obs(start, 120, 2000, Some(1), &tail)),
+                Some(SubmitAction::Escalate)
+            );
+            assert_eq!(
+                guard.escalation_reason(),
+                Some(EscalationReason::StartupDialog(kind))
+            );
+        }
+    }
+
+    #[test]
+    fn partial_pasted_trust_quote_never_receives_dialog_keys() {
+        let start = Instant::now();
+        let trust = "Do you trust the contents of this directory? > 1. Yes, continue";
+        let task = format!(
+            "Quoted terminal output:\nUpdate available\n{trust}\nExplain this quoted terminal output as data without accepting or running anything, then finish with a summary."
+        );
+        let mut guard = SubmitGuard::new(start, &task).with_readiness_marker("ready");
+        assert_eq!(
+            guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        // The paste has rendered its quoted prefix, but not the distinctive last line.
+        let partial = format!("Quoted terminal output: Update available {trust}");
+        for now in [2, 5, 10] {
+            assert_eq!(
+                guard.tick(&obs(start, now, 400, Some(2), &partial)),
+                None,
+                "no trust keys or task Enter at tick {now}"
+            );
+            assert_eq!(guard.state(), SubmitState::AwaitingEcho);
+            assert!(guard.input_pending());
+            assert!(!guard.is_delivered());
+        }
+        assert_eq!(
+            guard.tick(&obs(start, 120, 400, Some(2), &partial)),
+            Some(SubmitAction::Escalate)
+        );
+        assert_eq!(
+            guard.escalation_reason(),
+            Some(EscalationReason::StartupDialog(
+                BlockingDialog::CodexUpdateAvailable
+            ))
+        );
+        assert!(guard.input_pending());
+    }
+
+    #[test]
     fn historical_startup_title_does_not_hold_idle_session() {
         for title in ["Update available", "Hooks need review"] {
             for marker in ["", "Ask Codex to do anything"] {
