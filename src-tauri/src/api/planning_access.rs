@@ -14,8 +14,8 @@
 //! would multiply planning authority). Every target project, goal or task is
 //! confined to the coordinator run's project before routing.
 //!
-//! Goal/replan writers recheck authority under their SQLite writer lock.
-//! Task, assignment and import writers still rely on the separate precheck;
+//! Goal/replan and task writers recheck authority under their SQLite writer lock.
+//! Assignment and import writers still rely on the separate precheck;
 //! their remaining fence races belong to the subsequent M4B packages.
 //!
 //! Every refusal and every successful write appends one audit envelope
@@ -60,15 +60,13 @@ macro_rules! planning_writer_adapters {
         ) -> Result<crate::store::ContinuousGoal, String>;
         fn create_continuous_task_with_authority(
             &self,
-            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
             goal_id: &str,
             objective: &str,
             profile_id: Option<String>,
             owned_paths: Vec<String>,
             dependencies: Vec<String>,
-        ) -> Result<crate::store::ContinuousTask, String> {
-            self.create_continuous_task(goal_id, objective, profile_id, owned_paths, dependencies)
-        }
+        ) -> Result<crate::store::ContinuousTask, String>;
         fn assign_continuous_task_with_authority(
             &self,
             _authority: Option<crate::api::PlanningAuthority<'_>>,

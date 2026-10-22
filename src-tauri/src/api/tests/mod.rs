@@ -842,8 +842,8 @@
                     arrived.send(()).map_err(|error| error.to_string())?;
                     resume.recv_timeout(Duration::from_secs(5)).map_err(|error| error.to_string())?;
                 }
-                return tauri::async_runtime::block_on(store.create_continuous_task(
-                    goal_id, objective, profile_id, owned_paths, dependencies,
+                return tauri::async_runtime::block_on(store.create_continuous_task_with_authority(
+                    authority, goal_id, objective, profile_id, owned_paths, dependencies,
                 ));
             }
             self.planned.lock().unwrap().push(format!("task:{goal_id}"));

@@ -423,6 +423,7 @@ impl Store {
             .bind(project_id).fetch_all(&self.pool).await.map_err(db("list continuous goals"))
     }
 
+    #[cfg(test)]
     pub async fn create_continuous_task(
         &self,
         goal_id: &str,
@@ -431,8 +432,38 @@ impl Store {
         owned_paths: Vec<String>,
         dependencies: Vec<String>,
     ) -> Result<ContinuousTask, String> {
+        self.create_continuous_task_with_authority(
+            None,
+            goal_id,
+            objective,
+            profile_id,
+            owned_paths,
+            dependencies,
+        )
+        .await
+    }
+
+    pub async fn create_continuous_task_with_authority(
+        &self,
+        authority: Option<PlanningAuthority<'_>>,
+        goal_id: &str,
+        objective: &str,
+        profile_id: Option<String>,
+        owned_paths: Vec<String>,
+        dependencies: Vec<String>,
+    ) -> Result<ContinuousTask, String> {
         let mut work = begin_goal_task_audit(&self.pool).await?;
         let outcome = async {
+            if let Some(authority) = authority {
+                super::development_runs::require_planning_authority(
+                    &mut work,
+                    authority.run,
+                    authority.owner,
+                    authority.fence,
+                    super::development_runs::PlanningTarget::Goal(goal_id),
+                )
+                .await?;
+            }
             let objective = required_text(objective, "objective")?;
             let owned_paths = normalize_scopes(owned_paths)?;
             let dependencies = normalize_ids(dependencies, "dependencies")?;

@@ -545,16 +545,6 @@ pub trait ControlBackend: Send + Sync {
     fn list_continuous_goals(&self, _project_id: &str) -> Result<Vec<ContinuousGoal>, String> {
         Err("continuous backend unavailable".to_string())
     }
-    fn create_continuous_task(
-        &self,
-        _goal_id: &str,
-        _objective: &str,
-        _profile_id: Option<String>,
-        _owned_paths: Vec<String>,
-        _dependencies: Vec<String>,
-    ) -> Result<ContinuousTask, String> {
-        Err("continuous backend unavailable".to_string())
-    }
     fn claim_continuous_task(
         &self,
         _task_id: &str,
