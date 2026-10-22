@@ -97,6 +97,13 @@ placeholder components); uppercase leaf labels ≤14 px; equal computed grid tra
 Exit 1 means a per-case count rose or coverage changed. `npm run design:gate -- --update`
 initializes a missing baseline or replaces it after validation; it accepts added/removed cases
 but never raises ceilings on retained cases. The file write is not atomic.
+Baseline updates use the public pure `serializeBaseline(counts)` boundary: braces, one compact
+`"key":[counts]` case per line in object-key order, JSON-escaped keys, and a trailing newline.
+The committed baseline currently has its first 132 of 396 cases on individual lines (the zero-item
+block, ending at `/designsystem|0|1920x1080|dark`); the remaining 264 share one compact tail line
+until the serial formatting-only follow-up. This migration changes no cases, counts or ordering.
+Check the encoding without a browser with `node --test scripts/dev/design-gate-baseline.test.mjs`;
+these developer tests run manually and are not part of a gate lane.
 This is a DOM heuristic, not a visual verdict; horizontal gaps, dialogs and legacy sub-tabs
 are not swept. Route aliases may render the same screen and are counted separately.
 The command is deliberately not wired into CI or `gates.sh` yet.
