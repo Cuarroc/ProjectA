@@ -309,11 +309,11 @@ node_name_run() {
 playwright_denkraum_list_unfiltered() {
   # Isolate owned-file traps so the caller keeps its EXIT and signal handlers.
   (
-    local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp
-    cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")" || exit
-    trap 'rm -f -- "$cfg_tmp"' EXIT
+    local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp=""
+    trap '[ -z "$cfg_tmp" ] || rm -f -- "$cfg_tmp"' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
+    cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")" || exit
     printf '%s\n' \
       "  import base from './$(basename "$config")';" \
       "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
@@ -519,7 +519,7 @@ run_spec() {
         pw_code=$?
         set -e
         printf '%s\n' "$pw_out"
-        if printf '%s\n' "$pw_out" | sed -E $'s/\033\\[[0-9;]*m//g' | grep -E 'No tests found' >/dev/null \
+        if printf '%s\n' "$pw_out" | sed -E $'s/\033\\[[0-9;]*m//g' | grep -E '^Error: No tests found([.]|[[:space:]]*$)' >/dev/null \
           && ! printf '%s\n' "$pw_out" | grep -F 'red-first: playwright title' >/dev/null; then
           echo "red-first: playwright title present but not discovered"
           return 2
@@ -573,21 +573,21 @@ classify_run() {
       if [[ "$spec" == *::* ]]; then
         expected="${spec#*::}"
         printf '%s\n' "$plain" | grep -F 'red-first: playwright title absent from list' >/dev/null && return 1
-        printf '%s\n' "$plain" | grep -E 'red-first: playwright title identity invalid|red-first: playwright title present but not discovered|No tests found' >/dev/null && return 2
+        printf '%s\n' "$plain" | grep -E 'red-first: playwright title identity invalid|red-first: playwright title present but not discovered|^Error: No tests found([.]|[[:space:]]*$)' >/dev/null && return 2
         printf '%s\n' "$plain" | RF_PW_TITLE="$expected" awk '
           BEGIN { want=ENVIRON["RF_PW_TITLE"] }
           { line=$0; sub(/\r$/,"",line);
-            sub(/ \([0-9]+(\.[0-9]+)?m?s\)[[:space:]]*$/,"",line);
+            sub(/ \([0-9]+(\.[0-9]+)?(ms|s|m|h|d)\)[[:space:]]*$/,"",line);
             s="› " want; n=length(s);
             if(n<=length(line) && substr(line,length(line)-n+1)==s) found=1 }
           END{ exit found?0:1 }' || return 2
         [ "$code" -eq 0 ] || return 1
-        printf '%s\n' "$plain" | grep -E '^[[:space:]]*1 passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h)\))?[[:space:]]*$' >/dev/null || return 2
+        printf '%s\n' "$plain" | grep -E '^[[:space:]]*1 passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h|d)\))?[[:space:]]*$' >/dev/null || return 2
         return 0
       fi
-      printf '%s\n' "$plain" | grep -E 'No tests found' >/dev/null && return 1
+      printf '%s\n' "$plain" | grep -E '^Error: No tests found([.]|[[:space:]]*$)' >/dev/null && return 1
       [ "$code" -eq 0 ] || return 1
-      printf '%s\n' "$plain" | grep -E '^[[:space:]]*[1-9][0-9]* passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h)\))?[[:space:]]*$' >/dev/null
+      printf '%s\n' "$plain" | grep -E '^[[:space:]]*[1-9][0-9]* passed( \([0-9]+(\.[0-9]+)?(ms|s|m|h|d)\))?[[:space:]]*$' >/dev/null
       return
       ;;
   esac
