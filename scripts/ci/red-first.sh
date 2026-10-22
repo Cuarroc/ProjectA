@@ -307,11 +307,11 @@ node_name_run() {
 # R741-A3: --list nonzero exit or JSON errors[] → INVALID; clean empty match → ABSENT.
 
 playwright_denkraum_list_unfiltered() {
-  local path="$1" cfg_tmp
-  cfg_tmp="$(mktemp --suffix=.mjs tools/denkraum/red-first-list.XXXXXX)"
+  local path="$1" config="${2:-tools/denkraum/playwright.config.mjs}" cfg_tmp
+  cfg_tmp="$(mktemp --suffix=".${config##*.}" "$(dirname "$config")/red-first-list.XXXXXX")"
   # Indented so sed /^}/ extractors do not cut early.
   printf '%s\n' \
-    "  import base from './playwright.config.mjs';" \
+    "  import base from './$(basename "$config")';" \
     "  function strip(c){if(!c||typeof c!=='object')return c;const o={...c};delete o.grep;delete o.grepInvert;" \
     "  if(Array.isArray(o.projects))o.projects=o.projects.map(p=>{const q={...p};delete q.grep;delete q.grepInvert;return q;});" \
     "  return o;} export default strip(base);" > "$cfg_tmp"
@@ -349,9 +349,10 @@ playwright_denkraum_resolve_identity() {
 
 playwright_denkraum_name_run() {
   # Exact case-sensitive --list identity, then both-end-anchored case-sensitive --grep.
-  local name="$1" path="$2" list_out identity grep_title list_code
+  local name="$1" path="$2" config="${3:-tools/denkraum/playwright.config.mjs}"
+  local list_out identity grep_title list_code
   set +e
-  list_out="$(playwright_denkraum_list_unfiltered "$path" 2>/dev/null)"
+  list_out="$(playwright_denkraum_list_unfiltered "$path" "$config" 2>/dev/null)"
   list_code=$?
   set -e
   [ -n "$list_out" ] || { echo "red-first: playwright title identity invalid"; return 2; }
@@ -362,7 +363,7 @@ playwright_denkraum_name_run() {
     OK\ *) grep_title="${identity#OK }" ;;
     *) echo "red-first: playwright title identity invalid"; return 2 ;;
   esac
-  npx playwright test -c tools/denkraum/playwright.config.mjs "$path" \
+  npx playwright test -c "$config" "$path" \
     --grep="/^$(regex_escape "$grep_title")\$/" --reporter=list
 }
 
@@ -507,16 +508,14 @@ run_spec() {
         (cd "$tree/src-tauri" && "${cargo_env[@]}" cargo test -- --nocapture)
       fi
       ;;
-    e2e/*.spec.ts|e2e/*.spec.tsx|*.e2e.spec.ts|*.e2e.spec.tsx)
+    e2e/*.spec.ts|e2e/*.spec.tsx|*.e2e.spec.ts|*.e2e.spec.tsx|tools/denkraum/*.spec.mjs)
       ensure_node_modules "$tree"
-      (cd "$tree" && npx playwright test "$path")
-      ;;
-    tools/denkraum/*.spec.mjs)
-      ensure_node_modules "$tree"
+      local pw_config=playwright.config.ts
+      [[ "$path" != tools/denkraum/* ]] || pw_config=tools/denkraum/playwright.config.mjs
       if [ -n "$name" ]; then
         local pw_out pw_code
         set +e
-        pw_out="$(cd "$tree" && playwright_denkraum_name_run "$name" "$path" 2>&1)"
+        pw_out="$(cd "$tree" && playwright_denkraum_name_run "$name" "$path" "$pw_config" 2>&1)"
         pw_code=$?
         set -e
         printf '%s\n' "$pw_out"
@@ -527,7 +526,7 @@ run_spec() {
         fi
         return "$pw_code"
       else
-        (cd "$tree" && npx playwright test -c tools/denkraum/playwright.config.mjs "$path" --reporter=list)
+        (cd "$tree" && npx playwright test -c "$pw_config" "$path" --reporter=list)
       fi
       ;;
     *.ts|*.tsx)
@@ -565,9 +564,9 @@ classify_run() {
   if [[ "$spec" =~ ^[a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)+$ ]]; then
     path="src-tauri/src/main.rs"
   fi
-  # Denkraum named: absent-from-unfiltered-list=red(1); else invalid(2) / green(0).
+  # Named Playwright: absent-from-unfiltered-list=red(1); else invalid(2) / green(0).
   case "$path" in
-    tools/denkraum/*.spec.mjs)
+    e2e/*.spec.ts|e2e/*.spec.tsx|*.e2e.spec.ts|*.e2e.spec.tsx|tools/denkraum/*.spec.mjs)
       local plain expected
       plain="$(printf '%s\n' "$out" | sed -E $'s/\033\\[[0-9;]*m//g')"
       printf '%s\n' "$plain" | grep -F 'Datei fehlt:' >/dev/null && return 1
@@ -575,7 +574,8 @@ classify_run() {
         expected="${spec#*::}"
         printf '%s\n' "$plain" | grep -F 'red-first: playwright title absent from list' >/dev/null && return 1
         printf '%s\n' "$plain" | grep -E 'red-first: playwright title identity invalid|red-first: playwright title present but not discovered|No tests found' >/dev/null && return 2
-        printf '%s\n' "$plain" | awk -v want="$expected" '
+        printf '%s\n' "$plain" | RF_PW_TITLE="$expected" awk '
+          BEGIN { want=ENVIRON["RF_PW_TITLE"] }
           { line=$0; sub(/\r$/,"",line);
             sub(/ \([0-9]+(\.[0-9]+)?m?s\)[[:space:]]*$/,"",line);
             s="› " want; n=length(s);
