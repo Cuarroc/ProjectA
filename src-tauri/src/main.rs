@@ -604,9 +604,7 @@ impl GuardNarrative {
 
 fn note_guard_status(engine: &StatusEngine, worker_id: &str, event: &SubmitGuardEvent) {
     match event {
-        SubmitGuardEvent::StartupBlocked(dialog) => {
-            engine.note_submit_guard(worker_id, Some(dialog.blocked_message()))
-        }
+        SubmitGuardEvent::StartupBlocked(dialog) => engine.note_startup_blocked(worker_id, *dialog),
         SubmitGuardEvent::Escalated => engine.note_submit_guard_failed(worker_id),
         SubmitGuardEvent::Delivered => engine.note_submit_guard(worker_id, None),
         _ => {}
