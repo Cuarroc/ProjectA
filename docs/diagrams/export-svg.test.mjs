@@ -84,6 +84,16 @@ test('export keeps the tspan space and applies tokens and drops the viewer layer
     const r = spawnSync(process.execPath, [script, 'export', html, out, 'light', 'T', 'D'], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     const svg = readFileSync(out, 'utf8');
+    // The rectangle bounds the text, so font metrics do not affect this crop.
+    const expected = '<svg viewBox="12 12 176 116" xmlns="http://www.w3.org/2000/svg" role="img" lang="de" width="176" height="116" aria-labelledby="t d">'
+      + '<title id="t">T</title><desc id="d">D</desc>'
+      + '<rect x="12" y="12" width="176" height="116" rx="20" fill="#E9EDF3"/>'
+      + '<g><rect x="40" y="40" width="120" height="60" style="fill:#E3EAF8;stroke:#1F57D6;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter"/>'
+      + '<text x="50" y="70" style="fill:#000000;font-family:Geist, Inter, -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;font-size:16px;font-weight:400;text-anchor:start"> '
+      + '<tspan style="fill:#000000;font-family:Geist, Inter, -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;font-size:16px;font-weight:400;text-anchor:start">Hello</tspan> '
+      + '<tspan style="fill:#000000;font-family:Geist, Inter, -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif;font-size:16px;font-weight:400;text-anchor:start">World</tspan>'
+      + '</text></g></svg>';
+    assert.equal(svg, expected);
     assert.ok(svg.includes('>Hello</tspan> <tspan'), 'exactly one space between the tspans'); // R1498-G6
     assert.ok(!svg.includes('\n') && !svg.includes('  '), 'no newline and no run of spaces left'); // R1523-G1
     assert.match(svg, /fill:#E3EAF8;stroke:#1F57D6/i); // light backend token pair
