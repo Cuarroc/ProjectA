@@ -84,6 +84,9 @@ If two blocks nearly fit, extend one (a variant) instead of adding a third.
 
 ## 8. Measure space before handover
 
+Use `npm run design:gate -- --help` (or `-- -h`) for usage without rendering or writing files,
+even with `--update`. Use `--out <directory>` to override the default output directory below.
+
 Run `npm run design:gate`; it owns and closes its mock Vite server and Chromium browser.
 It renders registered routes, mount-only routes and Settings tabs: 0/2/12 items, 1440×900 and
 1920×1080, light/dark, reduced motion. Table, PNGs and detailed JSON go to `.pa/design-gate/`.
