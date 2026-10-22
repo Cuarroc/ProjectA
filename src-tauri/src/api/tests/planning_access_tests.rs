@@ -579,7 +579,7 @@ fn planning_refusal_and_write_each_append_one_scoped_envelope() {
     assert_eq!(status, 200);
     let all = rows();
     assert_eq!(all.len(), 3, "{all:?}");
-    assert_eq!(all[1].0, "goal_task");
+    assert_eq!(all[1].0, "task_create");
     assert_eq!(all[2].1["project"], project_id.as_str());
     assert_eq!(all[2].1["result"], "accepted");
     assert_eq!(all[2].1["sourceRef"], "POST /api/hq/v1/goals/goal/tasks");
@@ -689,11 +689,10 @@ fn planning_task_fence_interleaving_rejects_without_task_or_event() {
     let descriptor = server
         .issue_run_descriptor(&run, "coordinator", 1, 60)
         .unwrap();
-    let before = tauri::async_runtime::block_on(store.continuous_context(&project, 0)).unwrap().tasks;
     let events = tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap();
     let path = format!("/api/hq/v1/goals/{goal}/tasks");
     let body = json!({"objective":"step","ownedPaths":["src/step.rs"],"dependencies":[]}).to_string();
-    let (status, reply) = std::thread::scope(|scope| {
+    let (status, reply, before) = std::thread::scope(|scope| {
         // Unwinding must disconnect the waiting backend before scope joins the request.
         let release_peer = resume;
         let request = scope.spawn(|| {
@@ -714,8 +713,10 @@ fn planning_task_fence_interleaving_rejects_without_task_or_event() {
                 .execute(&pool),
         )
         .unwrap();
+        let before = tauri::async_runtime::block_on(store.continuous_context(&project, 0)).unwrap().tasks;
         release_peer.send(()).unwrap();
-        request.join().unwrap()
+        let (status, reply) = request.join().unwrap();
+        (status, reply, before)
     });
     let audit: Vec<String> = tauri::async_runtime::block_on(
         sqlx::query_scalar("SELECT detail_json FROM audit_log WHERE action='planning' ORDER BY id")
