@@ -109,7 +109,19 @@ export function fixture({ items, theme }) {
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { update: { type: 'boolean' }, out: { type: 'string', default: '.pa/design-gate' } } });
+  const { values } = parseArgs({ options: { help: { type: 'boolean', short: 'h' }, update: { type: 'boolean' }, out: { type: 'string', default: '.pa/design-gate' } } });
+  if (values.help) {
+    console.log(`Usage: npm run design:gate -- [--update] [--out <directory>]
+
+Developer DOM heuristic, not a visual verdict.
+
+Options:
+  -h, --help         Show this help without rendering or writing files.
+  --update           Initialize or replace the baseline after validation;
+                     never raise ceilings on retained cases.
+  --out <directory>  Write table, PNGs and JSON (default: .pa/design-gate).`);
+    return;
+  }
   const baselinePath = new URL('./design-gate.baseline.json', import.meta.url);
   const baseline = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, 'utf8')) : null;
   if (!baseline && !values.update) throw new Error('baseline missing: initialize with --update');
