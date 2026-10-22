@@ -71,6 +71,31 @@ case_m() {
 
 check real-files pass "$CI" "$MG"
 
+# R1581-K5: moving whole step sequences preserves YAML and shell block nesting.
+# Exercise both indentationless sequences and deeper-than-usual sequences.
+for variant in '-2:equivalent-step-indentation--2' \
+  '2:equivalent-step-indentation-2' '4:equivalent-step-indentation-4'; do
+  shift="${variant%%:*}"
+  reindented="$tmp/steps-$shift.yml"
+  awk -v shift="$shift" '
+    /^    [^ ]/ { in_steps = 0 }
+    /^    steps:/ { in_steps = 1; print; next }
+    in_steps && /^      / {
+      if (shift < 0) print substr($0, 1 - shift)
+      else printf "%*s%s\n", shift, "", $0
+      next
+    }
+    { print }
+  ' "$CI" > "$reindented"
+  check "${variant#*:}" pass "$reindented" "$MG"
+  # The event guards must remain mandatory at every accepted indentation.
+  for rf_step in 'red-first - plan' 'red-first - proof against merge base'; do
+    mutate "indented-event-$shift-$rf_step" "$reindented" \
+      "/name: $rf_step\$/,/^[[:space:]]*run:/ s/github.event_name == 'pull_request'/true/" || exit 1
+    check "indented-event-$shift-$rf_step" fail "$MUTATED" "$MG" "step '$rf_step' 'if' lacks github.event_name"
+  done
+done
+
 # The harness itself: a no-op mutation must be reported, not pass silently.
 if mutate harness-noop "$CI" 's/NEVER_MATCHES_9f3c/x/'; then
   echo "FEHLER harness: a no-op mutation was not detected"
@@ -199,6 +224,61 @@ case_m "ci-shape fails when the BASE_SHA fetch in the plan step is fatal again" 
 case_m "ci-shape fails when the HEAD_SHA fetch in the plan step becomes non-fatal" ci \
   '/^      - name: red-first - plan$/,/^      - / s#git fetch --no-tags origin "\$HEAD_SHA"#git fetch --no-tags origin "\$HEAD_SHA" || true#' \
   "HEAD_SHA fetch must be fatal"
+
+# R1581-K4: each red-first condition gets its own mutation in each step.
+for rf_step in 'red-first - plan' 'red-first - proof against merge base'; do
+  scope="/^      - name: $rf_step\$/,/^      - /"
+  case_m "$rf_step-without-event" ci "$scope s/github.event_name == 'pull_request'/true/" \
+    "step '$rf_step' 'if' lacks github.event_name"
+  case_m "$rf_step-without-base-env" ci "$scope { /RF_BASE_BRANCH:/d; }" \
+    "step '$rf_step' lacks RF_BASE_BRANCH"
+  case_m "$rf_step-without-base-fetch" ci "$scope { /refs\\/heads\\/\\\$RF_BASE_BRANCH/d; }" \
+    "step '$rf_step' missing red-first base branch fetch"
+done
+
+# Independent mutations for the remaining protected conditions, including
+# siblings previously removed together or covered only by another diagnostic.
+for job_id in linux red-first; do
+  case_m "$job_id-check-renamed" ci "/^  $job_id:/,/^  [a-z-]+:/ s/name: [a-z-]+/name: renamed/" \
+    "job $job_id does not report"
+done
+for key in queue_conditions merge_conditions auto_merge_conditions; do
+  case_m "$key-missing" mg "s/^([[:space:]]*)$key:/\\1unused_conditions:/" "$key is empty or missing"
+  for required in 'gates \(linux\)' 'gates \(windows\)' red-first; do
+    case_m "$key-without-$required" mg "/^[[:space:]]*$key:/,/^[[:space:]]*[a-z_]+:/ { /check-success = $required/d; }" \
+      "$key lacks 'check-success = $required'"
+  done
+done
+for runner in ubuntu-latest windows-latest 'mergify/merge-queue/'; do
+  case_m "runner-without-${runner//\//-}" ci "/^    runs-on:/ s#$runner#removed#g" "runs-on must choose by event"
+done
+case_m plan-command-missing ci 's#bash scripts/ci/red-first.sh --plan#true#' "red-first - plan' missing"
+case_m red-first-verdict-missing ci 's#bash scripts/ci/red-first-verdict.sh#true#' "does not call scripts/ci/red-first-verdict.sh"
+for sha in HEAD_SHA BASE_SHA; do
+  case_m "plan-without-$sha-fetch" ci "/git fetch.*\\\"\\\$$sha\\\"/d" "missing $sha fetch"
+done
+case_m main-red-missing ci '/^  main-red:/,$d' "job main-red missing"
+case_m main-red-name-missing ci '/^  main-red:/,$ { /^    name:/d; }' "does not report 'main-red-guard'"
+case_m main-red-command-missing ci 's#bash scripts/ci/main-red-guard.sh#true#' "does not call scripts/ci/main-red-guard.sh"
+for leg in linux windows; do
+  case_m "main-red-without-$leg" ci "/^  main-red:/,\$ s/needs: \\[linux, windows\\]/needs: [$([ "$leg" = linux ] && echo windows || echo linux)]/" \
+    "main-red: 'needs' lacks $leg"
+  case_m "main-red-without-$leg-ran" ci "/^  main-red:/,\$ s/needs.$leg.outputs.lane_run/true/" \
+    "${leg^^}_RAN must read"
+done
+for job_id in linux_1 windows-part; do
+  case_m "$job_id-output-missing" ci "/^  $job_id:/,/^  [a-z_-]+:/ { /^      lane_run:/d; }" "output 'lane_run' missing"
+  case_m "$job_id-plan-id-missing" ci "/^  $job_id:/,/^  [a-z_-]+:/ { /^        id: plan/d; }" "step id 'plan' missing"
+done
+for leg in linux_1 linux_2; do
+  case_m "linux-needs-without-$leg" ci "/^  linux:/,/^  windows-part:/ s/needs: \\[linux_1, linux_2\\]/needs: [$leg]/" "both legs required"
+  case_m "linux-output-without-$leg" ci "/^  linux:/,/^  windows-part:/ s/needs.$leg.outputs.lane_run/true/" "lane_run must require both legs"
+done
+case_m linux-without-always ci '/^  linux:/,/^  windows-part:/ s/always\(\)/true/' 'job linux: always\(\) required'
+for lane in windows_1 windows_2 windows_native; do
+  case_m "matrix-without-$lane" ci "/lane: \\[/ s/$lane/removed/" "matrix must be exactly"
+done
+case_m windows-matrix-command-missing ci 's/gates.sh lane \$\{\{ matrix.lane \}\}/gates.sh lane windows_1/' "Gates step must run the matrix lane"
 
 # Call errors are errors, not a silent pass.
 check missing-file fail "$tmp/does-not-exist.yml" "$MG" "not found"
