@@ -3040,6 +3040,28 @@ mod tests {
     }
 
     #[test]
+    fn startup_block_untyped_known_messages_never_authorize_recovery() {
+        for detail in [
+            "Codex-Startdialog: Hooks need review; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            "Codex-Startdialog: Update available; Zustellung blockiert, bitte im Terminal prüfen und die Aufgabe erneut senden.",
+            "unknown startup decision",
+            "",
+        ] {
+            let engine = StatusEngine::default();
+            engine.set_override("wk-1", Some(COL_DONE)).unwrap();
+            engine.note_submit_guard("wk-1", Some(detail));
+            let blocked = engine.verdict_for("wk-1");
+            assert_eq!(blocked.column, COL_NEEDS_YOU);
+            let at = Instant::now();
+            engine.note_output_at("wk-1", "\x1b[2J\x1b[HAsk Codex to do anything", at);
+            engine.tick_at(at + Duration::from_secs(3));
+            assert_eq!(engine.verdict_for("wk-1"), blocked, "untyped: {detail}");
+            engine.note_submit_guard("wk-1", None);
+            assert_eq!(engine.verdict_for("wk-1").column, COL_DONE);
+        }
+    }
+
+    #[test]
     fn startup_block_unknown_detail_never_clears_on_output() {
         for detail in ["unknown startup decision", ""] {
             let engine = startup_fixture(detail);
