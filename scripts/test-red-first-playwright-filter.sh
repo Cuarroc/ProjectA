@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exact Playwright title identity for Denkraum red-first trailers (A1–A5 in red-first.sh).
+# Exact Playwright title identity for root E2E and Denkraum red-first trailers.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source <(sed -n \
@@ -137,5 +137,88 @@ set +e; classify_run "$no_tests" 1 "$SPEC"; cls_no=$?; set -e
 if [ "$cls_no" -ne 2 ]; then echo "FAIL: No tests found → want 2 got $cls_no" >&2; fail=1; fi
 wrong=$'  ✓  1 tools/denkraum/evidence.spec.mjs:3:1 › existing test root (1ms)\n\n  1 passed (100ms)\n'
 if classify_run "$wrong" 0 "$SPEC"; then echo 'FAIL: near-match pass line counted' >&2; fail=1; fi
+
+# One public-boundary regression matrix: real Playwright discovery and execution.
+mkdir -p "$PROBE/e2e"
+write_root_cfg() {
+  cat > "$PROBE/playwright.config.ts" <<EOF
+import { defineConfig } from '@playwright/test';
+export default defineConfig({ testDir: './e2e', retries: 0, reporter: 'list',$1 });
+EOF
+}
+write_root_spec() { cat > "$PROBE/e2e/evidence.spec.ts"; }
+write_root_cfg ''
+SPEC='e2e/evidence.spec.ts::requested root test'
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test('unrelated passing test', async () => {});
+test('requested root test extra', async () => {});
+EOF
+expect_cls root-absent-title 1
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test('requested root test', async () => {});
+test('prefix requested root test', async () => { throw new Error('unrelated'); });
+EOF
+expect_cls root-exact-title 0
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test.describe('first', () => { test('requested root test', async () => {}); });
+test.describe('second', () => { test('requested root test', async () => {}); });
+EOF
+expect_cls root-ambiguous-leaf 2
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test('requested root test', async () => {});
+test('requested root test', async () => {});
+EOF
+expect_cls root-duplicate-title 2
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test.describe('nested [group]', () => { test('requested root test', async () => {}); });
+EOF
+expect_cls root-nested-title 0
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test('requested root test', async () => { throw new Error('expected failure'); });
+EOF
+expect_cls root-failing-title 1
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test.skip('requested root test', async () => {});
+EOF
+expect_cls root-skipped-title 2
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+throw new Error('discovery failure');
+test('requested root test', async () => {});
+EOF
+expect_cls root-discovery-error 2
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test('requested root test', async () => {});
+EOF
+write_root_cfg 'grepInvert: /requested root test/,'
+expect_cls root-excluded-title 2
+write_root_cfg "projects: [{ name: 'one' }, { name: 'two' }],"
+expect_cls root-ambiguous-projects 2
+write_root_cfg "projects: [{ name: 'chromium' }],"
+expect_cls root-single-project 0
+SPEC='e2e/evidence.spec.ts'
+expect_cls root-legacy-unnamed 0
+SPEC='e2e/evidence.spec.ts::literal [x].* (root) $HOME; $(false) `false` "quoted" \\ end'
+write_root_spec <<'EOF'
+import { test } from '@playwright/test';
+test('literal [x].* (root) $HOME; $(false) `false` "quoted" \\\\ end', async () => {});
+test('literal x anything', async () => { throw new Error('unrelated'); });
+EOF
+expect_cls root-literal-shell-and-regex-title 0
+SPEC='e2e/evidence.spec.ts::requested root test'
+set +e
+classify_run "$no_tests" 1 "$SPEC"; cls_no=$?
+set -e
+if [ "$cls_no" -ne 2 ]; then echo "FAIL: root zero-selected want 2 got $cls_no" >&2; fail=1; fi
+# The named shell assertion is green only when the entire matrix passed.
+[ "$fail" -ne 0 ] || echo 'ok   root-e2e-exact-title-contract'
 [ "$fail" -eq 0 ] || exit 1
 echo 'red-first playwright name filter classification: passed'
