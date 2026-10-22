@@ -72,8 +72,8 @@ pub mod team_assignments;
 mod write_lock_tests;
 pub use continuous::{
     ContinuousClaim, ContinuousContext, ContinuousControl, ContinuousGoal, ContinuousTask,
+    PlanningAuthority,
 };
-
 /// A worker whose agent is currently attached to a live PTY session.
 pub const STATUS_RUNNING: &str = "running";
 /// A worker the user put away; its worktree stays on disk.

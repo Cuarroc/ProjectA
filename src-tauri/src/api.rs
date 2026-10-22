@@ -367,6 +367,7 @@ mod d4_routes;
 mod hq_routes;
 #[path = "api/planning_access.rs"]
 pub(crate) mod planning_access;
+pub use planning_access::PlanningAuthority;
 
 /// Header carrying the shared token. Lower case: header names are compared
 /// case-insensitively, and this is the form the CLI sends.
@@ -416,11 +417,9 @@ pub enum UpdaterState {
 }
 
 /// Everything the API can ask the app to do.
-///
-/// Behind this trait the app reaches into Tauri state - the store, the PTY
-/// manager, the status engine - none of which exists in a test. The tests hand
-/// the server a fake instead and are done in milliseconds.
+/// The app uses Tauri state; tests supply a backend with optional real SQLite.
 pub trait ControlBackend: Send + Sync {
+    planning_access::planning_writer_adapters!();
     fn agent_record_page(
         &self,
         _run: &str,
@@ -544,16 +543,6 @@ pub trait ControlBackend: Send + Sync {
         Err("continuous journal waiting unavailable".into())
     }
     fn list_continuous_goals(&self, _project_id: &str) -> Result<Vec<ContinuousGoal>, String> {
-        Err("continuous backend unavailable".to_string())
-    }
-    fn create_continuous_goal(
-        &self,
-        _project_id: &str,
-        _objective: &str,
-        _acceptance_criteria: Option<String>,
-        _source_goal_id: Option<String>,
-        _admit: bool,
-    ) -> Result<ContinuousGoal, String> {
         Err("continuous backend unavailable".to_string())
     }
     fn create_continuous_task(
@@ -1492,7 +1481,7 @@ fn handle(inner: &Inner, request: &Request) -> Response {
         }
     }
 
-    route(inner, request, proof)
+    route(inner, request, proof, None)
 }
 
 /// Whether a request carried the verdict token, and whether it was the right
@@ -1569,7 +1558,12 @@ fn refuse_unproven_project_create(inner: &Inner, proof: VerdictProof) -> Option<
     }
 }
 
-fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
+fn route(
+    inner: &Inner,
+    request: &Request,
+    proof: VerdictProof,
+    authority: Option<PlanningAuthority<'_>>,
+) -> Response {
     let backend = inner.backend.as_ref();
     let segments = request.segments();
     let path: Vec<&str> = segments.iter().map(String::as_str).collect();
@@ -1577,7 +1571,14 @@ fn route(inner: &Inner, request: &Request, proof: VerdictProof) -> Response {
     let project_id = request.query.get("projectId").map(String::as_str);
     let status = request.query.get("status").map(String::as_str);
 
-    if let Some(reply) = hq_routes::route(inner, request, method, path.as_slice(), project_id) {
+    if let Some(reply) = hq_routes::route(
+        inner,
+        request,
+        method,
+        path.as_slice(),
+        project_id,
+        authority,
+    ) {
         return reply;
     }
 
@@ -2286,21 +2287,10 @@ fn only_keys(body: &Value, allowed: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-fn continuous_response<T: Serialize>(result: Result<T, String>) -> Response {
-    match result {
-        Ok(value) => into_response(Ok(value)),
-        Err(err) => continuous_error(err),
-    }
-}
-
-fn plan_response(result: Result<Value, String>) -> Response {
-    match result {
-        Ok(value) => Response::ok(value),
-        Err(reason) => Response::error(error_status(&reason, StatusPolicy::Plan), reason),
-    }
-}
-
 fn continuous_error(err: String) -> Response {
+    if err == crate::store::development_runs::PLANNING_REFUSED {
+        return Response::error(403, err);
+    }
     let vocabulary_status = error_status(&err, StatusPolicy::Core);
     if vocabulary_status != 500 {
         return Response::error(vocabulary_status, err);

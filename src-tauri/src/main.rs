@@ -2806,15 +2806,17 @@ impl ControlBackend for ApiBackend {
         tauri::async_runtime::block_on(self.store.list_continuous_goals(project_id))
     }
 
-    fn create_continuous_goal(
+    fn create_continuous_goal_with_authority(
         &self,
+        authority: Option<api::PlanningAuthority<'_>>,
         project_id: &str,
         objective: &str,
         acceptance_criteria: Option<String>,
         source_goal_id: Option<String>,
         admit: bool,
     ) -> Result<store::ContinuousGoal, String> {
-        tauri::async_runtime::block_on(self.store.create_continuous_goal(
+        tauri::async_runtime::block_on(self.store.create_continuous_goal_with_authority(
+            authority,
             project_id,
             objective,
             acceptance_criteria,

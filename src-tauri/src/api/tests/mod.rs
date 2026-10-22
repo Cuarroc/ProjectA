@@ -391,10 +391,12 @@
     /// A backend that answers from canned data and records what it was asked.
     #[derive(Default)]
     struct FakeBackend {
+        planning_authorities: Mutex<Vec<Value>>,
         plan_reads: Mutex<Vec<(String, String, Option<i64>)>>,
         plan_imports: Mutex<Vec<PlanImportRecord>>,
         native_claim: Option<(String, String, i64)>,
         native_store: Option<crate::store::Store>,
+        goal_admission: Mutex<Option<(std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>)>>,
         /// M4-R19-08: `(run, result, sourceRef)` of every planning audit when
         /// no `native_store` writes the real trail.
         audited: Mutex<Vec<(String, String, String)>>,
@@ -685,11 +687,13 @@
     }
 
     impl ControlBackend for FakeBackend {
-        fn assign_continuous_task(
+        fn assign_continuous_task_with_authority(
             &self,
+            authority: Option<PlanningAuthority<'_>>,
             task_id: &str,
             request: crate::store::team_assignments::AssignmentRequest,
         ) -> Result<crate::store::team_assignments::TeamAssignment, String> {
+            self.record_planning_authority(&format!("assign:{task_id}"), authority);
             if request.expected_revision != 0 {
                 return Err("team assignment revision conflict".into());
             }
@@ -776,14 +780,34 @@
                 Ok(())
             }
         }
-        fn create_continuous_goal(
+        fn create_continuous_goal_with_authority(
             &self,
+            authority: Option<PlanningAuthority<'_>>,
             project_id: &str,
             objective: &str,
-            _acceptance_criteria: Option<String>,
+            acceptance_criteria: Option<String>,
             source_goal_id: Option<String>,
             admit: bool,
         ) -> Result<ContinuousGoal, String> {
+            self.record_planning_authority(&format!("goal:{project_id}"), authority);
+            if let Some(store) = &self.native_store {
+                if let Some((arrived, resume)) = self.goal_admission.lock().unwrap().take() {
+                    arrived.send(()).unwrap();
+                    resume.recv().unwrap();
+                }
+                let goal = tauri::async_runtime::block_on(store.create_continuous_goal_with_authority(authority,
+                    project_id,
+                    objective,
+                    acceptance_criteria,
+                    source_goal_id,
+                    admit,
+                ))?;
+                self.planned
+                    .lock()
+                    .unwrap()
+                    .push(format!("goal:{project_id}"));
+                return Ok(goal);
+            }
             self.planned
                 .lock()
                 .unwrap()
@@ -802,14 +826,16 @@
                 updated_at: 42,
             })
         }
-        fn create_continuous_task(
+        fn create_continuous_task_with_authority(
             &self,
+            authority: Option<PlanningAuthority<'_>>,
             goal_id: &str,
             objective: &str,
             profile_id: Option<String>,
             owned_paths: Vec<String>,
             dependencies: Vec<String>,
         ) -> Result<ContinuousTask, String> {
+            self.record_planning_authority(&format!("task:{goal_id}"), authority);
             self.planned.lock().unwrap().push(format!("task:{goal_id}"));
             Ok(ContinuousTask {
                 assignment: None,
@@ -999,13 +1025,15 @@
             }
             Err("unknown project or plan".into())
         }
-        fn import_development_plan(
+        fn import_development_plan_with_authority(
             &self,
+            authority: Option<PlanningAuthority<'_>>,
             project_id: &str,
             plan_id: &str,
             expected_projection_revision: i64,
             rollback_reason: Option<&str>,
         ) -> Result<Value, String> {
+            self.record_planning_authority(&format!("import:{project_id}"), authority);
             self.plan_imports.lock().unwrap().push((
                 project_id.into(),
                 plan_id.into(),
@@ -6133,4 +6161,12 @@
         assert_eq!(err, "the repository scan took too long");
         let quick = tauri::async_runtime::block_on(scan_within(Duration::from_secs(5), || Ok(7)));
         assert_eq!(quick, Ok(7));
+    }
+
+    impl FakeBackend {
+        fn record_planning_authority(&self, route: &str, authority: Option<PlanningAuthority<'_>>) {
+            self.planning_authorities.lock().unwrap().push(json!([
+                route, authority.map(|a| (a.run, a.owner, a.fence))
+            ]));
+        }
     }
