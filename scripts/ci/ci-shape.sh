@@ -77,9 +77,10 @@ job() {
 
 # Read the step sequence indentation, then normalize the selected step to
 # six spaces so direct-field checks still exclude nested env/run content.
+# Headers may have trailing comments and simple [A-Za-z0-9_-]+ anchors.
 step() {
   awk -v name="$1" '
-    /^    steps:[[:space:]]*$/ { in_steps = 1; ind = 0; on = 0; next }
+    /^    steps:([[:space:]]+&[A-Za-z0-9_-]+)?([[:space:]]+#.*)?[[:space:]]*$/ { in_steps = 1; ind = 0; on = 0; next }
     !in_steps { next }
     /^[ ]*[^ ]/ {
       match($0, /^ */)
@@ -125,9 +126,9 @@ winpart="$(job windows-part)"
 redfirst="$(job red-first)"
 
 # 1. Check names.
-has "$linux_check" "name: gates (linux)" || err "job linux does not report 'gates (linux)'"
-has "$windows" "name: gates (windows)" || err "job windows does not report 'gates (windows)'"
-has "$redfirst" "name: red-first" || err "job red-first does not report 'red-first'"
+has "$(grep -E '^    name:' <<< "$linux_check")" "name: gates (linux)" || err "job linux does not report 'gates (linux)'"
+has "$(grep -E '^    name:' <<< "$windows")" "name: gates (windows)" || err "job windows does not report 'gates (windows)'"
+has "$(grep -E '^    name:' <<< "$redfirst")" "name: red-first" || err "job red-first does not report 'red-first'"
 for key in queue_conditions merge_conditions auto_merge_conditions; do
   list="$(mg_list "$key")"
   [ -n "$list" ] || { err ".mergify.yml: $key is empty or missing"; continue; }
