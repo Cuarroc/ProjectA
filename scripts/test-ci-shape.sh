@@ -71,6 +71,12 @@ case_m() {
 
 check real-files pass "$CI" "$MG"
 
+# Block-sequence headers may carry a YAML comment or anchor.
+for header in 'steps-header-comment:# protected steps' 'steps-header-anchor:&protected_steps'; do
+  mutate "${header%%:*}" "$CI" "s/^    steps:$/    steps: ${header#*:}/" || exit 1
+  check "${header%%:*}" pass "$MUTATED" "$MG"
+done
+
 # R1581-K5: moving whole step sequences preserves YAML and shell block nesting.
 # Exercise both indentationless sequences and deeper-than-usual sequences.
 for variant in '-2:equivalent-step-indentation--2' \
