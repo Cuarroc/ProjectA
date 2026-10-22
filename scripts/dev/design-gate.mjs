@@ -6,6 +6,11 @@ import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
 
 export const metrics = ['slack', 'nesting', 'tabs', 'eyebrows', 'grids'];
+export function serializeBaseline(counts) {
+  const cases = Object.entries(counts).map(([key, row]) => `${JSON.stringify(key)}:${JSON.stringify(row)}`);
+  return '{\n' + (cases.length ? cases.join(',\n') + '\n' : '') + '}\n';
+}
+
 // Self-contained so the same measurement runs against literal HTML and the app.
 export function measure() {
   const result = { slack: [], nesting: [], tabs: [], eyebrows: [], grids: [] };
@@ -172,7 +177,7 @@ Options:
     console.log(table);
     writeFileSync(resolve(out, 'table.md'), table + '\n');
     writeFileSync(resolve(out, 'results.json'), JSON.stringify({ browser: browser.version(), counts, details, failures }, null, 2) + '\n');
-    if (values.update && !failures.length) writeFileSync(baselinePath, JSON.stringify(counts) + '\n');
+    if (values.update && !failures.length) writeFileSync(baselinePath, serializeBaseline(counts));
     for (const failure of failures) console.error(failure);
     process.exitCode = failures.length ? 1 : 0;
   } finally { try { await browser?.close(); } finally { await server.close(); } }
