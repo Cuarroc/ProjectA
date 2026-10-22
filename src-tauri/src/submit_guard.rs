@@ -482,17 +482,15 @@ impl SubmitGuard {
             }
             // Bare historical headings are not live panels. Complete menus
             // above remain blocking even when retained before the baseline.
-            let fresh = squash(last_chars(obs.tail_since_write, DIALOG_WINDOW_CHARS));
+            let fresh = squash(last_chars(obs.tail_since_write, ECHO_SCAN_CHARS));
+            let fresh = last_chars(&fresh, DIALOG_WINDOW_CHARS);
             let partial = if matches!(self.state, StateData::IdleWatching { .. })
                 && !obs.write_window_overflowed
             {
                 if self.readiness_marker.is_empty() {
-                    fresh.as_str()
-                } else {
                     fresh
-                        .rsplit(&self.readiness_marker)
-                        .next()
-                        .unwrap_or(&fresh)
+                } else {
+                    fresh.rsplit(&self.readiness_marker).next().unwrap_or(fresh)
                 }
             } else {
                 visible
