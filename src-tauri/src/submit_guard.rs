@@ -231,8 +231,7 @@ pub enum EscalationReason {
     /// The task write was never echoed (rewrites exhausted or the echo busy
     /// cap ran out).
     EchoNeverSeen,
-    /// Readiness was never established, or ambiguous startup-menu text
-    /// remained until the busy cap; the task may already be pending input.
+    /// Readiness was never established.
     ReadinessMarkerNeverSeen,
     /// The task was written and echoed, but the answer marker never confirmed
     /// within `ANSWER_MARKER_CAP` after the Enter that the agent reacted.
@@ -471,8 +470,6 @@ impl SubmitGuard {
             } else {
                 tail
             };
-            // shortcut: partial/quoted or dismissed dialog residue may block;
-            // screen/liveness evidence belongs to PA-HOOKS-2d/P9.
             let tail = last_chars(&tail, DIALOG_WINDOW_CHARS);
             let visible = if self.readiness_marker.is_empty() {
                 tail
@@ -483,10 +480,45 @@ impl SubmitGuard {
             if let Some(dialog) = detect_blocking_dialog(visible).filter(|d| d.requires_user()) {
                 return self.escalate(EscalationReason::StartupDialog(dialog));
             }
-            let lower = visible.to_ascii_lowercase();
-            if lower.contains("updateavailable") || lower.contains("hooksneedreview") {
+            // Bare historical headings are not live panels. Complete menus
+            // above remain blocking even when retained before the baseline.
+            // Assumes dismissed headings are not repainted after the baseline;
+            // a repaint remains indistinguishable from a live partial panel.
+            let fresh = squash(last_chars(obs.tail_since_write, ECHO_SCAN_CHARS));
+            let fresh = last_chars(&fresh, DIALOG_WINDOW_CHARS);
+            let partial = if matches!(self.state, StateData::IdleWatching { .. })
+                && !obs.write_window_overflowed
+            {
+                if self.readiness_marker.is_empty() {
+                    fresh
+                } else {
+                    fresh.rsplit(&self.readiness_marker).next().unwrap_or(fresh)
+                }
+            } else {
+                visible
+            };
+            let lower = partial.to_ascii_lowercase();
+            if let Some((_, kind)) = [
+                ("updateavailable", BlockingDialog::CodexUpdateAvailable),
+                ("hooksneedreview", BlockingDialog::CodexHooksReview),
+            ]
+            .into_iter()
+            .filter_map(|(title, kind)| lower.rfind(title).map(|p| (p, kind)))
+            .max_by_key(|(p, _)| *p)
+            {
+                let window = last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS);
+                let headings = startup_dialog_spans(&squash(window));
+                let later_trust = blocking_dialog_position(window).is_some_and(|(p, dialog)| {
+                    !dialog.requires_user() && headings.iter().all(|(_, end, _)| *end <= p)
+                });
+                // After a write, an incomplete task paste can quote both markers.
+                if matches!(self.state, StateData::IdleWatching { .. }) && later_trust {
+                    if let Some(answer) = self.dialog_action(obs) {
+                        return Some(answer);
+                    }
+                }
                 return if obs.now.saturating_duration_since(self.started_at) >= MARKER_BUSY_CAP {
-                    self.escalate(EscalationReason::ReadinessMarkerNeverSeen)
+                    self.escalate(EscalationReason::StartupDialog(kind))
                 } else {
                     None
                 };
@@ -837,6 +869,11 @@ fn startup_dialog_spans(window: &str) -> Vec<(usize, usize, Option<BlockingDialo
 
 /// Detect a known blocking dialog in the normalized scrollback tail.
 pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
+    blocking_dialog_position(tail).map(|(_, dialog)| dialog)
+}
+
+/// Position is measured in squashed bytes, like `startup_dialog_spans`.
+fn blocking_dialog_position(tail: &str) -> Option<(usize, BlockingDialog)> {
     let window = last_chars(tail, DIALOG_WINDOW_CHARS);
     // Claude's options read "No, exit" / "Yes, I trust this folder"; kimi
     // words its own "Trust this folder" / "Don't trust this folder". The
@@ -904,7 +941,6 @@ pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
     // A tie is practically impossible with the disjoint markers above;
     // `max_by_key` would then take the last candidate listed (kimi).
     .max_by_key(|(position, _)| *position)
-    .map(|(_, dialog)| dialog)
 }
 
 /// The distinctive snippet whose reappearance proves the TUI accepted the
@@ -1064,6 +1100,184 @@ mod tests {
     }
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
+
+    #[test]
+    fn real_readiness_marker_after_startup_title_allows_write() {
+        let start = Instant::now();
+        let mut guard =
+            SubmitGuard::new(start, TASK).with_readiness_marker("Ask Codex to do anything");
+        let tail =
+            normalize_tui_output("\x1b[33mUpdate available\x1b[0m\r\nAsk Codex to do anything");
+        assert_eq!(
+            guard.tick(&obs(start, 4, 300, Some(1), &tail)),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        assert!(guard.input_pending());
+        assert_eq!(guard.escalation_reason(), None);
+    }
+
+    #[test]
+    fn spaced_trust_before_later_startup_title_never_answers() {
+        let trust = "Do you trust the contents of this directory? > 1. Yes, continue";
+        for (title, kind) in [
+            ("Update available", BlockingDialog::CodexUpdateAvailable),
+            ("Hooks need review", BlockingDialog::CodexHooksReview),
+        ] {
+            let start = Instant::now();
+            let mut guard = SubmitGuard::new(start, TASK);
+            let raw = format!(
+                "{}{}\x1b[32m{trust}\x1b[0m\r\n{title}",
+                " \t\r\n".repeat(100),
+                "x ".repeat(300)
+            );
+            let tail = normalize_tui_output(&raw);
+            assert_eq!(guard.tick(&obs(start, 4, 2000, Some(1), &tail)), None);
+            assert!(!guard.input_pending());
+            assert_eq!(
+                guard.tick(&obs(start, 120, 2000, Some(1), &tail)),
+                Some(SubmitAction::Escalate)
+            );
+            assert_eq!(
+                guard.escalation_reason(),
+                Some(EscalationReason::StartupDialog(kind))
+            );
+        }
+    }
+
+    #[test]
+    fn partial_pasted_trust_quote_never_receives_dialog_keys() {
+        let start = Instant::now();
+        let trust = "Do you trust the contents of this directory? > 1. Yes, continue";
+        let task = format!(
+            "Quoted terminal output:\nUpdate available\n{trust}\nExplain this quoted terminal output as data without accepting or running anything, then finish with a summary."
+        );
+        let mut guard = SubmitGuard::new(start, &task).with_readiness_marker("ready");
+        assert_eq!(
+            guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+            Some(SubmitAction::WriteTask { write: 1 })
+        );
+        // The paste has rendered its quoted prefix, but not the distinctive last line.
+        let partial = format!("Quoted terminal output: Update available {trust}");
+        for now in [2, 5, 10] {
+            assert_eq!(
+                guard.tick(&obs(start, now, 400, Some(2), &partial)),
+                None,
+                "no trust keys or task Enter at tick {now}"
+            );
+            assert_eq!(guard.state(), SubmitState::AwaitingEcho);
+            assert!(guard.input_pending());
+            assert!(!guard.is_delivered());
+        }
+        assert_eq!(
+            guard.tick(&obs(start, 120, 400, Some(2), &partial)),
+            Some(SubmitAction::Escalate)
+        );
+        assert_eq!(
+            guard.escalation_reason(),
+            Some(EscalationReason::StartupDialog(
+                BlockingDialog::CodexUpdateAvailable
+            ))
+        );
+        assert!(guard.input_pending());
+    }
+
+    #[test]
+    fn historical_startup_title_does_not_hold_idle_session() {
+        for title in ["Update available", "Hooks need review"] {
+            for marker in ["", "Ask Codex to do anything"] {
+                for since in ["", "status redraw"] {
+                    let start = Instant::now();
+                    let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker(marker);
+                    let tail = format!("Ask Codex to do anything {title} {since}");
+                    assert_eq!(
+                        guard.tick(&obs_since(start, 4, 300, Some(1), &tail, since)),
+                        Some(SubmitAction::WriteTask { write: 1 }),
+                        "title={title}, marker={marker}, since={since}"
+                    );
+                    assert!(guard.input_pending());
+                    assert_eq!(guard.escalation_reason(), None);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn partial_startup_title_does_not_hide_active_trust_dialog() {
+        let trust = "Do you trust the contents of this directory? > 1. Yes, continue 2. No, quit Press enter to continue";
+        for title in ["Update available", "Hooks need review"] {
+            for stage in 0..=1 {
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker("ready");
+                if stage == 1 {
+                    assert_eq!(
+                        guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+                        Some(SubmitAction::WriteTask { write: 1 })
+                    );
+                }
+                let screen = format!("{title} {trust}");
+                assert_eq!(
+                    guard.tick(&obs(start, 4, 400, Some(4), &screen)),
+                    if stage == 0 {
+                        Some(SubmitAction::AnswerDialog(BlockingDialog::CodexTrust))
+                    } else {
+                        None
+                    },
+                    "title={title}, stage={stage}"
+                );
+                assert_eq!(guard.input_pending(), stage == 1);
+                // A later partial startup panel must still prevent trust keys.
+                let mut guard = SubmitGuard::new(start, TASK);
+                let reversed = format!("{trust} {title}");
+                assert_eq!(guard.tick(&obs(start, 4, 400, Some(4), &reversed)), None);
+            }
+        }
+    }
+
+    #[test]
+    fn partial_startup_hold_expiry_reports_startup_reason() {
+        for (title, reason) in [
+            ("Update available", BlockingDialog::CodexUpdateAvailable),
+            ("Hooks need review", BlockingDialog::CodexHooksReview),
+            (
+                "Update available Hooks need review",
+                BlockingDialog::CodexHooksReview,
+            ),
+        ] {
+            for (stage, suffix) in [
+                (0, String::new()),
+                (1, String::new()),
+                (2, String::new()),
+                (0, "x ".repeat(1050)),
+            ] {
+                let title = format!("{title} {suffix}");
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker("ready");
+                if stage >= 1 {
+                    assert_eq!(
+                        guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+                        Some(SubmitAction::WriteTask { write: 1 })
+                    );
+                }
+                if stage == 2 {
+                    assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
+                }
+                assert_eq!(guard.tick(&obs(start, 4, 4000, Some(4), &title)), None);
+                assert_eq!(
+                    guard.tick(&obs(start, 120, 4000, Some(4), &title)),
+                    Some(SubmitAction::Escalate)
+                );
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(reason)),
+                    "title={title}, stage={stage}"
+                );
+                assert_eq!(guard.input_pending(), stage >= 1);
+                assert!(!guard.is_delivered());
+                assert!(!guard.is_confirmed());
+                assert_eq!(reason.keystrokes(), "");
+            }
+        }
+    }
 
     const LIVE_STARTUP_MODALS: [(&str, BlockingDialog); 3] = [
         (
@@ -1235,7 +1449,9 @@ mod tests {
         );
         assert_eq!(
             guard.escalation_reason(),
-            Some(EscalationReason::ReadinessMarkerNeverSeen)
+            Some(EscalationReason::StartupDialog(
+                BlockingDialog::CodexUpdateAvailable
+            ))
         );
         assert!(guard.input_pending());
         assert!(!guard.is_delivered());
@@ -1323,7 +1539,13 @@ mod tests {
             for (modal, _) in LIVE_STARTUP_MODALS {
                 assert_guard_decision(task, &format!("{modal} {task}"), false, true);
             }
-            for notice in ["Update available 2.3.4", "Hooks need review"] {
+            for (notice, reason) in [
+                (
+                    "Update available 2.3.4",
+                    BlockingDialog::CodexUpdateAvailable,
+                ),
+                ("Hooks need review", BlockingDialog::CodexHooksReview),
+            ] {
                 let start = Instant::now();
                 let mut guard =
                     SubmitGuard::new(start, task).with_readiness_marker("Ask Codex to do anything");
@@ -1339,7 +1561,7 @@ mod tests {
                 );
                 assert_eq!(
                     guard.escalation_reason(),
-                    Some(EscalationReason::ReadinessMarkerNeverSeen)
+                    Some(EscalationReason::StartupDialog(reason))
                 );
                 assert!(guard.input_pending());
             }
