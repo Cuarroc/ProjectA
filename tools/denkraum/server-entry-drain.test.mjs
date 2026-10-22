@@ -32,14 +32,14 @@ async function freePort() {
   const { port } = probe.address(); await new Promise(r => probe.close(r)); return port;
 }
 // freePort() can race with another binder; retry EADDRINUSE ("konnte nicht starten") on a fresh port, like server-stop/lifecycle.
-async function startEntry(t, file, { webhook = false, args = [] } = {}) {
+async function startEntry(t, file, { webhook = false, args = [], ipc = false } = {}) {
   for (let attempt = 1; ; attempt++) {
     const port = await freePort();
     const env = { ...process.env, DECISION_DESK_STATE: file, DECISION_DESK_PORT: String(port), DECISION_DESK_ROOT_AGENT_ID: 'root-test',
       DECISION_DESK_ROOT_RECEIPT_TOKEN: strongSecret(), DECISION_DESK_WEBHOOK_SECRET: strongSecret() };
     delete env.DECISION_DESK_WEBHOOK_URL;
     if (webhook) env.DECISION_DESK_WEBHOOK_URL = 'https://agentsroom.dev/api/triggers/t_abc123';
-    const child = spawn(process.execPath, [...args, entry], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [...args, entry], { env, stdio: ['ignore', 'pipe', 'pipe', ...(ipc ? ['ipc'] : [])] });
     const out = { stdout: '', stderr: '' }, waiters = [];
     const feed = (key, d) => { out[key] += d; for (const w of waiters) w(); };
     child.stdout.on('data', d => feed('stdout', d)); child.stderr.on('data', d => feed('stderr', d));
@@ -95,20 +95,33 @@ test('DRSEC-G4b: SIGTERM lets an in-flight request finish within the budget and 
   assert.ok(await missing(`${file}.owner`));
 });
 
-test('DRSEC-G4b: SIGTERM with a notification send that never answers prints one short line and exits non-zero and keeps the owner record', { skip: posixOnly }, async t => {
-  const dir = await workdir(t), file = join(dir, 'ledger.json'), store = new DeskStore(file, { rootAgentId: 'root-test' });
-  await store.putQuestion(question('q1')); await store.migrate((await store.read()).revision);
-  await store.answer({ questionId: 'q1', questionRevision: 1, expectedAnswerId: null, requestId: 'req1', action: 'answer', selected: ['a'], note: 'x' });
-  await store.close();
-  // The webhook transport is the global fetch; this preload makes it announce itself and never settle.
-  const preload = join(dir, 'hang-fetch.mjs');
-  await writeFile(preload, "globalThis.fetch = () => { process.stdout.write('SEND-STARTED\\n'); return new Promise(() => {}); };\n");
-  const run = await startEntry(t, file, { webhook: true, args: ['--import', pathToFileURL(preload).href] });
-  assert.equal(await run.output(/SEND-STARTED/), true);
-  run.child.kill('SIGTERM');
-  const result = await within(run.done, 20000);
-  assert.equal(result.code, 1, result.stderr);
-  assert.equal(result.stderr.trim().split('\n').length, 1, result.stderr);
-  assert.match(result.stderr, /^Entscheidungsseite: Beenden fehlgeschlagen: DRAIN_TIMEOUT$/m);
-  assert.equal(await missing(`${file}.owner`), false, 'a stuck send keeps the owner record (intended)');
-});
+for (const signal of ['SIGTERM', 'SIGHUP', 'SIGBREAK']) {
+  test(`DRSEC-G4b: ${signal} with a notification send that never answers prints one short line and exits non-zero and keeps the owner record`, { skip: posixOnly }, async t => {
+    const dir = await workdir(t), file = join(dir, 'ledger.json'), store = new DeskStore(file, { rootAgentId: 'root-test' });
+    await store.putQuestion(question('q1')); await store.migrate((await store.read()).revision);
+    await store.answer({ questionId: 'q1', questionRevision: 1, expectedAnswerId: null, requestId: 'req1', action: 'answer', selected: ['a'], note: 'x' });
+    await store.close();
+    // The webhook transport is the global fetch; this preload makes it announce itself and never settle.
+    const preload = join(dir, 'hang-fetch.mjs');
+    // POSIX cannot deliver SIGBREAK. Bridge only that OS event through Node's public process emitter;
+    // this exercises the real CLI listener and stop closure, without claiming Windows delivery coverage.
+    await writeFile(preload, "globalThis.fetch = () => { process.stdout.write('SEND-STARTED\\n'); return new Promise(() => {}); };\n"
+      + "process.on('message', signal => { if (signal === 'SIGBREAK') process.emit('SIGBREAK', 'SIGBREAK'); });\n");
+    const run = await startEntry(t, file, { webhook: true, args: ['--import', pathToFileURL(preload).href], ipc: signal === 'SIGBREAK' });
+    assert.equal(await run.output(/SEND-STARTED/), true);
+    const started = performance.now();
+    if (signal === 'SIGBREAK') run.child.send(signal);
+    else assert.equal(run.child.kill(signal), true);
+    const result = await within(run.done, 20000);
+    const elapsed = performance.now() - started;
+    t.diagnostic(`${signal} drain: ${elapsed.toFixed(0)} ms`);
+    assert.equal(result.code, 1, result.stderr);
+    assert.equal(result.stderr.trim().split('\n').length, 1, result.stderr);
+    assert.match(result.stderr, /^Entscheidungsseite: Beenden fehlgeschlagen: DRAIN_TIMEOUT$/m);
+    assert.equal(await missing(`${file}.owner`), false, 'a stuck send keeps the owner record (intended)');
+    // The specified totals are 6 s for SIGTERM and 4 s for console-close signals. A 500 ms lower
+    // tolerance and a 1.5 s upper margin distinguish those budgets without increasing either one.
+    const [min, max] = signal === 'SIGTERM' ? [5500, 7500] : [3500, 5500];
+    assert.ok(elapsed >= min && elapsed < max, `${signal} drain must take ${min}–${max} ms, got ${elapsed} ms`);
+  });
+}
