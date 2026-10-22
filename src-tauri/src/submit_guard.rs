@@ -231,8 +231,7 @@ pub enum EscalationReason {
     /// The task write was never echoed (rewrites exhausted or the echo busy
     /// cap ran out).
     EchoNeverSeen,
-    /// Readiness was never established, or ambiguous startup-menu text
-    /// remained until the busy cap; the task may already be pending input.
+    /// Readiness was never established.
     ReadinessMarkerNeverSeen,
     /// The task was written and echoed, but the answer marker never confirmed
     /// within `ANSWER_MARKER_CAP` after the Enter that the agent reacted.
@@ -471,8 +470,6 @@ impl SubmitGuard {
             } else {
                 tail
             };
-            // shortcut: partial/quoted or dismissed dialog residue may block;
-            // screen/liveness evidence belongs to PA-HOOKS-2d/P9.
             let tail = last_chars(&tail, DIALOG_WINDOW_CHARS);
             let visible = if self.readiness_marker.is_empty() {
                 tail
@@ -483,10 +480,51 @@ impl SubmitGuard {
             if let Some(dialog) = detect_blocking_dialog(visible).filter(|d| d.requires_user()) {
                 return self.escalate(EscalationReason::StartupDialog(dialog));
             }
-            let lower = visible.to_ascii_lowercase();
-            if lower.contains("updateavailable") || lower.contains("hooksneedreview") {
+            // Bare historical headings are not live panels. Complete menus
+            // above remain blocking even when retained before the baseline.
+            let fresh = squash(last_chars(obs.tail_since_write, DIALOG_WINDOW_CHARS));
+            let partial = if matches!(self.state, StateData::IdleWatching { .. })
+                && !obs.write_window_overflowed
+            {
+                if self.readiness_marker.is_empty() {
+                    fresh.as_str()
+                } else {
+                    fresh
+                        .rsplit(&self.readiness_marker)
+                        .next()
+                        .unwrap_or(&fresh)
+                }
+            } else {
+                visible
+            };
+            let lower = partial.to_ascii_lowercase();
+            if let Some((_, kind)) = [
+                ("updateavailable", BlockingDialog::CodexUpdateAvailable),
+                ("hooksneedreview", BlockingDialog::CodexHooksReview),
+            ]
+            .into_iter()
+            .filter_map(|(title, kind)| lower.rfind(title).map(|p| (p, kind)))
+            .max_by_key(|(p, _)| *p)
+            {
+                let before_echo = match self.state {
+                    StateData::IdleWatching { .. } => true,
+                    StateData::AwaitingEcho { bytes_at_write, .. } => {
+                        !self.echo_seen(obs, bytes_at_write)
+                    }
+                    _ => false,
+                };
+                let window = last_chars(self.dialog_tail(obs), DIALOG_WINDOW_CHARS);
+                let headings = startup_dialog_spans(&squash(window));
+                let later_trust = blocking_dialog_position(window).is_some_and(|(p, dialog)| {
+                    !dialog.requires_user() && headings.iter().all(|(_, end, _)| *end <= p)
+                });
+                if before_echo && later_trust {
+                    if let Some(answer) = self.dialog_action(obs) {
+                        return Some(answer);
+                    }
+                }
                 return if obs.now.saturating_duration_since(self.started_at) >= MARKER_BUSY_CAP {
-                    self.escalate(EscalationReason::ReadinessMarkerNeverSeen)
+                    self.escalate(EscalationReason::StartupDialog(kind))
                 } else {
                     None
                 };
@@ -837,6 +875,11 @@ fn startup_dialog_spans(window: &str) -> Vec<(usize, usize, Option<BlockingDialo
 
 /// Detect a known blocking dialog in the normalized scrollback tail.
 pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
+    blocking_dialog_position(tail).map(|(_, dialog)| dialog)
+}
+
+/// Position is measured in squashed bytes, like `startup_dialog_spans`.
+fn blocking_dialog_position(tail: &str) -> Option<(usize, BlockingDialog)> {
     let window = last_chars(tail, DIALOG_WINDOW_CHARS);
     // Claude's options read "No, exit" / "Yes, I trust this folder"; kimi
     // words its own "Trust this folder" / "Don't trust this folder". The
@@ -904,7 +947,6 @@ pub fn detect_blocking_dialog(tail: &str) -> Option<BlockingDialog> {
     // A tie is practically impossible with the disjoint markers above;
     // `max_by_key` would then take the last candidate listed (kimi).
     .max_by_key(|(position, _)| *position)
-    .map(|(_, dialog)| dialog)
 }
 
 /// The distinctive snippet whose reappearance proves the TUI accepted the
@@ -1323,7 +1365,9 @@ mod tests {
         );
         assert_eq!(
             guard.escalation_reason(),
-            Some(EscalationReason::ReadinessMarkerNeverSeen)
+            Some(EscalationReason::StartupDialog(
+                BlockingDialog::CodexUpdateAvailable
+            ))
         );
         assert!(guard.input_pending());
         assert!(!guard.is_delivered());
@@ -1411,7 +1455,13 @@ mod tests {
             for (modal, _) in LIVE_STARTUP_MODALS {
                 assert_guard_decision(task, &format!("{modal} {task}"), false, true);
             }
-            for notice in ["Update available 2.3.4", "Hooks need review"] {
+            for (notice, reason) in [
+                (
+                    "Update available 2.3.4",
+                    BlockingDialog::CodexUpdateAvailable,
+                ),
+                ("Hooks need review", BlockingDialog::CodexHooksReview),
+            ] {
                 let start = Instant::now();
                 let mut guard =
                     SubmitGuard::new(start, task).with_readiness_marker("Ask Codex to do anything");
@@ -1427,7 +1477,7 @@ mod tests {
                 );
                 assert_eq!(
                     guard.escalation_reason(),
-                    Some(EscalationReason::ReadinessMarkerNeverSeen)
+                    Some(EscalationReason::StartupDialog(reason))
                 );
                 assert!(guard.input_pending());
             }
