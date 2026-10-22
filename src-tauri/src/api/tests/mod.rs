@@ -391,6 +391,7 @@
     /// A backend that answers from canned data and records what it was asked.
     #[derive(Default)]
     struct FakeBackend {
+        planning_authorities: Mutex<Vec<Value>>,
         plan_reads: Mutex<Vec<(String, String, Option<i64>)>>,
         plan_imports: Mutex<Vec<PlanImportRecord>>,
         native_claim: Option<(String, String, i64)>,

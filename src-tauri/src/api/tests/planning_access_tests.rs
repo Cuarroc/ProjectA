@@ -756,3 +756,22 @@ fn planning_goal_fence_interleaving_rejects_without_goal_or_event() {
     assert_eq!(reply["goal"]["rootGoalId"], before[0].id);
     assert_eq!(reply["goal"]["deadlineAt"], before[0].deadline_at);
 }
+
+#[test]
+fn planning_routes_deliver_bound_authority_or_explicit_operator_none() {
+    let (fx, descriptor) = role_fixture("planning-authority", Some(Ok(DispatchRole::Coordinator)));
+    for (token, expected) in [
+        (descriptor.token.clone(), json!(["run-a", "worker-a", 7])),
+        (fx.token(), Value::Null),
+    ] {
+        for (path, body, record) in PLANNING {
+            let (status, reply) = call(descriptor.port, "POST", path, Some(&token), body);
+            assert_eq!(status, 200, "{path}: {reply}");
+            assert_eq!(
+                fx.backend.planning_authorities.lock().unwrap().pop(),
+                Some(json!([record, expected])),
+                "{path}"
+            );
+        }
+    }
+}
