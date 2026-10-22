@@ -1065,6 +1065,94 @@ mod tests {
 
     const TASK: &str = "Baue eine Datei notes.txt mit einer Zeile Inhalt.";
 
+    #[test]
+    fn historical_startup_title_does_not_hold_idle_session() {
+        for title in ["Update available", "Hooks need review"] {
+            for marker in ["", "Ask Codex to do anything"] {
+                for since in ["", "status redraw"] {
+                    let start = Instant::now();
+                    let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker(marker);
+                    let tail = format!("Ask Codex to do anything {title} {since}");
+                    assert_eq!(
+                        guard.tick(&obs_since(start, 4, 300, Some(1), &tail, since)),
+                        Some(SubmitAction::WriteTask { write: 1 }),
+                        "title={title}, marker={marker}, since={since}"
+                    );
+                    assert!(guard.input_pending());
+                    assert_eq!(guard.escalation_reason(), None);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn partial_startup_title_does_not_hide_active_trust_dialog() {
+        let trust = "Do you trust the contents of this directory? > 1. Yes, continue 2. No, quit Press enter to continue";
+        for title in ["Update available", "Hooks need review"] {
+            for stage in 0..=1 {
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker("ready");
+                if stage == 1 {
+                    assert_eq!(
+                        guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+                        Some(SubmitAction::WriteTask { write: 1 })
+                    );
+                }
+                let screen = format!("{title} {trust}");
+                assert_eq!(
+                    guard.tick(&obs(start, 4, 400, Some(4), &screen)),
+                    Some(SubmitAction::AnswerDialog(BlockingDialog::CodexTrust)),
+                    "title={title}, stage={stage}"
+                );
+                assert_eq!(guard.input_pending(), stage == 1);
+                // A later partial startup panel must still prevent trust keys.
+                let mut guard = SubmitGuard::new(start, TASK);
+                let reversed = format!("{trust} {title}");
+                assert_eq!(guard.tick(&obs(start, 4, 400, Some(4), &reversed)), None);
+            }
+        }
+    }
+
+    #[test]
+    fn partial_startup_hold_expiry_reports_startup_reason() {
+        for (title, reason) in [
+            ("Update available", BlockingDialog::CodexUpdateAvailable),
+            ("Hooks need review", BlockingDialog::CodexHooksReview),
+            (
+                "Update available Hooks need review",
+                BlockingDialog::CodexHooksReview,
+            ),
+        ] {
+            for stage in 0..=2 {
+                let start = Instant::now();
+                let mut guard = SubmitGuard::new(start, TASK).with_readiness_marker("ready");
+                if stage >= 1 {
+                    assert_eq!(
+                        guard.tick(&obs(start, 1, 100, Some(1), "ready")),
+                        Some(SubmitAction::WriteTask { write: 1 })
+                    );
+                }
+                if stage == 2 {
+                    assert_eq!(guard.tick(&obs(start, 2, 200, Some(2), TASK)), None);
+                }
+                assert_eq!(guard.tick(&obs(start, 4, 400, Some(4), title)), None);
+                assert_eq!(
+                    guard.tick(&obs(start, 120, 400, Some(4), title)),
+                    Some(SubmitAction::Escalate)
+                );
+                assert_eq!(
+                    guard.escalation_reason(),
+                    Some(EscalationReason::StartupDialog(reason)),
+                    "title={title}, stage={stage}"
+                );
+                assert_eq!(guard.input_pending(), stage >= 1);
+                assert!(!guard.is_delivered());
+                assert!(!guard.is_confirmed());
+                assert_eq!(reason.keystrokes(), "");
+            }
+        }
+    }
+
     const LIVE_STARTUP_MODALS: [(&str, BlockingDialog); 3] = [
         (
             "Update available Update now Skip",
