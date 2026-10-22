@@ -282,6 +282,13 @@ every cargo or gate run and run at most three builds at once (two when memory is
 
 ## Pull requests and CI minutes
 
+- Open one DRAFT PR per package; keep intermediate pushes in draft.
+- Before pushing, run the full own-worktree `bash scripts/ci/gates.sh lane prepush`; verify the remote head with `git ls-remote`.
+- WIP limit: at most 15 open agent PRs; at the limit, only finish, review and merge.
+- The coordinator finishes, splits or closes a draft with no new commit for 48 h.
+- Merge `main` only to resolve a real conflict; never rebase or force-push.
+- Stacked PRs keep the predecessor branch as base; the coordinator retargets to `main` after it merges.
+
 See [the full reference](docs/development/AGENTS_REFERENCE.md#pull-requests-and-ci-minutes).
 
 ## Routing: task type to profile (AP-6a)
@@ -312,6 +319,14 @@ The reviewer family must differ from the author's (rule 5); a router that
 hides the vendor (Cursor `auto`) first needs the actual vendor proven.
 
 ## Merging (Mergify queue, since 2026-09-24)
+
+- Merge only through the Mergify queue; a red `main` stops the queue.
+- After `gh pr checks <n>` is green, the coordinator posts a standalone `@Mergifyio queue` comment.
+- Only Root (Chief as deputy) sets `review-ok`, bound to the reviewed head; any push invalidates it.
+- Required reviews come from families other than the author's (rule 5); workers and reviewers never queue themselves.
+- Package branch PR bodies need a line starting with `## Report`.
+- `do-not-merge` excludes even green PRs from the queue.
+- Nobody merges manually; the emergency procedure is in the full reference below.
 
 See [the full reference](docs/development/AGENTS_REFERENCE.md#merging-mergify-queue-since-2026-09-24).
 
