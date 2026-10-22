@@ -2,9 +2,9 @@
 export function stripComments(s) {
   const parts = [];
   let start = 0;
-  // Match comments too, so CDATA-looking text inside a comment is not protected.
-  for (const match of s.matchAll(/<!\[CDATA\[[\s\S]*?\]\]>|<!--(?:[\s\S]*?-->)?/g)) {
-    if (!match[0].startsWith('<![CDATA[')) continue;
+  // Consume processing instructions and comments before interpreting CDATA.
+  for (const match of s.matchAll(/<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<!--(?:[\s\S]*?-->)?/g)) {
+    if (match[0].startsWith('<!--')) continue;
     parts.push(stripMarkupComments(s.slice(start, match.index)), match[0]);
     start = match.index + match[0].length;
   }
