@@ -515,15 +515,6 @@ pub trait ControlBackend: Send + Sync {
     ) -> Result<Value, String> {
         Err("development plan unavailable".into())
     }
-    fn import_development_plan(
-        &self,
-        _project_id: &str,
-        _plan_id: &str,
-        _expected_projection_revision: i64,
-        _rollback_reason: Option<&str>,
-    ) -> Result<Value, String> {
-        Err("development plan unavailable".into())
-    }
     fn continuous_context(
         &self,
         _project_id: &str,
@@ -2101,6 +2092,9 @@ pub(crate) fn error_status(err: &str, policy: StatusPolicy) -> u16 {
         // source the importer cannot accept a 422, a malformed id or revision
         // a 400. Anything else - including a failed reader task - stays 500.
         StatusPolicy::Plan => {
+            if err == crate::store::development_runs::PLANNING_REFUSED {
+                return 403;
+            }
             if err.starts_with("unknown project")
                 || err.starts_with("plan source docs/PLAN.md: unknown project")
                 || err.starts_with("plan source docs/PLAN.md: missing")

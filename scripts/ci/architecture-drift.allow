@@ -2,7 +2,7 @@ API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(apply_em
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(async{self.store.agent_run_context(run,owner,fence).await?;self.store.development_run_role(run).await})
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(budget::list_limits(&self.store))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(budget::update_limits(&self.store,profile_id,five_hour_pct,seven_day_pct,))
-API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(development_plan_access::import(&self.store,project_id,plan_id,expected_projection_revision,rollback_reason,))
+API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(development_plan_access::import_with_authority(&self.store,authority,project_id,plan_id,expected_projection_revision,rollback_reason,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(development_plan_access::read(&self.store,project_id,plan_id,revision,))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(learnings::approve_learning(&self.store,id,text))
 API_STORE_BLOCK_ON	src-tauri/src/main.rs	tauri::async_runtime::block_on(learnings::profiles_with_enabled(&self.store),)

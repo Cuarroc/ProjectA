@@ -5,6 +5,94 @@
 use super::*;
 use crate::store::development_launches::DispatchRole;
 
+#[cfg(target_os = "linux")]
+#[test]
+fn planning_import_source_fence_interleaving_rejects_without_projection_revision_or_event() {
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+    const SOURCE: &str = "| ID | Paket / Agent / Scope | Nach | Konkretes Ergebnis und Abnahme |\n| --- | --- | --- | --- |\n| A | First | — | Pass |";
+    for mutation in [
+        "UPDATE continuous_tasks SET claim_fence=2 WHERE id='coordinator'",
+        "UPDATE continuous_tasks SET claim_owner='other' WHERE id='coordinator'",
+        "UPDATE continuous_team_assignments SET role='reviewer' WHERE task_id='coordinator'",
+        "UPDATE continuous_goals SET project_id=(SELECT id FROM projects WHERE name='foreign')",
+        "DELETE FROM development_runs",
+    ] {
+        let dir = TempDir::new("planning-import-source-fence");
+        std::fs::write(dir.path().join("projecta.dev.json"),
+            serde_json::to_vec(&crate::development_policy::DevelopmentPolicy::defaults()).unwrap()).unwrap();
+        std::fs::create_dir(dir.path().join("docs")).unwrap();
+        let source_path = dir.path().join("docs/PLAN.md");
+        std::fs::write(&source_path, SOURCE).unwrap();
+        let db = dir.path().join("projecta.db");
+        let (store, pool, run, project) = tauri::async_runtime::block_on(async {
+            let store = crate::store::Store::open(&db).await.unwrap();
+            let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db.display())).await.unwrap();
+            let project = store.create_project("plan", &dir.path().to_string_lossy()).await.unwrap().id;
+            store.create_project("foreign", &dir.path().to_string_lossy()).await.unwrap();
+            let root = store.create_continuous_goal(&project, "root", None, None, true).await.unwrap();
+            sqlx::query("INSERT INTO continuous_tasks(id,goal_id,objective,owned_paths_json,dependencies_json,status,claim_owner,claim_fence,created_at,updated_at) VALUES('coordinator',?,'c','[]','[]','running','coordinator',1,1,1)")
+                .bind(&root.id).execute(&pool).await.unwrap();
+            sqlx::query("INSERT INTO continuous_team_assignments(task_id,team_id,role,assignee,revision,policy_version,observed_at) VALUES('coordinator','development','coordinator','coordinator',1,1,1)")
+                .execute(&pool).await.unwrap();
+            let run = store.record_development_run_intent("coordinator", "coordinator", 1).await.unwrap().id;
+            (store, pool, run, project)
+        });
+        let backend = Arc::new(FakeBackend { native_store: Some(store.clone()), ..Default::default() });
+        let server = boot(backend as Arc<dyn ControlBackend>, dir.path(), false).unwrap();
+        let descriptor = server.issue_run_descriptor(&run, "coordinator", 1, 60).unwrap();
+        let path = "/api/hq/v1/plan/import";
+        let body = |revision| json!({"projectId":project,"planId":"main","expectedProjectionRevision":revision}).to_string();
+        let (status, reply) = call(descriptor.port, "POST", path, Some(&descriptor.token), &body(0));
+        assert_eq!(status, 200, "{reply}");
+        assert_eq!(reply["projection"]["source"], SOURCE);
+        assert_eq!(reply["projection"]["packages"][0]["packageId"], "A");
+        let before = tauri::async_runtime::block_on(store.development_plan_current(&project, "main")).unwrap();
+        assert_eq!(before.projection_revision, 1);
+        let (status, reply) = call(descriptor.port, "POST", path, Some(&descriptor.token), &body(1));
+        assert_eq!(status, 200, "{reply}");
+        assert_eq!(reply["projection"]["projectionRevision"], 1);
+        assert_eq!(call(descriptor.port, "POST", path, Some(&descriptor.token), &body(0)).0, 409);
+        let events = tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap();
+        let changed = format!("{SOURCE}\n");
+        std::fs::write(&source_path, &changed).unwrap();
+        let watch_fd = unsafe { libc::inotify_init1(libc::IN_CLOEXEC | libc::IN_NONBLOCK) };
+        assert!(watch_fd >= 0, "{}", std::io::Error::last_os_error());
+        let watch = unsafe { OwnedFd::from_raw_fd(watch_fd) };
+        let filename = std::ffi::CString::new(source_path.as_os_str().as_encoded_bytes()).unwrap();
+        assert!(unsafe { libc::inotify_add_watch(watch.as_raw_fd(), filename.as_ptr(), libc::IN_CLOSE_NOWRITE) } >= 0);
+        let (status, reply) = std::thread::scope(|scope| {
+            // Release the writer before scoped joins, including during unwinding.
+            let mut writer = tauri::async_runtime::block_on(pool.begin()).unwrap();
+            tauri::async_runtime::block_on(sqlx::query("UPDATE projects SET id=id")
+                .execute(&mut *writer)).unwrap();
+            let request = scope.spawn(|| call(descriptor.port, "POST", path, Some(&descriptor.token), &body(1)));
+            let mut event = libc::pollfd { fd: watch.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+            // Only the real reader opens this watched regular file after watch registration.
+            assert_eq!(unsafe { libc::poll(&mut event, 1, 5000) }, 1, "source reader did not close PLAN.md");
+            assert_eq!(event.revents, libc::POLLIN);
+            tauri::async_runtime::block_on(async {
+                sqlx::query(mutation).execute(&mut *writer).await.unwrap();
+                writer.commit().await.unwrap();
+            });
+            request.join().unwrap()
+        });
+        // Verify durable public state before checking the HTTP refusal (semantic RED).
+        let current = tauri::async_runtime::block_on(store.development_plan_current(&project, "main")).unwrap();
+        assert_eq!(current, before, "stale import wrote a projection: {mutation}; {status}: {reply}");
+        assert!(tauri::async_runtime::block_on(store.development_plan_at(&project, "main", 2)).is_err());
+        assert_eq!(tauri::async_runtime::block_on(store.continuous_changes(&project, 0)).unwrap()["events"], events["events"]);
+        assert_eq!(status, 403, "{mutation}: {reply}");
+        assert_eq!(reply["error"], "planning target is outside the run project");
+        let raw = std::fs::read_to_string(server.descriptor_path()).unwrap();
+        let operator = serde_json::from_str::<Value>(&raw).unwrap()["token"].as_str().unwrap().to_string();
+        let (status, reply) = call(descriptor.port, "POST", path, Some(&operator), &body(1));
+        assert_eq!(status, 200, "{reply}");
+        assert_eq!(reply["projection"]["source"], changed);
+        assert_eq!(reply["projection"]["projectionRevision"], 2);
+        assert_eq!(tauri::async_runtime::block_on(crate::development_plan_access::read(&store, &project, "main", Some(1))).unwrap()["projection"]["source"], SOURCE);
+    }
+}
+
 /// The four planning writes: `(path, body, what the fake records)`.
 const PLANNING: [(&str, &str, &str); 4] = [
     (

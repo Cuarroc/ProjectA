@@ -709,6 +709,13 @@ mod tests {
             serde_json::to_value(review).map_err(|error| error.to_string())
         }
         unavailable! {
+            fn import_development_plan_with_authority(
+                _authority: Option<crate::api::PlanningAuthority<'_>>,
+                _project_id: &str,
+                _plan_id: &str,
+                _expected_projection_revision: i64,
+                _rollback_reason: Option<&str>
+            ) -> Result<Value, String>;
             fn assign_continuous_task_with_authority(
                 _authority: Option<crate::api::PlanningAuthority<'_>>,
                 _task_id: &str,
