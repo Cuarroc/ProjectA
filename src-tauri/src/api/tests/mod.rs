@@ -1053,8 +1053,9 @@
         ) -> Result<Value, String> {
             self.record_planning_authority(&format!("import:{project_id}"), authority);
             if let Some(store) = &self.native_store {
-                return tauri::async_runtime::block_on(crate::development_plan_access::import(
+                return tauri::async_runtime::block_on(crate::development_plan_access::import_with_authority(
                     store,
+                    authority,
                     project_id,
                     plan_id,
                     expected_projection_revision,

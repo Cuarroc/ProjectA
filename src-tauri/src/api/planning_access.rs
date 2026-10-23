@@ -14,8 +14,7 @@
 //! would multiply planning authority). Every target project, goal or task is
 //! confined to the coordinator run's project before routing.
 //!
-//! Goal/replan, task and assignment writers recheck authority under their SQLite writer lock.
-//! Import still relies on the separate precheck; its fence race belongs to M4B-4.
+//! All four writers recheck authority under their SQLite writer lock; import does so after loading.
 //!
 //! Every refusal and every successful write appends one audit envelope
 //! (M4-R19-08, `audit`): the run's project, the run, the result, the route.
@@ -30,24 +29,17 @@ use crate::store::development_launches::DispatchRole;
 
 pub use crate::store::PlanningAuthority;
 
-// Trait defaults preserve legacy backends until each writer checks authority.
+// Every backend must explicitly forward planning authority to its writer.
 macro_rules! planning_writer_adapters {
     () => {
         fn import_development_plan_with_authority(
             &self,
-            _authority: Option<crate::api::PlanningAuthority<'_>>,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
             project_id: &str,
             plan_id: &str,
             expected_projection_revision: i64,
             rollback_reason: Option<&str>,
-        ) -> Result<Value, String> {
-            self.import_development_plan(
-                project_id,
-                plan_id,
-                expected_projection_revision,
-                rollback_reason,
-            )
-        }
+        ) -> Result<Value, String>;
         fn create_continuous_goal_with_authority(
             &self,
             authority: Option<crate::api::PlanningAuthority<'_>>,

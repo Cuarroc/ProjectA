@@ -147,11 +147,10 @@ use pty::{PtyManager, SubmitGuardEvent};
 use quota::{QuotaSink, QuotaStateRow, QuotaTracker};
 use skills::SkillPack;
 use status::{BoardState, StatusEngine, StatusPayload, StatusSink, WorkerBoardState};
-use store::now_unix_secs;
 use store::team_assignments::{AssignmentRequest, TeamAssignment};
 use store::{
-    ActivityEntry, AgentQuota, ContinuousGoal, DiffComment, Learning, Message, Project, QueueEntry,
-    Recommendation, RoleVariant, Store, Worker,
+    now_unix_secs, ActivityEntry, AgentQuota, ContinuousGoal, DiffComment, Learning, Message,
+    Project, QueueEntry, Recommendation, RoleVariant, Store, Worker,
 };
 use web_interface::WebInterfaceState;
 use workers::{AgentControl, DeliveryCallback, DeliveryOutcome};
@@ -2784,15 +2783,17 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
-    fn import_development_plan(
+    fn import_development_plan_with_authority(
         &self,
+        authority: Option<api::PlanningAuthority<'_>>,
         project_id: &str,
         plan_id: &str,
         expected_projection_revision: i64,
         rollback_reason: Option<&str>,
     ) -> Result<Value, String> {
-        tauri::async_runtime::block_on(development_plan_access::import(
+        tauri::async_runtime::block_on(development_plan_access::import_with_authority(
             &self.store,
+            authority,
             project_id,
             plan_id,
             expected_projection_revision,
