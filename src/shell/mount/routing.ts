@@ -1,5 +1,6 @@
 // V2-F9: how the old goals sit under the Glass routes (docs/plan/v2.0/ia.md section 4).
 import type { AppGoal } from "../../lib/goals";
+import { pathFromHash, ROUTES } from "../routes";
 
 /** Route an old goal lives under; Work, Attention and Agents share the Leitstand. */
 export const GOAL_ROUTE: Record<AppGoal, string> = {
@@ -49,10 +50,11 @@ export const isNewSteuerung = (path: string) => base(trim(path)) === "/steuerung
 /** The Ersteinrichtung (V2-S11-M) owns exactly `/start`; it has no sidebar entry and no old view. */
 export const isStart = (path: string) => trim(path) === "/start";
 
-/** The new Einstellungen (V2-S10a) owns exactly `/einstellungen`; its classic button opens the old Settings below it. */
+/** Glass owns the registered settings tabs; classic and unknown paths stay legacy. */
 export const SETTINGS_PATH = "/einstellungen";
 export const SETTINGS_CLASSIC_PATH = "/einstellungen/klassisch";
-export const isNewEinstellungen = (path: string) => trim(path) === SETTINGS_PATH;
+export const isNewEinstellungen = (path: string) =>
+  ROUTES.find((r) => r.id === "einstellungen")!.tabs.some((t) => t.path === pathFromHash(path));
 
 /** True when an old view is housed under this route (others still show the shell placeholder). */
 export function hasLegacyPanel(path: string): boolean {

@@ -1,5 +1,5 @@
 import { de } from "../../i18n/de";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import "../../design/controls/controls.css";
 import "../../design/forms/forms.css";
 import "../../design/glass.css";
@@ -12,7 +12,7 @@ import { TabPanel, Tabs } from "../../design/layout/Tabs";
 import { listFeatureFlags, type FeatureFlag } from "../../flags/featureFlags";
 import { useFeatureFlag } from "../../flags/useFeatureFlag";
 import { AppearanceControl } from "../../shell/AppearanceControl";
-import { ROUTES } from "../../shell/routes";
+import { pathFromHash, ROUTES } from "../../shell/routes";
 import { DiagnoseSection } from "./DiagnoseSection";
 import { T } from "./texts";
 import { TresorPanel } from "./tresor/TresorPanel";
@@ -23,6 +23,7 @@ import "./einstellungen.css";
 const TABS = ROUTES.find((r) => r.id === "einstellungen")!.tabs.map((t) => ({
   id: t.path.split("/")[2] ?? "allgemein",
   label: t.label,
+  path: t.path,
 }));
 
 const Section = ({ title, hint, className = "", children }: { title: string; hint?: string; className?: string; children: ReactNode }) => (
@@ -45,11 +46,17 @@ function PreviewFlagRow({ flag }: { flag: FeatureFlag }) {
 }
 
 /** Einstellungen of the Glass shell: tab strip and the tab Allgemein. */
-export function EinstellungenScreen({ onOpenClassic }: { onOpenClassic: () => void }) {
-  const [tab, setTab] = useState(TABS[0].id);
+export function EinstellungenScreen({ path, onNavigate, onOpenClassic }: {
+  path: string; onNavigate: (path: string) => void; onOpenClassic: () => void;
+}) {
+  const tab = TABS.find((t) => t.path === pathFromHash(path))?.id ?? "";
+  const selectTab = (id: string) => {
+    const target = TABS.find((t) => t.id === id);
+    if (target) onNavigate(target.path);
+  };
   return (
     <div className="es">
-      <Tabs idBase="es" tabs={TABS} value={tab} onChange={setTab} aria-label={T.tabs} />
+      <Tabs idBase="es" tabs={TABS} value={tab} onChange={selectTab} aria-label={T.tabs} />
       {TABS.map((t) => (
         <TabPanel key={t.id} idBase="es" id={t.id} active={t.id === tab}>
           {t.id === TABS[0].id ? (
