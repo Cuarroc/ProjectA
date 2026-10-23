@@ -28,6 +28,7 @@ pub struct StoredPlanProjection {
 }
 
 impl Store {
+    #[cfg(test)]
     pub async fn import_project_development_plan(
         &self,
         project: &str,
@@ -97,6 +98,7 @@ impl Store {
         .await
     }
 
+    #[cfg(test)]
     pub async fn import_development_plan(
         &self,
         project: &str,
