@@ -1,15 +1,17 @@
 # Fabrik design (2026-10)
 
-This folder holds the diagram of the Fabrik track ("Strecke") and nothing
-else. The design system itself is not copied into the repo: tokens, colours,
-motion and components live in a Claude artifact, which is the source of truth.
+This folder holds the diagrams of the Fabrik track ("Strecke"). The canonical
+design system is implemented in [`src/design`](../../../src/design/); follow
+[`docs/design/BUILDING.md`](../BUILDING.md) for its tokens, materials and
+components. Fabrik is a family on the shared `--g-*` tokens and interfaces.
+The private artifacts below are display/reference copies, not the source of truth.
 
 ## Design system
 
-- **ProjectA Fabrik** (source of truth):
+- **ProjectA Fabrik** (display/reference copy):
   <https://claude.ai/artifact/MNs7Me9VU95kTkiz2Qig56>. Private artifact; access
   goes through the owner.
-- **Glass** (parent system of Fabrik):
+- **Glass** (parent system of Fabrik; display/reference copy):
   <https://claude.ai/artifact/9iH3yXi2RFc6GrXXpCptaB>.
 
 ## Files
