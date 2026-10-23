@@ -1,5 +1,5 @@
 //! Immutable imported plan projections; importing alone grants no runtime authority.
-use super::{now_unix_secs, Store};
+use super::{now_unix_secs, PlanningAuthority, Store};
 use crate::development_plan::{parse_plan, PlanPackage};
 use serde::{Deserialize, Serialize};
 use sqlx::{Sqlite, Transaction};
@@ -28,8 +28,27 @@ pub struct StoredPlanProjection {
 }
 
 impl Store {
+    #[cfg(test)]
     pub async fn import_project_development_plan(
         &self,
+        project: &str,
+        plan: &str,
+        expected_projection_revision: i64,
+        rollback_reason: Option<&str>,
+    ) -> Result<StoredPlanProjection, String> {
+        self.import_project_development_plan_with_authority(
+            None,
+            project,
+            plan,
+            expected_projection_revision,
+            rollback_reason,
+        )
+        .await
+    }
+
+    pub async fn import_project_development_plan_with_authority(
+        &self,
+        authority: Option<PlanningAuthority<'_>>,
         project: &str,
         plan: &str,
         expected_projection_revision: i64,
@@ -68,17 +87,18 @@ impl Store {
         })
         .await
         .map_err(|error| format!("plan source {SOURCE_PATH}: reader task failed: {error}"))??;
-        self.import_development_plan(
+        self.import_development_plan_authorized(
+            authority,
             project,
             plan,
-            SOURCE_PATH,
-            &source,
+            (SOURCE_PATH, &source),
             expected_projection_revision,
             rollback_reason,
         )
         .await
     }
 
+    #[cfg(test)]
     pub async fn import_development_plan(
         &self,
         project: &str,
@@ -88,6 +108,27 @@ impl Store {
         expected_projection_revision: i64,
         rollback_reason: Option<&str>,
     ) -> Result<StoredPlanProjection, String> {
+        self.import_development_plan_authorized(
+            None,
+            project,
+            plan,
+            (path, source),
+            expected_projection_revision,
+            rollback_reason,
+        )
+        .await
+    }
+
+    async fn import_development_plan_authorized(
+        &self,
+        authority: Option<PlanningAuthority<'_>>,
+        project: &str,
+        plan: &str,
+        source: (&str, &str),
+        expected_projection_revision: i64,
+        rollback_reason: Option<&str>,
+    ) -> Result<StoredPlanProjection, String> {
+        let (path, source) = source;
         let parsed = parse_plan(project, plan, path, source).map_err(|e| {
             format!(
                 "invalid plan source {}:{}: {}",
@@ -110,6 +151,16 @@ impl Store {
             .map_err(db)?;
         if project_write.rows_affected() != 1 {
             return Err("unknown project".into());
+        }
+        if let Some(PlanningAuthority { run, owner, fence }) = authority {
+            super::development_runs::require_planning_authority(
+                &mut tx,
+                run,
+                owner,
+                fence,
+                super::development_runs::PlanningTarget::Project(project),
+            )
+            .await?;
         }
         let current: Option<(String, i64)> = sqlx::query_as(
             "SELECT source_path,revision FROM development_plans WHERE project_id=? AND plan_id=?",
