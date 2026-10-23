@@ -1,5 +1,7 @@
 //! Read/import access shared by the local HTTP API and Tauri IPC.
-use crate::store::{development_plan::StoredPlanProjection, now_unix_secs, Store};
+use crate::store::{
+    development_plan::StoredPlanProjection, now_unix_secs, PlanningAuthority, Store,
+};
 use serde_json::{json, Value};
 
 fn required_id<'a>(value: &'a str, field: &str) -> Result<&'a str, String> {
@@ -49,6 +51,25 @@ pub async fn import(
     expected_projection_revision: i64,
     rollback_reason: Option<&str>,
 ) -> Result<Value, String> {
+    import_with_authority(
+        store,
+        None,
+        project_id,
+        plan_id,
+        expected_projection_revision,
+        rollback_reason,
+    )
+    .await
+}
+
+pub async fn import_with_authority(
+    store: &Store,
+    authority: Option<PlanningAuthority<'_>>,
+    project_id: &str,
+    plan_id: &str,
+    expected_projection_revision: i64,
+    rollback_reason: Option<&str>,
+) -> Result<Value, String> {
     let project_id = required_id(project_id, "projectId")?;
     let plan_id = required_id(plan_id, "planId")?;
     if !(0..i64::MAX).contains(&expected_projection_revision) {
@@ -57,7 +78,8 @@ pub async fn import(
         );
     }
     let projection = store
-        .import_project_development_plan(
+        .import_project_development_plan_with_authority(
+            authority,
             project_id,
             plan_id,
             expected_projection_revision,
