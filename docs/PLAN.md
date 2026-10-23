@@ -13,6 +13,7 @@ hier. Wer hier nichts findet, arbeitet an nichts.
 > Suche dein Paket mit `rg -n "<ID>" docs/PLAN.md`. Abgeschlossene Übergaben und frühere Planung liegen im
 > [Archiv](archive/plan-2026-10/history.md); [abgeschlossene Paketzeilen](archive/plan-2026-10/completed.md) bleiben dort vollständig.
 > Weitere abgeschlossene Verweiszeilen: [Archivschnitt 23.10.](archive/plan-2026-10/completed-z-2026-10-23.md).
+> Datierte Dispatch-/Übergabebelege: [Archivkontext 23.10.](archive/plan-2026-10/context-2026-10-23.md).
 > Im Plan bleiben aktive Pflichten sowie die noch benötigten Ziel-, Meilenstein- und DF-Tabellen.
 
 Archivumfang: selektiver Schnitt der abgeschlossenen neunspaltigen Paketzeilen unter Z1–Z4 und der ausdrücklich verlinkten historischen Quellblöcke, kein vollständiger Erledigt-Katalog. Nicht abgeschlossene Zeilen, offene oder mehrdeutige Restpflichten sowie Beschreibungen mit relativen Links bleiben vollständig im Masterplan, außer eine eigene aktive Zeile trägt die Restpflicht und der Verweisstatus nennt sie weiter; Meilenstein- und DF-Zeilen bleiben Parserquelle. Das gilt auch bei Status „Erledigt“, etwa für DS-X-05/06/16 (weitere Formulare, Ansichtsanschlüsse oder Familien) und DS-T-03 (späteres Nahtpaket); ihre Grenzen und Abnahmen bleiben aktiv sichtbar.
@@ -142,48 +143,14 @@ Abnahmevertrag und Rückweg unabhängig. Vollständiger Vertrag im Ticket;
 keine Produktionsmutation ohne separate begrenzte Freigabe. Nach neuen Writes
 bleiben P1 und aktuelles Ledger erhalten; Fehlerfall ist vollständige Pause.
 
-Historischer Fehlerabgleich 08.10. 08:24 UTC auf `013513b`: #631 bereits gemergt;
-die späteren Merges oben haben eigene Zeitbelege. #632 Source angenommen, aber nach Batch 658
-mit separatem nativen Receipt-Fehler dequeued. Queue-656-Windows-Log unverändert gesichert (459476 Bytes, SHA256
-`bafcfc1e90a0d6b124292d40833789a53808a333310e938ccbf46525d6889f4b`).
-Auslöser: SharingViolation 32, `questions.rs:651`; bisheriger Zustand: Source
-#638 akzeptiert, echte Windows-Integration fehlgeschlagen. Anpassung: eigener
-enger DR-09-WIN-Schnitt, Original-Source/Reviewbelege bleiben erhalten. Offen:
-kontrollierter Rotnachweis, Mechanismus, Windows-Gates, Fremdreviews, Root-Abnahme
-und Queue-Integration. Nächster Schritt/Eigentümer: DR-01a-Owner liefert nach
-bestätigtem Rot→Grün die volle prepush- und Draft-Rückgabe. Pilot DEV-KNOW-01 ist nach v1.6.0 verschoben (Nutzer 08.10.);
-bestehende Mess-/Abnahmebelege bleiben erhalten, kein erneuter Pilotstart.
-Keine Prozessarbeit reserviert dafür einen zweiten Z1-Build-Slot.
-[Messchronologie vom 08.10.](archive/plan-2026-10/history.md#messchronologie-vom-0810).
-Alte Endstatusdiagnose `5de5c4c9` bleibt separat offen.
-Fortschreibung 08.10. 09:02 UTC: DR-02 tatsächlich gemergt, aktuelles `origin/main`
-`7e3a7af`; main-CI 37750580401 SUCCESS (früher irrtümlich CodeQL 37750580524 genannt).
-DR-03 startet nativ aus dem vorhandenen
-Profil auf sauberer Basis; Quota-Anpassung nur je Ticket (Claude-Prognose 67 %, Codex 214 %).
-Annahme, Tests, Reviews und Abnahme bleiben unverändert. PLAN-Fortschreibung ist
-vorbereitet; neue vollständige Gates, Veröffentlichung und Root-Rückgabe offen.
-
-Fortschreibung 08.10. 09:58 UTC: Auslöser sind die geprüften Draft-Handover #660/#661
-und tatsächliche B/C-Freigabe. Vorher waren Gates, Drafts und Slot-Ende offen;
-jetzt folgen die Fremdreview-Dispositionen parallel zur seriellen Receipt-Diagnose.
-#660 hat eine tatsächliche Anthropic-Stimme, #661 eine tatsächliche OpenAI-Stimme;
-Google ist nativ zugewiesen, Laufzeitmodell und zwei Einzelverdicts noch unbelegt.
-Der vorbereitete weitere OpenAI-R1 wird wegen des gelieferten Root-R1 nicht gestartet.
-DR-03 F01 bleibt einschließlich ursprünglicher Abnahme offen; Indexierung oder ein
-isolierter Scanmesswert ersetzt das Limit nicht. Der dokumentierte nohup/setsid-Verstoß
-bleibt erhalten, erfolgreiche Gates werden nicht deshalb wiederholt; Folgeausführung
-nativ. Chief bestätigt sein neues begrenztes Z1-Koordinationsgoal nativ ACTIVE
-(08.10. 09:36:16 UTC); Review-Handover, Receipt-Belege und PLAN-Publikation sind dessen
-offene Meilensteine, Root-Abnahme/Ready/Queue bleiben getrennt.
-
-Größe vor dem Start messen: `store.mjs` (570), `app.js` (504/527) und `store.test.mjs`
-(358) überschreiten je 300 Zeilen; D1 erzwingt deshalb den Split.
+[Datierte Z1-Übergaben](archive/plan-2026-10/context-2026-10-23.md#z1-handover-on-8-october). DR-03 behält F01 und die reale DR-04-Komposition als offene Abnahme; DR-09-WIN trägt seinen Windows-Nachweis. Alte Endstatusdiagnose `5de5c4c9` bleibt separat offen. DEV-KNOW-01 bleibt verschoben, kein erneuter Pilotstart. D1 verlangt weiter den verhaltensgleichen Split ohne Größenausnahme; vor einem Start neu messen.
 
 ## Z2 — Setup und Entwicklung
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| PLAN-v2.0-1 | Erster von drei seriellen Masterplan-Schnitten: Status, abgeschlossene Z-Verweise, aktuelle Inbox | srv-plan-v2-1; Chief koordiniert, Root nimmt ab | #1855 gemergt; r2-Schnitt von Root angenommen | Server | C | Erledigt mit Root-Abnahme und Merge dieses Dokumentenschnitts; Gesamtziel 5936ab8e bleibt bis zum fertigen kurzen Master in Phase3 offen | bytegleiche Archivierung mit inverser Rekonstruktion; NONMOVE ≤300; gültige Statuswerte, echte Leserprüfung am finalen Master <262144 Bytes, eigene prepush, Draft an Root; keine Aktivierung | d97a1464-c21a-416e-80da-cc9182cfa03f |
+| PLAN-v2.0-1 | Erster von drei seriellen Masterplan-Schnitten: Status, abgeschlossene Z-Verweise, aktuelle Inbox | srv-plan-v2-1; Chief koordiniert, Root nimmt ab | #1855 gemergt; r2-Schnitt von Root angenommen | Server | C | Erledigt: #1858 am 23.10.2026 um 04:10:57Z gemergt (`e034f036`), Root-Abnahme laut Freigabe; Gesamtziel 5936ab8e bleibt bis zum fertigen kurzen Master in Phase3 offen | bytegleiche Archivierung mit inverser Rekonstruktion; NONMOVE ≤300; gültige Statuswerte, echte Leserprüfung am finalen Master <262144 Bytes, eigene prepush, Draft an Root; keine Aktivierung | d97a1464-c21a-416e-80da-cc9182cfa03f |
+| PLAN-v2.0-2 | Zweiter serieller Masterplan-Schnitt: historischer Kontext und R1858-1/-2 | srv-plan-v2-2; Chief koordiniert, Root nimmt ab | PLAN-v2.0-1/#1858 gemergt; freigegebener r2-Schnitt | Server | C | Erledigt mit Root-Abnahme und Merge dieses Dokumentenschnitts; Gesamtziel 5936ab8e bleibt bis zur angenommenen fertigen Phase3 offen | bytegleiche Archivspannen und echte inverse Rekonstruktion; NONMOVE ≤300; aktive Verträge/Anker/Parser erhalten; nativer Leser am finalen Master <262144 Bytes; eigene prepush, Draft an Root; keine Aktivierung | d87cde77-2710-48ca-bdf4-8679e9eb872a |
 | Z2-PLAN-COMMIT | [Archiv: Historie][historie] | Stabschef | Root-Abnahme je Kandidat | egal | C | Erledigt: PLAN-C1 #643 (merged 2026-10-08T05:46:58Z, `0a9a981d`, Kopf `1088909`), Statusnachtrag #646 (`a167486c`); #642 geschlossen als überholt (Nutzer 08.10.); weitere Bereinigungsschnitte ersetzt durch PLAN-CLEAN-1 bis -3 (15.10.); ersetzt: In Prüfung: PLAN-C1 #643 `1088909` tatsächlich 05:46:58 UTC gemergt; #642 geschlossen als überholt (Nutzer 08.10.), Originaldelta bleibt Historie, #646 ist bestehender Statusnachtrag; weitere Archiv-/Bereinigungsschnitte offen | siehe Archiv | 55ea21ce |
 | MAIN-PROTECT-01 | [Archiv][pakete] | vorhandener Git-/CI-Owner; Chief disponiert, Root nimmt ab | frische Schutz-/App-/Produkt-/Queuebelege; konkrete Root-Abnahme je Handlung; getrennt von GOALS-B | PC | A | Erledigt: Root-Finalabnahme 06:53:57 UTC; Rulesets A `24699347` und B `24700455` ACTIVE/exakt main, vier App-Checks ohne Checkbypass in A, nur App `10562` Update-Bypass in B; Chief-REST-Readback 10:20 bestätigt Konfiguration, Root-Beleg enthält tatsächliche geschützte Queue #635; keine erneute Produktivaktion | siehe Archiv | 52f46527 |
 | Z2-RULE10 | [Archiv: Historie][historie] | Stabschef | #643 (Schnitt PLAN-C1 von Z2-PLAN-COMMIT, Merge `0a9a981d`); gemeinsam mit GOALS-B | egal | C | Erledigt: Root-abgenommener #644 `4032800` am 08.10. 07:12:55 UTC gemergt, nach #643; allgemeine Sitzungsadoption nicht daraus abgeleitet | siehe Archiv | 52f46527 |
@@ -249,16 +216,7 @@ hinterlegen. OpenCode Zen ist nicht freigegeben.
 
 ### DOC und Hook-Pakete — Nachtrag 21.10.2026
 
-DOC-8-Teilstand: `gh pr view`, `git fetch origin`, `git ls-remote`
-am 21.10. 00:52 UTC: main `4cb2622d`, DOC-6 gemergt; übrige nummerierte PRs Draft.
-CI-SKIPPED meint nur Draft-Läufe; Code (auch FLK-WIN) braucht weiter Rot→Grün.
-Nicht-Git: Root-Auftrag/Disposition 21.10.; `lage-jetzt` fehlt, Speicher ungeprüft.
-Root nimmt ab, setzt Ready/Labels/Queue; Chief koordiniert, Planer bleibt gestoppt.
-Kein neuer Startauftrag: je Paket Größenregel, eigene prepush und Root-Abnahme;
-Code braucht kandidatgebundene Reviews, Doku Leser-/Links. „Danach“ nennt den
-nächsten Schritt. Technisches Gate zur Quellenbindung bleibt offen;
-Größenpolitik erst nach DOC-4-Merge abgleichen. FU1758-1: der alte DOC-9-Vorbehalt ist nur für das ausdrücklich freigegebene A1-Paket überholt (siehe Zeile).
-C2 bezeichnet Hook-Prüffälle; P9 den Folgeauftrag im ruhenden Terminal.
+[Datierter DOC-8-Teilstand](archive/plan-2026-10/context-2026-10-23.md#doc-snapshot-on-21-october). Root nimmt ab und integriert, Chief koordiniert; Planer bleibt gestoppt. Je Paket eigene Größen-, Gate-, Leser-/Link- und Reviewbelege; C2 sind Hook-Prüffälle, P9 der Folgeauftrag im ruhenden Terminal. Quellenbindung bleibt eigene externe A1-Abnahme.
 
 Aktualisierung A2 (Root `msg-0mviftoyw-a9d9156f`); einmalige Nachbesserung nach A1b-Merge, Auftrag 21.10.: `gh pr view` für #1778/#1783/#1766/#1769/#1785/#1786/#1789/#1793/#1791/#1772 sowie #1756/#1757, jeweils Exit 0, am 21.10. 21:52 UTC; `git fetch origin` und `git log origin/main -1`, Exit 0, main `0f3e2ea9`. Feste Köpfe/Merges unten. Die alten 00:52-/02:26-/18:31-Belege bleiben datierte Herkunft, keine aktuelle Statusfreigabe. A2 ist für diesen Schnitt alleiniger PLAN-Writer; DOC-3B besaß nur v2-/Archivpfade.
 Die frühere Pflicht „DOC-3 vor DOC-9-Bericht“ wurde verfehlt: #1783 war vor Roots Wahl von Option B gemergt. Das wird nicht rückwirkend erfüllt. Jetzt gilt: DOC-3-Lieferung samt Erhaltungs-/Leserbelegen und Root-Disposition → Endquellenabgleich/Berichtsaktualisierung → externe Nachprüfung. DOC-3 blockiert die externe Endabnahme, nicht den bereits gelieferten Bericht.
@@ -292,12 +250,7 @@ Hook-Code/PR-Berichtskorrekturen bleiben bei ihren Ownern.
 
 ### Nutzbar-1 — Lieferstände und Nachläufer 22.10.2026
 
-Historischer PLAN-NUTZBAR-1-Beleg (#1812): Root-Aufträge `msg-0mvixtpfz-a3284c63` (02:44:27Z) und `msg-0mviysvqk-c6fb4439` (03:11:48Z); damals besaß nur dieser Dokumentenschnitt PLAN. Basis `265024a1`, vor Änderungen eigener HEAD identisch. Live-Belege 22.10. 03:30:42Z: `gh pr view` #1802/#1803/#1804/#1806/#1810/#1756/#1757, `gh pr list`, `git fetch origin`/`git log origin/main -1`, jeweils Exit 0. Root-Dispositionen aus den PR-Berichten; Abschluss der drei alten Nachprüfungen laut Root-Auftrag, Fokusgrenze zusätzlich im vorhandenen Worker-Bericht. Nachbeleg #1810: erneutes `gh pr view`, Exit 0, 22.10. 03:36:32Z bestätigt den inzwischen erfolgten Merge (Zeile unten); der frühere Queue-Stand ist damit überholt. Kein AgentsRoom-Notizzugriff; keine neue technische oder Nutzerabnahme.
-Historischer Startbeleg: vorhandene Job-Metadaten und `JOB-START srv-fu-1804-echo-quote` am 22.10. 03:20:40Z (Serverlog 05:20:40 MESZ). Die zwei anderen Code-Nachläufer waren damals laut Auftrag ohne Job; keine Umsetzung durch dieses Doku-Paket. Die abgeschlossenen Ursprungslieferungen DS-X-12/26/28 und DS-H-07b bleiben erledigt; geschützt erhaltene Entwürfe #1756/#1757 bleiben Draft/ungemergt. DESIGN-R2 bleibt beim benannten Owner; Release-Sperre bleibt verbindlich und externe DOC-Gesamtabnahme offen.
-
-Fortschreibung nach den Merges #1815/#1817: Root-Auftrag `msg-0mvj5m8x8-06899675` (22.10. 06:22:35Z), Ticket `35fa2af7-1cde-4e68-b465-748773e61667`; nur `srv-plan-nutzbar1-merge-reconcile` pflegt diesen PLAN-Schnitt, Chief disponiert und Root nimmt ab. Eigener Ausgangskopf = `origin/main` = `3f355d5254c15f7b088f30e5c5a0d5a71b5709fa`. Neu geprüft 22.10. 06:30–06:32Z: `git fetch origin`, `git log origin/main -3`, `gh pr view` #1815/#1817/#1813/#1756/#1757 und `gh pr list`, jeweils Exit 0; Merge-/Kopf-/Dateiumfang selbst beobachtet, technische Prüfungen und Review-Dispositionen aus den PR-Berichten übernommen. Die beiden „ohne Job“-Stände oben sind damit überholt. Für FU-1817-PLAYWRIGHT-EDGE belegen Ereignislog und eigener CLI-Header des Workers den Start 22.10. 06:29:20Z (08:29:20 MESZ), nicht dessen Fertigstellung. #1812 wird nicht wieder geöffnet; EQ-1/P9-Grenze, EQ-2 entfallen/ungemergt, gestoppte Referenz-App, DESIGN-R2 beim Nutzer, Release-Sperre und offene externe Gesamtabnahme bleiben bestehen; kein Laufzeitabschluss aus diesem Dokumentenabgleich.
-
-Fortschreibung 22.10.2026 nach #1819/#1820: Root-Auftrag `msg-0mvj8txth-6c9857b3` (07:52:33Z), Ticket `fb48fb97-36ab-40f8-922b-ee9b7113c3c0`; nun pflegt ausschließlich `srv-plan-nutzbar1-dg00-h1` diesen PLAN-Schnitt, Chief disponiert und Root nimmt den festen Kandidaten ab. Sauberer Ausgangskopf = `origin/main` = `dcd4f29408f479db8e8b94eb66006950d2c264e3`. Neu geprüft 08:02–08:04Z: `git fetch origin`, `git log origin/main -3`, `gh pr view` #1819/#1820/#1723 und `gh pr list`, jeweils Exit 0. #1819 (`4427d877` → `3eb45f830abe666259625610bec8d52869056a17`, Merge 07:10:43Z) bleibt abgeschlossen; #1820 ersetzt den oben datierten Arbeitsstand von FU-1817. Merge-/Kopf-/Dateiumfang sind selbst beobachtet; technische Tests und Root-Dispositionen stammen aus den PR-Berichten. DG00-H1-CLI-HELP ist ausschließlich der bereits vorgemerkte R1723-H1-Nachfolger (Zeile in der DG-Tabelle); Ereignislog, CLI-Header und `turn_context` belegen seinen Start 08:01:36Z (10:01:36 MESZ), keine Lieferung oder Abnahme. Die niedrigen #1820-Reste bleiben geparkt bis zur nächsten ohnehin genehmigten Arbeit an `red-first.sh`, ohne eigenen Auftrag; kein neuer Designbau vor PASS/Nutzerwahl und keine Gesamt-, PTY-/P9- oder Release-Abnahme.
+[Datierte Nutzbar-1-Übergaben](archive/plan-2026-10/context-2026-10-23.md#nutzbar-handovers-on-22-october); aktuelle Lieferstände und Nachläufer folgen in den Zeilen. EQ-1/P9 bleibt begrenzt, EQ-2 entfallen/ungemergt, Referenz-App gestoppt, externe DOC-Gesamtabnahme offen. DESIGN-R2 ist gemäß Entscheid 23.10. nach v2.x verschoben; kein Dispatch. Geparkte niedrige #1820-Reste nur bei ohnehin genehmigter Arbeit an red-first.sh; keine neue Gesamt-, PTY-/P9- oder Release-Abnahme.
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
@@ -516,12 +469,8 @@ kein erneuter Dispatch aus den historischen Startformulierungen unten.
 [Originaltext][historie]
 
 
-| Paket | Einziger exklusiver Zielpfad | Vollständiger P1-Bereich | Owner meldet ALL / Tests |
-|---|---|---|---|
-| DR-07c | tools/denkraum/sender.test.mjs | sender ganz | 214 / 12 |
-| DR-07d | tools/denkraum/priority.test.mjs | priority ganz | 110 / 6 |
-| DR-07e1 | tools/denkraum/store-receipts.test.mjs | store 1–34 und 35–169 | 169 / 10 |
-| DR-07e2 | tools/denkraum/store-answers-migration.test.mjs | store 1–34 und 170–359 | 224 / 18 |
+[Abgeschlossene P1-Testports](archive/plan-2026-10/context-2026-10-23.md#completed-p1-test-ports-on-8-october).
+
 ### Serverreserve: drei disjunkte Startverträge (Root 08.10., 20:45Z; historisch, erledigt #725/#726/#727)
 [Originaltext][historie]
 
@@ -587,7 +536,7 @@ ohne direkten Ticketzugriff wird daraus kein zusätzlicher Ausführungsbeleg abg
 | E15 | Bleibt der gemietete Server? (laufende Kosten) | nach v1.6.0 mit Nutzen und Kosten bewerten | entschieden: Nutzer 16.10. (K14, A; Root-Chat): später, nach der ersten Auslastungszahl V2-CAP-1 (v2-Frage 7); keine Änderung, der Server bleibt |
 | E16 | Lizenz und Geschäftsmodell vor externen Testern | vor V16-03 entscheiden | entschieden: Nutzer 16.10. (K15, A; Root-Chat): später, vor der ersten Testerrunde; MIT bleibt |
 | E17 | Alte Arbeitsbäume löschen (mit Backup) | ja, zusammen mit Z4-SERVER-DISK | entschieden: alte Freigabe vom 10.10. zweimal ausgeführt (11.10., laut Root-Log); neu Nutzer 16.10. (K6, A; Root-Chat): Root darf saubere alte Server-Arbeitsbäume und nachbaubare Build-Ordner selbst aufräumen, nur ohne Änderungen, mit Kopf schon auf dem Remote und nach einer Backup-Liste |
-| M4-B | M4-Blocker `planning_access`: Projektrahmen mit #306 gemergt; TOCTOU weiter offen laut Z4-VERIFY@`a167486` | AUTH und vier Schreibpfade seriell beheben; keine M4-Aktivierung aus Bericht ableiten | entschieden: Nutzer 16.10. (K7, A; Root-Chat): erst prüfen; Prüfbericht 16.10.: der Befund gilt weiter (deterministischer roter Test an `a3b61066`) → Reparaturpakete seriell Z4-M4B-0-AUTH bis Z4-M4B-4-IMPORT, davor Z4-M4B-1a-PLUMB; keine M4-Aktivierung |
+| M4-B | Source-Lade-/Autorisierungsbefund geschlossen: AUTH, PLUMB, GOAL, TASK, ASSIGN und IMPORT/#1855 gemergt | Restpflichten bei GOAL/IMPORT: c91a08d0 Tests, 2dbc396c, separate Audit-Transaktion und Windows-Beleg; Continuous bleibt deaktiviert und eingefroren | entschieden: Nutzer 16.10. (K7, A; Root-Chat) erst prüfen; der damalige Prüfbericht mit deterministischem Rot an `a3b61066` bleibt historischer Beleg. Root schloss den benannten Befund nach IMPORT-Merge `d39a03f1` (23.10. 02:42:19Z); keine Gesamt-M4B-Abnahme oder Aktivierung |
 | E18 | Matrixzeile 3: `resume` weiter gesperrt lassen oder urteilsgebunden bauen? | Sperre beibehalten, bis entschieden | entschieden: Nutzer 16.10. (K11, A; Root-Chat): Dauerbetrieb bleibt gesperrt, `resume` verboten bis zu einem ausdrücklichen Ja |
 | E21 | Matrixzeile 2: Schalter gebaut und gesperrt; Einschalten später? | gesperrt lassen | entschieden: gegenstandslos (Entfallen) laut v2-Mapping, Root bucht 16.10.; der Kern „Dauerbetrieb bleibt aus“ gilt über E18 (K11, A) |
 | E22 | Matrixzeile 16: unabhängigen Review im PR am selben Kandidaten anerkennen? | getrennt von einer App-Freigabe entscheiden | entschieden: gegenstandslos (Entfallen) laut v2-Mapping, Root bucht 16.10.; die Praxis (Review an den Kandidaten gebunden, `review-ok`) steht in `docs/decisions.md` CI-HARDEN-02 und AGENTS.md Regel 5 |
@@ -653,38 +602,8 @@ it does not claim fresh runtime, review or provider-limit evidence.
   because Codex is projected above 80 % for its week (usage_overview 19.10.
   01:20, 28 % used, 98 % projected; AGENTS.md routing rule).
 
-Fortschreibung 22.10.2026 nach #1823/#1825: Root-Auftrag `msg-0mvjdh1kc-f1d8d335`
-(10:02:30Z), Dokumentenowner job75, Ticket `2da280fe-e8de-4534-b17d-cbee14d40cf6`.
-Sauberer Ausgangskopf = `origin/main` = `0fa721bd133ff15ec57de84d8e52ebc939596bdd`.
-Live-Abgleich 10:13–10:15Z: `git fetch origin`, `git log origin/main -3`,
-`gh pr list`, `gh pr view` #1823/#1825/#1826/#1827 und `gh run view` samt
-Windows-Jobprotokollen, jeweils Exit 0. #1823 (`55f059fa` → `3bdfa081`, 08:39:18Z)
-bleibt erledigt; H1 ist jetzt ebenfalls angenommen/gemergt, main-CI 39759715152 SUCCESS.
-Queue #1826 scheiterte an einem Windows-Test, Requeue #1827 bestand; vollständiger
-Beleg im [KI-24-Nachtrag](../KNOWN_ISSUES.md#ki-24-windows-wiederauftreten-und-erfolgreicher-wiederanlauf-22102026).
-KI-24 bleibt offen, keine neue Windows-Messung oder belegte Ursache. Der alte lokale
-H1-Block von job72 wurde durch job74 mit isoliertem Testpfad umgangen; die Ursache
-des alten Testläufer-Hängers ist nicht bewiesen. Root bestätigte die Pfadanpassung
-als nicht blockierend; technische Prüfwerte unten stammen aus dem Autorbericht.
-Manuelle `scripts/dev`-Tests sind in keiner Gate-Bahn enthalten (R1825-G1), auch
-die bisherigen 14 nicht; C1/P3-Verdrahtung bleibt geschützt. D1/G2 (Baseline im
-Test-Cleanup wiederherstellen), D2 (spawn-Timeout), D3 (`-h` in der Usage-Zeile)
-und G4 (fehlende Baseline testen) bleiben geparkte H1-Nachläufer, ohne neuen Start.
-
-Root wählte als nächsten bestehenden Rest R1723-B1; der vorherige Status
-„verschoben“ wird nur durch diesen begrenzten Folgeauftrag ersetzt. Größengrund:
-396 Fälle aus einer physischen JSON-Zeile vollständig zu formatieren überschreitet
-300 rohe Diffzeilen. Deshalb B1a: Schreiber und erste 132 Fälle (bis
-`/designsystem|0|1920x1080|dark`), danach B1b: restliche 264 nur als Formatierung.
-Anforderungen und Gesamtziel bleiben erhalten; kein neuer Produktauftrag. job76
-besitzt Quellcode/Test/Baseline/BUILDING, job75 nur diese Dokumente; parallele
-Dokumentpflege erlaubt keinen zweiten Baseline-Schreiber. B1b wartet auf tatsächlichen
-B1a-Merge, Prozessende und freie Datei. Nachbeleg 10:28Z: B1a ist inzwischen als
-Draft #1828 geliefert (Kopf in der Zeile unten); Tests/Gates laut Autorbericht,
-hier nicht wiederholt, noch keine Abnahme oder Merge. Kein --update/Messdurchlauf, keine neuen
-Metriken, Grenzwerte oder CI-Verdrahtung; B1 wird nicht durch Stufe 1 abgeschlossen.
-EQ-2 bleibt DROPPED/ungemergt, P9 begrenzt, die Referenz-App gestoppt, DESIGN-R2
-beim Nutzer, Release-D1 auf #1540 gesperrt und die externe Gesamtabnahme OFFEN.
+[Datierte DG-Übergabe](archive/plan-2026-10/context-2026-10-23.md#dg-handover-on-22-october), einschließlich [KI-24-Beleg](../KNOWN_ISSUES.md#ki-24-windows-wiederauftreten-und-erfolgreicher-wiederanlauf-22102026). KI-24 bleibt offen; Ursache des alten H1-Testläufer-Hängers unbelegt. Manuelle scripts/dev-Tests sind nicht in der Gate-Bahn; C1/P3 bleiben geschützt. H1-Nachläufer D1/G2 (Cleanup-Baseline), D2 (spawn-Timeout), D3 (-h-Usage), G4 (fehlende Baseline) bleiben geparkt ohne Start.
+B1a/B1b behalten unten alle 396 Schlüssel, Reihenfolge und Werte; B1b erst nach B1a-Merge, Prozessende und freier Datei. Kein --update, Messlauf, neue Metrik/Grenze/CI-Verdrahtung. EQ-2 bleibt entfallen, P9 begrenzt, Referenz-App gestoppt, DESIGN-R2 v2.x/geparkt; D1-on/#1540 und externe Gesamtabnahme bleiben offen.
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
@@ -693,7 +612,7 @@ beim Nutzer, Release-D1 auf #1540 gesperrt und die externe Gesamtabnahme OFFEN.
 | R1723-B1a | Vorhandenen Baseline-Schreiber auf einen kompakten Fall je Zeile umstellen; erste 132 bestehende Fälle formatieren, 264 als kompakte Restzeile erhalten | srv-dg00-b1-baseline-writer (job76), Branch codex/dg00-b1-baseline-writer; Chief disponiert, Root nimmt ab | DG-00, DG00-H1-CLI-HELP gemergt; exklusiver Baseline-Schreiber | Server | B | In Prüfung: Draft #1828, Kopf 4c047dc5eea5e458c73dfbaa73258f4cd289acdf, eröffnet 22.10.2026 10:27:53Z; gh pr view um 10:28Z Exit 0. JOB-START 10:12:58Z belegt; Lieferung als Draft, Fremdreview/Root-Abnahme/Merge ausstehend | ≤300 rohe Diffzeilen; nur scripts/dev/design-gate.mjs, NEU scripts/dev/design-gate-baseline.test.mjs, scripts/dev/design-gate.baseline.json und docs/design/BUILDING.md. Reine Serialisierungsregression Rot→Grün, vorhandene Mess-/CLI-Tests unverändert grün, default red-first und volle prepush 0; eine von Root beauftragte Fremdfamilienprüfung laut begrenztem Auftrag. Alle 396 geparsten Schlüssel, Reihenfolge und Zählwerte unverändert; kein --update, Messdurchlauf oder C1/P3-Anschluss. Stufe 1 schließt das B1-Gesamtziel nicht ab | d10b1459-57e4-45b8-bc4f-865ceb2ff205 |
 | R1723-B1b | Verbleibende 264 bestehende Baseline-Fälle rein als JSON formatieren | Noch kein Ausführungsowner; Chief disponiert nach Freigabe, Root nimmt ab | Tatsächlicher B1a-Merge UND Prozessende UND freier exklusiver Baseline-Schreiber; gemeinsamer Dateipfad nur seriell | Server | C | Blockiert: serieller Nachfolger, kein Start oder Lieferbeleg | ≤300 rohe Diffzeilen; nur scripts/dev/design-gate.baseline.json, ausschließlich Formatierung. Alle 396 geparsten Schlüssel, Reihenfolge und Zählwerte erhalten; eigene volle prepush, Root-Abnahme/Mergify; keine neuen Fälle, --update, Messung oder CI-Verdrahtung. Erst beide angenommenen/gemergten Schnitte erfüllen den B1-Formatierungsrest | bce93908-1192-438a-8dd8-2ec939b89eec |
 | DG-05 | Not-Aus needs a confirmation and exists once (header), Escape/Abbrechen without effect, focus returns | Root disponiert; Autor Codex, Fix-Runden Kimi | – | Server | A | Erledigt: #1722 gemergt 2026-10-20 (`87314b5e`, Kopf `fb2aed45`); Reviews Anthropic (R1, R2) + NVIDIA nemotron (R2), Disposition im PR; main-CI grün; R2-L1/Override separat in FU-DG05-HEADER-HINT (#1810) geführt | zwei Nicht-Codex-Familien, Gates grün; ursprüngliche Lieferung bleibt erledigt | – |
-| DESIGN-R2 | Astra round 2 on the Meisterbuero prototype (outside the repo, `pa-orch`), then two independent critics | Elias (TasteCode), Root prüft | Elias' decision 19.10. | PC | C | Bereit: prompt written and checked by the advisor | PASS of the design quality gate | – |
+| DESIGN-R2 | Astra round 2 on the Meisterbuero prototype (outside the repo, `pa-orch`), then two independent critics | Elias (TasteCode), Root prüft | Elias' decision 19.10. | PC | C | Verschoben: v2.x/geparkt gemäß Glass-zuerst-Entscheid 23.10.; kein Dispatch; prompt written and checked by the advisor bleibt Herkunft | PASS of the design quality gate | – |
 
 ### Entscheidungen vom 16.10.2026 — OWNER-KARTEN-1016
 
@@ -707,7 +626,7 @@ Quelle jeder Zeile: der Nutzer im Root-Chat am 16.10.2026 („Root-Chat 16.10.�
 | K4 OPT-CI-4 | B: kein Retry; Ursache in Z4-ARCH-11 beheben | OPT-CI-0 / Vorschlag 4 |
 | K5 RELEASE-PAUSE | B „Anders“ (~02:10), Nachfrage ~02:12, Ergänzung ~02:16: bis v2.0 nur Patch-Releases für Sicherheitslücken, Abstürze, Datenverlust sowie größere Umstrukturierungen und UI-Updates, sonst Pause; Minor/Major (v2.0) brauchen ein neues Ja | ersetzt RELEASE-PAUSE vom 15.10. (kein Patch-Release bis v2.0) |
 | K6 E17-NEU | A: Root darf saubere alte Server-Arbeitsbäume und nachbaubare Build-Ordner selbst aufräumen (ohne Änderungen, Kopf schon auf dem Remote, vorher Backup-Liste) | Inbox E17, Z4-SERVER-DISK |
-| K7 M4-B | A: erst prüfen (V2-SEC-2, roter Test), Reparaturpakete nur bei Befund; der Befund gilt → Z4-M4B-1a-PLUMB bis Z4-M4B-4-IMPORT | Inbox M4-B |
+| K7 M4-B | Historischer Entscheid 16.10.: A, erst prüfen (V2-SEC-2, roter Test), Reparaturpakete nur bei Befund; damals bestätigt. Fortschreibung 23.10.: benannter Befund mit IMPORT/#1855 geschlossen, Restpflichten und Freeze bleiben | Inbox M4-B und aktive GOAL-/IMPORT-Zeilen |
 | K8 DR-16b | B: warten, bis die Ablösung des Denkraums geplant wird | Zeile DR-16b |
 | K9 R3 | B: RAM-Prüfung bleibt bei jedem Worker-Start (Regel 9 unverändert) | Inbox R1–R5 |
 | K10 R5 Pacer | B: parken | Inbox R1–R5, Z2-PACER |
@@ -759,7 +678,7 @@ Die folgenden Bestände bleiben wegen offener Restpflichten oder ihrer Leser im 
 Abgeschlossene Übergaben, frühere Modellzuordnungen und die alte Inbox stehen im
 [Archiv](archive/plan-2026-10/history.md); sie begründen keine neuen Aufträge.
 Bestehende Antworten und Verträge gelten mit ihren späteren Änderungen weiter und ersetzen keine oben bestätigte Entscheidung.
-M1–M5 und alle DF-Zeilen bleiben als Parserquelle wortgleich. Nur die Z-Tabellen oben disponieren.
+Dies ist der ausdrücklich NICHT DISPATCHENDE Kompatibilitätsanhang: M1–M5 und alle DF-Zeilen bleiben als Parserquelle wortgleich, einschließlich ihrer historischen Überschriften und Abnahmen. Aktuell gültige Restverträge und spätere Entscheidungen bleiben verbindlich; nur die Z-Tabellen oben disponieren, niemals diese alten Startformulierungen.
 
 ## Ehemals aktive Ziele und L0-Schnitt (07.10., historisch)
 
@@ -1280,21 +1199,7 @@ Quelle: `pa-orch/wissen/02-recherchen/2026-10-11_comp-paperclip-3-synthese.md`
 sind Kandidaten. Wert, Größe (S ≤150, M ≤300 Diffzeilen) und Naht stehen
 dort je Zeile. Root prüft jede Einreihung erneut am aktuellen main.
 
-**Welle 1: Erledigt** — alle acht Briefe am 11.10. gemergt (Spalte Stand). Ursprünglich: **acht Briefe, schon als Server-Jobs eingereiht** (Briefe:
-`~/pa-orch/reports/comp-paperclip-3-specs/<PC-ID>.md`; events.log 08:40:27
-lokale Zeit, Codex; keine Naht, Stufe B). Beobachtet 11.10. 08:44 lokale Zeit:
-89–93 laufen, 94/95 in `queue/`, 96 in `hold/ready`. Live-Stand nur aus `events.log`.
-
-| Job | Brief | Titel | Bedingung | Stand |
-|---|---|---|---|---|
-| 89 | PC-UX-4 | Einrichtung erklärt Grenzen vor Schritt 1 | – | Erledigt #1226 (`5e5a3bdf`) |
-| 90 | PC-UI-3 | Unbekannte Kontingentfenster bündeln | – | Erledigt #1228 (`ebd8655f`) |
-| 91 | PC-UI-1 | Bewegung anschließen, reduzierte Bewegung respektieren | – | Erledigt #1223 (`7fc3bd17`) |
-| 92 | PC-UI-4 | Kontingent-Kopf an vorhandene Quelle anschließen | – | Erledigt #1236 (`5ffed804`) |
-| 93 | PC-UX-1 | Original und geschärften Auftrag vergleichen | – | Erledigt #1224 (`fde6958c`) |
-| 94 | PC-BUDGET-1 | Bekannte Claude-Sperre vor Critic-Aufruf beachten | – | Erledigt #1233 (`05f80276`) |
-| 95 | PC-UX-8 | Empfänger und Startwirkung am Chatfeld | wartet auf #1215 (gemergt `f9a1390d`) | Erledigt #1237 (`0e6e8064`) |
-| 96 | PC-UI-2 | Beweiskette mit ehrlichem Ergebnis-Kopf | wartet auf #1210 (gemergt `7a0e1e67`) | Erledigt #1239 (`850eef87`) |
+[Abgeschlossene Paperclip-Welle 1](archive/plan-2026-10/context-2026-10-23.md#completed-paperclip-wave-on-11-october); kein erneuter Start aus ihren datierten Jobständen.
 
 **Welle 2: nur Kandidaten.** Reine Kerne dürfen vorbereitet werden. Die
 Anschlüsse laufen seriell durch die betroffenen Nähte. SQLite, PTY, Rechte und
@@ -1399,8 +1304,7 @@ Tier-A-Paket. Beobachtet am Kopf 90676c5 und am aktuellen Stand erneut gelesen
 | API-Descriptor | Private Erstellung/Ersetzung der Descriptor-Datei unter Unix prüfen. | nach #158 prüfen |
 | INV-SEC-PRIVATE-PATHS | Einheitliche no-follow-Erstellung privater Dateien (Idee). | nach M4 |
 
-**M4-Blocker** (siehe Inbox): `planning_access` ohne Projektrahmen und die
-TOCTOU-Lücke dort. Der eingefrorene Continuous-Code wird jetzt nicht erweitert.
+**M4-B, Fortschreibung 23.10.:** Der frühere Projektrahmen-/TOCTOU-Befund ist durch AUTH/PLUMB/GOAL/TASK/ASSIGN und IMPORT/#1855 geschlossen (Root; Source-Lade-/Autorisierungsbefund). Tests c91a08d0, GOAL-/M4B-Reste 2dbc396c, separate Audit-Transaktion und Windows-Nachweis bleiben offen; siehe aktive GOAL-/IMPORT-Zeilen und Inbox. Continuous bleibt deaktiviert und eingefroren; keine Gesamtfreigabe.
 
 #### Später: weitere Quellenbefunde nach Bereich
 
