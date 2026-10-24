@@ -33,16 +33,17 @@ describe("NeedsYou", () => {
     mocks.invoke.mockReset();
   });
 
-  it("answers through answer_question with the question id and text and lists it as answered", async () => {
+  it("shows the stored answer rather than the submitted text", async () => {
     const rows = [row];
-    backend(rows, ({ id, answer }) => {
+    backend(rows, ({ id }) => {
       rows.length = 0;
-      return { ...row, id, status: "answered", answer, answeredBy: "human" };
+      return { ...row, id, status: "answered", answer: "Stored answer", answeredBy: "human" };
     });
     render(<Harness />);
     fireEvent.change(await screen.findByRole("textbox", { name: "Antwort" }), { target: { value: "Yes, only that" } });
     fireEvent.click(send());
-    await screen.findByText(/Beantwortet: Yes, only that/);
+    await screen.findByText("Beantwortet: Stored answer");
+    expect(screen.queryByText(/Beantwortet: Yes, only that/)).toBeNull();
     expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "Yes, only that" });
     expect(screen.queryByRole("textbox", { name: "Antwort" })).toBeNull();
     expect(screen.getByText("Nichts offen")).toBeInTheDocument();
@@ -58,6 +59,7 @@ describe("NeedsYou", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("terminal refused the write");
     expect(field()).toHaveValue("ok");
     expect(send()).toBeEnabled();
+    expect(screen.queryByRole("list", { name: "Verlauf" })).toBeNull();
   });
 
   it("disables send while the answer is pending", async () => {
@@ -105,38 +107,85 @@ describe("NeedsYou", () => {
     await screen.findByText(/Beantwortet: Only this case/);
   });
 
-  it("unlocks the inputs when an answer succeeds but the question stays open", async () => {
+  it("unlocks for a second answer without fabricating unreadable history", async () => {
     // The core returns a row nobody can read; the card stays until the next poll.
     backend([row], () => ({}));
     render(<Harness />);
     fireEvent.change(await screen.findByRole("textbox", { name: "Antwort" }), { target: { value: "first" } });
     fireEvent.click(send());
-    await screen.findByText(/Beantwortet: first/);
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "first" }));
     await waitFor(() => expect(field()).toBeEnabled());
     fireEvent.change(field(), { target: { value: "second" } });
     expect(send()).toBeEnabled();
     fireEvent.click(send());
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "second" }));
-    await waitFor(() => expect(screen.getAllByRole("status")).toHaveLength(2));
+    await waitFor(() => expect(field()).toBeEnabled());
+    expect(screen.queryByText(/Beantwortet:/)).toBeNull();
+    expect(screen.queryByRole("list", { name: "Verlauf" })).toBeNull();
+    expect(mocks.invoke.mock.calls.filter(([cmd]) => cmd === "answer_question")).toHaveLength(2);
   });
 
-  it("keeps only the 20 newest answered lines", async () => {
-    const rows = Array.from({ length: 22 }, (_, n) => ({ ...row, id: `q-${n}`, optionsJson: `["a${n}"]` }));
-    backend(rows, ({ id, answer }) => {
-      const at = rows.findIndex((r) => r.id === id);
-      rows.splice(at, 1);
-      return { ...row, id, status: "answered", answer };
-    });
+  it("loads the latest 50 persisted questions on fetch and remount", async () => {
+    const rows = Array.from({ length: 52 }, (_, n) => ({
+      ...row, id: `q-${n}`, question: `Stored question ${n}?`, status: "answered", answer: `Stored answer ${n}`,
+    }));
+    backend(rows, () => { throw new Error("must not answer to read history"); });
+    const first = render(<Harness />);
+    const history = within(await screen.findByRole("list", { name: "Verlauf" }));
+    const items = history.getAllByRole("listitem");
+    expect(items).toHaveLength(50);
+    expect(items[0]).toHaveTextContent("Stored question 51?");
+    expect(items[0]).toHaveTextContent("Beantwortet: Stored answer 51");
+    expect(items[49]).toHaveTextContent("Stored question 2?");
+    expect(items[49]).toHaveTextContent("Beantwortet: Stored answer 2");
+    expect(history.queryByText("Stored question 1?")).toBeNull();
+    expect(history.queryByText("Stored question 0?")).toBeNull();
+    first.unmount();
     render(<Harness />);
-    for (let n = 0; n < 22; n++) {
-      fireEvent.click(await screen.findByRole("button", { name: `a${n}` }));
-      await screen.findByText(`Beantwortet: a${n}`);
-    }
-    const lines = screen.getAllByRole("status");
-    expect(lines).toHaveLength(20);
-    expect(lines[0]).toHaveTextContent("Beantwortet: a21");
-    expect(lines[19]).toHaveTextContent("Beantwortet: a2");
-  }, 30_000);
+    const restored = within(await screen.findByRole("list", { name: "Verlauf" }));
+    expect(restored.getAllByRole("listitem")).toHaveLength(50);
+    expect(restored.getAllByRole("listitem")[0]).toHaveTextContent("Stored question 51?");
+    expect(restored.getAllByRole("listitem")[49]).toHaveTextContent("Stored question 2?");
+    expect(mocks.invoke.mock.calls.map(([cmd]) => cmd)).toEqual(["list_questions", "list_questions"]);
+  });
+
+  it("preserves closed status attribution timestamps and stored context", async () => {
+    backend([
+      { ...row, id: "human", question: "Human question?", status: "answered", answer: "Approved", answeredBy: "human", answeredAt: 60 },
+      { ...row, id: "api", question: "API question?", status: "answered", answer: "API answer", answeredBy: "unverified", answeredAt: 0 },
+      { ...row, id: "expired", question: "Expired question?", status: "expired", answer: "Timeout answer", answeredBy: null, answeredAt: 120, projectId: "removed-project", workerId: "archived-worker" },
+      { ...row, id: "refused", question: "Refused question?", status: "refused", answer: null, answeredBy: null, scope: "preflight", workerId: null, projectId: "" },
+      { ...row, id: "missing", question: "Missing attribution?", status: "answered", answer: "", workerId: null },
+    ], () => null);
+    render(<Harness />);
+    const history = within(await screen.findByRole("list", { name: "Verlauf" }));
+    const items = history.getAllByRole("listitem");
+    const human = items[4];
+    expect(human).toHaveTextContent("Human question?");
+    expect(human).toHaveTextContent("Beantwortet: Approved");
+    expect(human).toHaveTextContent("von einem Menschen beantwortet");
+    expect(human).toHaveTextContent("Projekt: p-1");
+    expect(human).toHaveTextContent("Agent: w-1");
+    expect(human).toHaveTextContent("Geschlossen:");
+    expect(human.querySelector("time")).toHaveAttribute("dateTime", "1970-01-01T00:01:00.000Z");
+    expect(items[3]).toHaveTextContent("Beantwortet: API answer");
+    expect(items[3]).toHaveTextContent("beantwortet, Herkunft ungeprüft");
+    expect(items[3].querySelector("time")).toHaveAttribute("dateTime", "1970-01-01T00:00:00.000Z");
+    expect(items[2]).toHaveTextContent("Abgelaufen: Timeout answer");
+    expect(items[2]).toHaveTextContent("niemand hat entschieden");
+    expect(items[2]).toHaveTextContent("Projekt: removed-project");
+    expect(items[2]).toHaveTextContent("Agent: archived-worker");
+    expect(items[1]).toHaveTextContent("Abgewiesen: Keine Antwort gespeichert");
+    expect(items[1]).toHaveTextContent("niemand hat entschieden");
+    expect(items[1]).toHaveTextContent("Vorabfrage, noch kein Agent");
+    expect(items[1]).toHaveTextContent("Projekt: Unbekannt");
+    expect(items[1]).toHaveTextContent("Erstellt:");
+    expect(items[1].querySelector("time")).toHaveAttribute("dateTime", "1970-01-01T00:00:01.000Z");
+    expect(items[0]).toHaveTextContent("Beantwortet: Keine Antwort gespeichert");
+    expect(items[0]).toHaveTextContent("niemand hat entschieden");
+    expect(items[0]).toHaveTextContent("Agent: Unbekannt");
+    expect(history.queryByText("tester/red-first")).toBeNull();
+  });
 
   it("renders every option button when the asker offers the same option twice", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
