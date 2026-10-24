@@ -316,7 +316,7 @@ scrape HTML. If the running app lacks HQ v1, report that limitation.
 
 Harness instruction/config recipes: `docs/setup/`; check with
 `npm run dev:agent-check`. The `projecta-workflow` skill (`.agents/skills/`,
-copy in `.claude/skills/`) summarizes this file, which wins on disagreement.
+copy in `.claude/skills/`) summarizes AGENTS.md, which wins on disagreement.
 `npm run dev:doctor -- --json` is read-only; `npm run dev:setup` sets clone-local
 hooks and creates `.pa/HQ-START.md`. None enables automation.
 
@@ -396,3 +396,32 @@ Record dependency/architecture decisions in `docs/decisions.md` (what, why,
 when to reverse). Hand over at session end with
 `bash scripts/sync.sh note "<agent>" "<summary>"`. Keep secrets out of tracked
 files, PR texts and logs; back up before deleting or switching anything off.
+
+## Development loop
+
+The user-approved contract for continuous mode is
+`docs/development/CONTINUOUS.md`; defaults are in `projecta.dev.json`.
+Rust/SQLite owns runtime state. HQ is a host/proxy, not a second scheduler.
+Capability configuration is not capability evidence. Do not claim a provider,
+actual model, effort, billing source, or token measurement that has not been
+observed.
+
+Continuous mode stays disabled and its code is frozen until milestone M4: no
+new migrations or features for it outside the M4 packages in `docs/PLAN.md`.
+New ideas go to "Später" in `docs/PLAN.md`, not into M1–M4. Agents cannot
+expand their own approval, credential, budget, or release policy. Never treat
+an expired lease as proof that a worker process has stopped. Never reinstall
+over active sessions or restore an old database after new writes have been
+accepted.
+
+## Detailed operating reference
+
+`docs/development/WORKFLOW.md` is the reference for architecture, release
+procedures, provider properties and environment gotchas. It carries no rules of
+its own: where it disagrees with AGENTS.md, AGENTS.md wins. Its provider table
+is historical (current provider setup: `docs/setup/`). All paths and commands there are
+relative to the repository root. The local Node requirement is 24 or newer.
+The canonical architecture patterns live in
+[`docs/architecture-rules.md`](../architecture-rules.md); reviews check them
+and the drift gate `scripts/ci/architecture-drift.mjs` (package ARCH-G2)
+enforces them.
