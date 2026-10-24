@@ -113,70 +113,16 @@ fixing a bug and consider a lint/gate for the error class.
 
 ## Reviews and advisors
 
-The tier (rule 5) follows the changed files: any seam, security-relevant code,
-concurrency, PTY or database/migration change makes it tier A. Counts,
-non-author families, E1, C+ and fix-round delta requirements follow rule 5.
-Record every finding and disposition (accepted with commit, rejected with reason,
-follow-up) in the PR. Every accepted fix, at any severity, requires bounded
-verification of exactly `<reviewed-head>..<new-head>`: closure of the accepted
-findings and new defects in the delta. This IS round two and the last round.
-A full candidate re-review in round two is allowed only after a high finding.
-Root then records merge/split/drop and informs the user; no third round.
-Evidence binds to the candidate; later changes invalidate affected evidence.
-A finding without `file:line` counts as unproven.
+- Tier follows changed files: seams, security, concurrency, PTY and database/migrations are A; counts, non-author families, E1, C+ and fix-round delta follow rule 5. Keep review prompts outside the repo and reproducible from the commit; record every finding and disposition (accepted with commit, rejected with reason, or follow-up) in the PR.
+- Every accepted fix, at any severity, requires bounded verification of exactly `<reviewed-head>..<new-head>` for finding closure and new delta defects; this IS round two and the last round. Full candidate re-review in round two is allowed only after a high finding; Root records merge/split/drop and informs the user; no third round.
+- Evidence binds to the actual candidate; later changes invalidate affected proof. Findings without `file:line` are unproven. Every review checks the head’s `Plan-ID:` row for post-merge truth and other rows, user section and decision inbox for staleness against `gh`; mismatches are medium, or high for user requests already done, and must be fixed in the same PR before `review-ok` (2026-10-15).
+- Observe each job’s actual model via its own `turn_context`. Follow the reference’s 2026-10-20 DOC mission until DOC-9 acceptance: Claude orchestration, GPT-6.1/high or GPT-6 Astra implementation, rule 5 retained, approved Ollama cross-family reviews plus separate GPT observer; its scoped credit approval supersedes the older block until 2026-11-01, without asserting a current balance.
+- Use recursive prompting selectively for complex plans/dependencies, hard diagnosis or checkable designs (2026-10-08; `docs/development/prompting.md`): preserve requirements/acceptance, ask necessary subquestions, make a first solution and one neutral check (no defect is valid), fix concrete defects and check integration/interfaces. A second extra round needs a remaining concrete defect; stop at acceptance, no insight, unchanged blocker or time/quota/budget limit. It replaces neither review nor approval; add no RLM runtime, agents or services.
+- For hard decisions and final reviews, use two advisors from different vendors; workers self-call only for seam/security/architecture decisions or after >30 minutes stuck, otherwise through the coordinator. Questions go through the coordinator into the decision inbox. Advisors do not replace required reviews; the author’s family never counts as independent.
+- Reviewer/advisor models, calls, caps and approved budgets are in the coordinator’s private record; subscriptions remain default. Follow the reference’s 2026-10-09 Anthropic, 2026-10-14 OpenRouter and 2026-10-20 Ollama credit exceptions with all bounds, exhaustion/end conditions and no purchase/auto-reload; missing eligible families mean waiting, never fewer reviews; free feedback never counts. E1 ends when credit returns or the user changes it.
+- Paid usage must stay within user-approved budgets. No new paid services, keys or purchases without the user’s explicit yes; keep secrets out of files, logs, commands and PR text. Exception details, including permitted key storage, the Anthropic workspace/spend/payment constraints and OpenRouter external PC script/private floor, remain binding in the full reference.
 
-Dated user order 2026-10-20, documentation mission until DOC-9 acceptance:
-central orchestration uses Claude; delegated implementation is ordered to use
-GPT-6.1/high or GPT-6 Astra. Source: [PLAN](docs/PLAN.md), DOC-CTRL1 mission
-record (DOC-8), and [decision index](docs/decisions.md) (DOC-2).
-Observe the actual model per job via its own `turn_context`, never a profile claim.
-Rule 5 is NOT suspended: each package receives cross-family reviews via the
-approved Ollama credit path plus a separate GPT observer. The 2026-10-20 user
-approval covers existing credit for `glm-5.3`, `glm-5.3-flash` and
-`deepseek-v4.1-flash`; private bounds apply, no purchase or auto-reload.
-It supersedes the older block until 2026-11-01; no current balance is asserted.
-
-Every review checks `docs/PLAN.md` at the head: the PR's own row (identified by `Plan-ID:`) states what is true after merge, and changes in the PR leave no other row, the user section or decision inbox stale; cross-check against `gh`. A mismatch is a medium finding, or high if the user section asks for something already done, and must be fixed in the same PR before `review-ok` (user order 2026-10-15: the plan must never be stale).
-
-Use recursive prompting selectively for complex plans, dependencies, hard
-diagnosis or designs with checkable criteria (user order 2026-10-08), following
-`docs/development/prompting.md`. Preserve requirements and acceptance; ask only
-necessary subquestions, make a first solution, then one neutral extra check
-("no defect" is valid). Correct concrete defects and check the integrated result
-including interfaces. A second extra round needs a concrete remaining defect.
-Stop when acceptance is met, no new insight appears, the blocker is unchanged,
-or a time/quota/budget limit is reached. Self-check replaces neither independent
-review nor user approval; do not add an RLM runtime, agents or services for it.
-
-- **Everyday reviewers:** two reviewers from families other than the author's
-  for tiers A and B, one for C+, none for C (rule 5). Keep prompts outside the repo; they
-  are reproducible from the commit. Which reviewer models are currently usable,
-  and how they are called, is the coordinator's private record.
-- **Advisors** for hard decisions and final reviews: two advisors from different
-  vendors. A worker may call the advisors itself for seam, security or
-  architecture decisions, or when stuck for more than 30 minutes; otherwise it
-  goes through the coordinator. Questions an advisor raises go to the
-  coordinator, who puts them into the decision inbox. Advisors do not replace
-  the required reviews: a model of the author's own family never counts as an
-  independent reviewer. Current advisor models: the coordinator's private record.
-- Paid usage only within budgets the user approved in the coordinator's private
-  permission record; no new paid services, keys or purchases without the
-  user's explicit yes. Secrets never go into files, logs, commands or PR text.
-
-### Subscriptions first — recorded credit exceptions
-
-Subscriptions remain the default. The included Anthropic API-credit exception
-(decision 2026-10-09) allows a dedicated ProjectA Console workspace/key with a
-spend limit, no payment method, purchased credits or auto-reload; exhaustion
-returns work to subscriptions. Keys stay in the user's vault/secret store,
-never in files, logs, commands or PR text.
-
-The 2026-10-14 OpenRouter exception supersedes the 2026-10-09 ban: existing
-credit only, no purchase or auto-reload. Reviews use the coordinator's external
-PC script; keys stay in the user's environment/vault, never files, logs,
-commands or PR text. The privately recorded floor applies; free feedback never
-counts. Missing eligible families mean waiting, not fewer reviews. Rule 5's E1
-ends when credit returns or the user changes it; no live balance is asserted.
+See [the full reference](docs/development/AGENTS_REFERENCE.md#reviews-and-advisors).
 
 ## Bounded goals and approved adaptation
 
@@ -293,30 +239,12 @@ See [the full reference](docs/development/AGENTS_REFERENCE.md#pull-requests-and-
 
 ## Routing: task type to profile (AP-6a)
 
-This section is the routing contract; setup pages contain dated recipes, not
-dispatch authority. Profile ids come from `src-tauri/resources/agent-defaults.json`;
-observe model/effort and access before use. A profile not in the repo is marked
-"profile pending CLI check": do not dispatch to it until a CLI probe exists.
-The choice among eligible families is only the usage rule below the table;
-no family is preferred or excluded by a fixed rule (user decision 2026-10-07).
+- This is the routing contract; setup recipes are dated guidance, not dispatch authority. Profile IDs come from `src-tauri/resources/agent-defaults.json`; observe actual model, effort and access before use.
+- An absent profile is "profile pending CLI check": do not dispatch until a CLI probe exists. Use the eligibility/reviewer table in the full reference; no fixed family preference or exclusion replaces the usage rule (2026-10-07).
+- Pick the eligible provider with most headroom in `usage_overview`; at the user’s cap (coordinator’s private record), exclude it until its window resets. Record the pick and observed value in the dispatch note (rule 9).
+- Reviewer family must differ from the author’s (rule 5); a vendor-hiding router such as Cursor `auto` requires proof of the actual vendor first.
 
-| Task type | Eligible profile families | Reviewer rule |
-|---|---|---|
-| Seam / security / PTY / DB implementation (tier A) | `codex`, `claude`, `kimi`; Cursor: profile pending CLI check | two reviewers, each from a family other than the author's |
-| Other Rust (tier B) | `codex`, `claude`, `kimi`, `opencode` | two different non-author families: subscription + OpenRouter, or two subscription families under E1 (rule 5) |
-| Frontend TS (tier B) | `codex`, `claude`, `kimi`, `opencode`; Cursor: profile pending CLI check | two different non-author families: subscription + OpenRouter, or two subscription families under E1 (rule 5) |
-| Scripts / CI (tier B; tier C if no runtime effect) | `codex`, `claude`, `kimi`, `opencode` | tier B as above; tier C none, the gates suffice |
-| Docs (tier C) | `codex`, `claude`, `kimi`, `opencode` | none, the gates suffice |
-| Read-only inventory / research | `opencode-glm-53-flash`, `ollama-coder`, `codex`, `claude`, `kimi`; Grok: profile pending CLI check | none (report only) |
-| Review tier A | coordinator's recorded pair, `codex`, `claude`; OpenRouter: `z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3` within the credit exception; Cursor: profile pending CLI check | two different non-author families; free feedback never counts; E1 changes tier B only |
-| Review tier B | subscription reviewer + OpenRouter (`z-ai/glm-5.3`, `google/gemini-3.8-flash`, `moonshotai/kimi-k3`) within the credit exception; or two subscription families under E1 (rule 5) while credit is <= 0, no purchase | two different non-author families; free feedback never counts |
-
-Pick among the eligible providers by `usage_overview`: the one with the most
-headroom wins; a provider at the user's cap drops out until its window resets
-(caps live in the coordinator's private record). Record the pick and the
-observed value in the dispatch note (rule 9: no claim without observation).
-The reviewer family must differ from the author's (rule 5); a router that
-hides the vendor (Cursor `auto`) first needs the actual vendor proven.
+See [the full reference](docs/development/AGENTS_REFERENCE.md#routing-task-type-to-profile-ap-6a).
 
 ## Merging (Mergify queue, since 2026-09-24)
 
