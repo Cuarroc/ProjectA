@@ -289,3 +289,110 @@ TIER/REVIEW: <risk tier and reviewer requirements>
 REPORT: <PR text, last message or report file>
 OVERLAP: <other assignments and resolution>
 ```
+
+## Start with current evidence
+
+Inside AgentsRoom, first read the project-memory note `lage-jetzt`; read
+`STAND.md`, then `docs/PLAN.md` (the only plan: goals Z1–Z4 (M1–M5 are
+historical), parked and cut work, decision inbox), then run
+`bash scripts/sync.sh start`. Check
+branch, worktrees and working changes. Preserve unrelated work. Historical
+status is not live evidence: take the live state from `gh pr list` and
+`git log origin/main`. Never launch the desktop app just to inspect it: its
+queue can immediately dispatch real workers.
+
+The start check (rule 9) before every worker: run
+`npm run dev:start-check` (read-only, no money, no network). It prints one line
+each for free RAM (`--min-free-gb`, default 1.5), running cargo builds
+(`--max-cargo`, default 2), the provider limit (`--usage <file>`) and whether an
+already started worker still writes output (`--observe-log <file>`). Exit 1 (a
+limit violated), 3 (worker silent) or 2 (call error) is a hard stop: do not start
+the worker. The model the harness actually reports stays a human observation, the
+command cannot see it. Details: `scripts/dev/README.md`.
+
+Use the DevHQ website (`npm run hq:live`) for the human cockpit. Agents use the
+same backend through `pa hq runtime` and `pa hq context --project <id>`; do not
+scrape HTML. If the running app lacks HQ v1, report that limitation.
+
+Harness instruction/config recipes: `docs/setup/`; check with
+`npm run dev:agent-check`. The `projecta-workflow` skill (`.agents/skills/`,
+copy in `.claude/skills/`) summarizes this file, which wins on disagreement.
+`npm run dev:doctor -- --json` is read-only; `npm run dev:setup` sets clone-local
+hooks and creates `.pa/HQ-START.md`. None enables automation.
+
+## Ownership and proof
+
+Size means added + deleted lines against the PR merge-base, including tests,
+support files and lockfiles. Rule 1 keeps 300 initially and 400 for review-forced
+fixes. Existing exceptions: generated `docs/dev-hq/data.js|json` on coordinator
+snapshot branches are excluded (user, 2026-10-16); named grants #1293/#1312 and
+SLIM moves #1451/#1456/#1457/#1459 ended with their delivery, not a general waiver.
+The 2026-10-20 documentation order additionally permits byte-identical archive
+moves with block/ID/link proof; all non-move edits count toward 300/400.
+Dependabot lockfile bumps follow the lane plan in `docs/setup/mergify.md`.
+No other exclusion or higher cap follows from a checker's counting behavior.
+
+Only one implementation lane may edit a seam at a time (rule 6). Claude Code
+denies Write, Edit, MultiEdit, and NotebookEdit on a seam file unless
+PA_SEAM_ALLOW lists its repo-relative path or glob. Declare file
+ownership before parallel work. There is no cap on the number of implementers;
+the limits are the serial lanes and the build slots below. Use `git -C <path>`
+for other worktrees. Never use the shared stash; make a WIP commit instead.
+
+A bug claim needs a compiling, failing regression test. Investigate the first
+failure; never hide exit codes or bypass hooks. Check sibling cases after
+fixing a bug and consider a lint/gate for the error class.
+
+## Bounded goals and approved adaptation
+
+Root owns delivery priority and acceptance; Chief alone dispatches and replans
+operations. While the Chief is unavailable (e.g. its provider is out of quota),
+the coordinator (Root) may edit `docs/PLAN.md`. Each package has one execution owner. First reconcile prior orders,
+actual native goals, running assignments and the canonical PLAN; stored rules,
+delivered mail and expired leases are not evidence of execution or process end.
+
+Each agent checks its own harness goal functions and confirms its own native
+goal: result and benefit, parent goal, ticket and owner, scope and limits,
+verifiable acceptance, dependencies and next step. Root's goal ends at its
+bounded acceptance; Chief's coordination goal derives worker goals. Avoid
+micro-goals and endless goals. A worker can complete at its checked handover;
+the parent stays open until its own acceptance. Implemented, tested, reviewed,
+accepted, merged and usable are distinct states.
+
+Record actual create/get output or verified function unavailability plus a
+documented ticket goal. Plan edits do not change native goals. Never complete
+an unmet goal merely to create another. Record a blocker's cause or hypothesis,
+evidence, impact, owner and next step; continue independent approved work,
+without blind retries, status loops or invented work.
+Re-check and update your own native goal at relevant changes and milestones;
+complete only after fulfillment. If objective editing is unsupported, record
+the change and tool limit in the ticket/handover; do not invent an API.
+
+Within approved work, Chief may change method, order, slicing, assignment or
+execution location. Record trigger and evidence, previous state, change,
+remaining duties and acceptance, next step and owner in the ticket/PLAN.
+Never weaken acceptance to finish. New product goals, scope, cost and permissions
+remain the user's decisions; do not reopen granted approvals.
+
+GOALS-C evaluates exactly three existing pending tasks, with ticket records of
+defect or missed requirement (or no defect), confirmation, observed regressions
+and only measured extra effort. Three tasks are a sample, not efficacy proof;
+restrict use if overhead dominates. No extra QA bots, test agents or benchmarks.
+
+## Record and learn
+
+The PR text is the record of a package (rule 7). A subagent that cannot open
+the PR returns the complete report text as its last message; the coordinator
+puts it into the PR. Existing `.pa/report_*.md` files stay as history; old
+specs and review prompts live in `.pa/archiv/`.
+
+Before debugging: `npm run hq:lesson -- search "<symptom>"`. Report worked/failed
+outcomes with `--run <runId>` (required; never invent a new ID for a retry);
+add a missing lesson with symptom, cause, fix and evidence. An HQ bug must be
+logged in `docs/dev-hq/BUGS.md` and queued; if offline, record the pending
+queue action explicitly. Do not fabricate the queue entry.
+
+Record dependency/architecture decisions in `docs/decisions.md` (what, why,
+when to reverse). Hand over at session end with
+`bash scripts/sync.sh note "<agent>" "<summary>"`. Keep secrets out of tracked
+files, PR texts and logs; back up before deleting or switching anything off.
