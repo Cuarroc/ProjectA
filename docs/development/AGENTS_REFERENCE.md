@@ -195,3 +195,97 @@ headroom wins; a provider at the user's cap drops out until its window resets
 observed value in the dispatch note (rule 9: no claim without observation).
 The reviewer family must differ from the author's (rule 5); a router that
 hides the vendor (Cursor `auto`) first needs the actual vendor proven.
+
+## Checks
+
+The sole gate list is `scripts/ci/gates.sh`. Before consolidation on 2026-09-09,
+both hooks, `ci.yml`, `release.yml` and this prose drifted: pre-push used
+`cargo test`, CI `cargo nextest run --profile ci`. Commands, not a sixth list:
+
+```sh
+bash scripts/ci/doctor.sh              # what can this machine prove?
+bash scripts/ci/gates.sh --list        # the list, always current
+bash scripts/ci/gates.sh lane prepush  # the full local lane
+bash scripts/ci/gates.sh --from clippy lane linux   # resume after a failure
+```
+
+Generated and shared files are written on `main` only: a branch must not
+commit `docs/dev-hq/data.js|json` or `.pa/ACTIVITY.md` (gate `hotspot-guard`;
+PRs merge without our local merge driver, so each such change conflicts with
+every other PR). `sync.sh note` writes to the untracked `.pa/ACTIVITY.local.md`
+on a branch (summary goes into the PR text), `post-merge` regenerates the
+snapshot on `main` only, and the coordinator refreshes it in one small PR from a
+`<vendor>/hq-snapshot-*` branch (`npm run hq`, commit just the two files).
+
+Lanes: `precommit`, `prepush`, `linux`, `windows`, `release`, `audit`. `ci.yml`,
+`release.yml`, `audit.yml` and both git hooks call exactly these lanes — one
+step per lane, no list left in the YAML. Drift is not checked, it is impossible.
+Run the gates locally rather than waiting for CI; see `docs/ci-lokal.md`.
+
+Every run ends with a `NICHT ABGEDECKT` block, and that block belongs in the PR
+text: the `#[cfg(unix)]` tests do not compile on Windows, the `#[cfg(windows)]`
+tests do not compile on Linux (`KNOWN_ISSUES` KI-7) — no single machine covers
+both halves. "All gates green" without that block is a claim, not evidence.
+The Linux half comes from WSL2 with the clone on ext4.
+Heavy builds/workers and the Linux lane also run on the project server via
+the pa-orch queue (see `STAND.md`); its future is an open user decision (E15).
+
+Rust tests are inline modules. App/CLI tests remain in their binary targets;
+the shared native capture tests run once in the `projecta_capture` library.
+Use appropriate Test-First/Regression-For/No-Test trailers; never
+`--no-verify`.
+
+### Build slots
+
+Worktrees under `.claude/worktrees/` have no `target/`. Point cargo at the main
+checkout's `target/` or at a warm slot
+`%USERPROFILE%/cargo-targets/projecta-{a,b,c}` via `CARGO_TARGET_DIR`, and set
+`CARGO_BUILD_JOBS=1`. Never set `CARGO_PROFILE_*` variables: they invalidate
+the whole dependency cache. The machine has 16 GB RAM: check free memory before
+every cargo or gate run and run at most three builds at once (two when memory is tight). Details:
+`docs/setup/claude-code.md` ("Worktrees und Build-Slots").
+
+## Task operators
+
+Each brief names ONE main operator below, using its stable German uppercase token.
+
+| Operator | Meaning | May write / push / PR? | Required output |
+|---|---|---|---|
+| PRÜFEN | Read-only check | Report only / no / no | Verdict per item |
+| BELEGEN | Reproducible proof | Report only / no / no | Command, exit code, SHA |
+| MESSEN | Measure | Report only / no / no | Numbers with method and units |
+| RECHERCHIEREN | Research | Report only / no / no | Dated sources; hypotheses marked |
+| ERFRAGEN | Ask the owner or the user's assistant | Report only / no / no | Answer as information, never approval |
+| ENTWERFEN | Draft only; no sending | Draft only / no / no | Unsent draft |
+| VORSCHLAGEN | Recommend without deciding | Report only / no / no | 2–3 options and recommendation |
+| ENTSCHEIDEN | Named owner decides | Decision record only / no / no | Decision, authority and rationale |
+| UMSETZEN | Implement one package | Yes / yes / draft | Branch, red-first evidence, prepush, draft PR |
+| NACHBESSERN | Fix review findings on the same PR | Yes / yes / same PR | Fix evidence and disposition table |
+| REVIEWEN | Review a fixed head | Report only / no / no | Head SHA; findings with file:line; verdict |
+| INTEGRIEREN | Coordinator integrates | Authorized integration only / yes / manage | Ready, labels and Mergify queue evidence |
+| PFLEGEN | Owner maintains docs, plan or memory | Owned scope / yes / draft if repo changes | Current canonical record; no second truth |
+| BERICHTEN | Report status | Report only / no / no | ≤6 lines; named stage, source and time |
+| ÜBERGEBEN | Hand over unfinished work | WIP only / yes / existing or draft | WIP commit + push; checkpoint and next owner/step |
+| BLOCKIERT MELDEN | Stop and report blocker | Report only / no / no | Reason, evidence and resume condition |
+
+Rules 4 (push) and 7 (PR text = report) apply to UMSETZEN/NACHBESSERN/INTEGRIEREN.
+Read-only operators report in their last message or an uncommitted report file; never commit.
+REVIEWEN must never use the author's model family. INTEGRIEREN is coordinator-only.
+ENTSCHEIDEN belongs only to the named owner; money/install/delete/release/security/scope
+decisions belong to the user. No operator expands existing authority or the ten core rules.
+
+Minimal brief header (one line per field; state “none” where inapplicable):
+```text
+OPERATOR: <one token>
+AUTHORITY: <owner and authorization>
+GOAL: <result and benefit>
+NON-GOALS: <excluded work>
+BASE: <branch@SHA>
+FILES/SEAM: <owned files and serial seam>
+SIZE: <diff-line budget>
+RED-FIRST: <test/evidence or justified No-Test>
+ACCEPTANCE: <verifiable checks>
+TIER/REVIEW: <risk tier and reviewer requirements>
+REPORT: <PR text, last message or report file>
+OVERLAP: <other assignments and resolution>
+```
