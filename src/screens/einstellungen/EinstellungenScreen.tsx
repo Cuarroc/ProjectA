@@ -79,7 +79,10 @@ export function EinstellungenScreen({ path, onNavigate, onOpenClassic }: {
           ) : t.id === "mcp" ? (
             <TresorPanel />
           ) : (
-            <HonestState kind="offline" hint={T.tabHint} />
+            <>
+              <HonestState kind="offline" hint={T.tabHint} />
+              <Button size="sm" onClick={onOpenClassic}>{T.moreOpen}</Button>
+            </>
           )}
         </TabPanel>
       ))}
