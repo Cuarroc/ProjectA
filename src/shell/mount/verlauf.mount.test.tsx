@@ -207,3 +207,47 @@ it("retains project drafts across routes and settles only the submitted revision
   expect(sendCount()).toBe(3);
   expect(mocks.invoke.mock.calls.filter(([command]) => /^(create_worker|start_worker|spawn_worker)$/.test(command))).toHaveLength(0);
 });
+
+
+it("does not claim empty history before the first backend read", async () => {
+  writeActiveProjectId("loading-project");
+  let claimedEmpty: boolean | undefined;
+  const fallback = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "list_workers") return Promise.resolve([worker("existing", "loading-project")]);
+    if (command === "list_worker_messages") claimedEmpty = screen.queryByText("Noch keine Nachrichten") !== null;
+    return fallback(command, args);
+  });
+  mount();
+  await screen.findByText("History existing");
+  expect(claimedEmpty).toBe(false);
+});
+
+it("loads the accepted first conversation after returning during its send", async () => {
+  const projectId = "pending-first-project";
+  writeActiveProjectId(projectId);
+  let finish!: (value: unknown) => void;
+  let accepted = false;
+  const fallback = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "list_workers") return Promise.resolve(accepted ? [worker("accepted-first", projectId)] : []);
+    if (command === "send_to_orchestrator") return new Promise((resolve) => { finish = resolve; });
+    return fallback(command, args);
+  });
+  mount();
+  const input = await screen.findByRole("textbox", { name: "Nachricht an den Orchestrator" });
+  fireEvent.change(input, { target: { value: "First request" } });
+  fireEvent.keyDown(input, { key: "Enter" });
+  for (const path of ["/core", "/leitstand/verlauf"]) {
+    await act(async () => {
+      window.location.hash = `#${path}`;
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+  }
+  expect(await screen.findByRole("button", { name: "Sendet …" })).toBeDisabled();
+  accepted = true;
+  await act(async () => finish(worker("accepted-first", projectId)));
+  expect(await screen.findByText("History accepted-first")).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Nachricht an den Orchestrator" })).toHaveValue("");
+  expect(mocks.invoke.mock.calls.filter(([command]) => command === "send_to_orchestrator")).toHaveLength(1);
+});
