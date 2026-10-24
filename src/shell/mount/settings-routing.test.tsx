@@ -31,6 +31,21 @@ it("opens the Glass MCP tab from its deep link", async () => {
   expect(screen.queryByRole("tab", { name: "Einstellungen" })).toBeNull();
 });
 
+it.each([
+  ["opens classic settings from the project placeholder", "/einstellungen/projekt", "Projekt"],
+  ["opens classic settings from the notifications placeholder", "/einstellungen/benachrichtigungen", "Benachrichtigungen"],
+])("%s", async (_name, path, label) => {
+  await mount(path);
+  const panel = within(screen.getByRole("tabpanel", { name: label }));
+  expect(panel.getByText("Dieser Bereich ist in der neuen Oberfläche noch nicht verbunden.")).toBeVisible();
+  const classic = panel.getByRole("button", { name: "Klassische Einstellungen öffnen" });
+  expect(classic).toBeVisible();
+  fireEvent.click(classic);
+  await waitFor(() => expect(window.location.hash).toBe("#/einstellungen/klassisch"));
+  expect(await screen.findByRole("tab", { name: "Einstellungen", selected: true })).toBeVisible();
+  expect(screen.queryByRole("tab", { name: "MCP & Tresor" })).toBeNull();
+});
+
 it("mounts all four registered settings tabs with query and trailing slash", async () => {
   for (const [path, name] of [
     ["/einstellungen", "Allgemein"],
