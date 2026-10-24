@@ -123,3 +123,87 @@ it("reports a failed orchestrator lookup and retries before claiming an empty hi
   expect(await screen.findByText("Noch keine Nachrichten")).toBeInTheDocument();
   expect(screen.getByRole("textbox", { name: "Nachricht an den Orchestrator" })).toBeEnabled();
 });
+
+
+it("retains project drafts across routes and settles only the submitted revision", async () => {
+  const first = "draft-first", second = "draft-second";
+  let finishSend!: (value: unknown) => void;
+  let rejectSend!: (error: Error) => void;
+  let finishRead!: (value: unknown) => void;
+  let holdRead = false;
+  const fallback = mocks.invoke.getMockImplementation()!;
+  mocks.invoke.mockImplementation((command: string, args?: { projectId?: string; workerId?: string }) => {
+    if (command === "list_workers") return Promise.resolve([worker(`own-${args?.projectId}`, args?.projectId), worker("foreign", "foreign")]);
+    if (command === "list_worker_messages" && holdRead) return new Promise((resolve) => { finishRead = resolve; });
+    if (command === "send_to_orchestrator") return new Promise((resolve, reject) => { finishSend = resolve; rejectSend = reject; });
+    return fallback(command, args);
+  });
+  const box = () => screen.getByRole("textbox", { name: "Nachricht an den Orchestrator" });
+  const type = (value: string) => fireEvent.change(box(), { target: { value } });
+  const navigate = async (path: string) => {
+    await act(async () => {
+      window.location.hash = `#${path}`;
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+  };
+  const switchProject = async (id: string) => {
+    act(() => writeActiveProjectId(id));
+    await screen.findByText(`History own-${id}`);
+  };
+  const sendCount = () => mocks.invoke.mock.calls.filter(([command]) => command === "send_to_orchestrator").length;
+  writeActiveProjectId(first);
+  mount();
+  await screen.findByText("History own-draft-first");
+  type("First unsent draft");
+  await navigate("/core");
+  expect(screen.queryByRole("textbox", { name: "Nachricht an den Orchestrator" })).toBeNull();
+  holdRead = true;
+  await navigate("/leitstand/verlauf");
+  await waitFor(() => expect(box()).toHaveValue("First unsent draft"));
+  expect(history().getByText("Verlauf wird geladen …")).toBeInTheDocument();
+  expect(screen.queryByText("Noch keine Nachrichten")).toBeNull();
+  expect(screen.queryByText("History own-draft-first")).toBeNull();
+  holdRead = false;
+  await act(async () => finishRead([{ id: "fresh", workerId: "own-draft-first", role: "agent", content: "Fresh backend history", createdAt: 1 }]));
+  expect(history().getByText("Fresh backend history")).toBeInTheDocument();
+  expect(mocks.invoke).toHaveBeenCalledWith("list_worker_messages", { workerId: "own-draft-first", limit: 200 });
+  await switchProject(second);
+  expect(box()).toHaveValue("");
+  expect(screen.queryByText("Fresh backend history")).toBeNull();
+  type("Second unsent draft");
+  await switchProject(first);
+  expect(box()).toHaveValue("First unsent draft");
+  expect(sendCount()).toBe(0);
+  fireEvent.keyDown(box(), { key: "Enter", shiftKey: true });
+  expect(sendCount()).toBe(0);
+  fireEvent.keyDown(box(), { key: "Enter" });
+  expect(mocks.invoke).toHaveBeenCalledWith("send_to_orchestrator", { projectId: first, text: "First unsent draft" });
+  await switchProject(second);
+  expect(box()).toHaveValue("Second unsent draft");
+  await switchProject(first);
+  expect(screen.getByRole("button", { name: "Sendet …" })).toBeDisabled();
+  type("Newer first draft");
+  type("First unsent draft"); // Same text, different revision: an old acknowledgement cannot erase it.
+  fireEvent.keyDown(box(), { key: "Enter" });
+  expect(sendCount()).toBe(1);
+  await act(async () => finishSend(worker("own-draft-first", first)));
+  expect(box()).toHaveValue("First unsent draft");
+  fireEvent.click(screen.getByRole("button", { name: "Senden" }));
+  await navigate("/core");
+  await act(async () => rejectSend(new Error("ERR_REFUSED: Versand verweigert")));
+  await navigate("/leitstand/verlauf");
+  await screen.findByText("History own-draft-first");
+  expect(box()).toHaveValue("First unsent draft");
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Erneut lesen" }));
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Senden" }));
+  await switchProject(second);
+  await act(async () => finishSend(worker("own-draft-first", first)));
+  expect(box()).toHaveValue("Second unsent draft");
+  await switchProject(first);
+  expect(box()).toHaveValue("");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(sendCount()).toBe(3);
+  expect(mocks.invoke.mock.calls.filter(([command]) => /^(create_worker|start_worker|spawn_worker)$/.test(command))).toHaveLength(0);
+});
