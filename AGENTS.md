@@ -82,20 +82,8 @@ Binding: [reference](docs/development/AGENTS_REFERENCE.md#bounded-goals-and-appr
 
 ## Development loop
 
-The user-approved contract for continuous mode is
-`docs/development/CONTINUOUS.md`; defaults are in `projecta.dev.json`.
-Rust/SQLite owns runtime state. HQ is a host/proxy, not a second scheduler.
-Capability configuration is not capability evidence. Do not claim a provider,
-actual model, effort, billing source, or token measurement that has not been
-observed.
-
-Continuous mode stays disabled and its code is frozen until milestone M4: no
-new migrations or features for it outside the M4 packages in `docs/PLAN.md`.
-New ideas go to "Später" in `docs/PLAN.md`, not into M1–M4. Agents cannot
-expand their own approval, credential, budget, or release policy. Never treat
-an expired lease as proof that a worker process has stopped. Never reinstall
-over active sessions or restore an old database after new writes have been
-accepted.
+CONTINUOUS.md; projecta.dev.json; frozen until M4; lease is not process-stop proof.
+Binding: [reference](docs/development/AGENTS_REFERENCE.md#development-loop).
 
 ## Checks
 
@@ -112,35 +100,18 @@ The [full section](docs/development/AGENTS_REFERENCE.md#build-slots) is binding.
 
 ## Pull requests and CI minutes
 
-- Open one DRAFT PR per package; keep intermediate pushes in draft.
-- Before pushing, run the full own-worktree `bash scripts/ci/gates.sh lane prepush`; verify the remote head with `git ls-remote`.
-- WIP limit: at most 15 open agent PRs; at the limit, only finish, review and merge.
-- The coordinator finishes, splits or closes a draft with no new commit for 48 h.
-- Merge `main` only to resolve a real conflict; never rebase or force-push.
-- Stacked PRs keep the predecessor branch as base; the coordinator retargets to `main` after it merges.
-
-See [the full reference](docs/development/AGENTS_REFERENCE.md#pull-requests-and-ci-minutes).
+DRAFT; own prepush; git ls-remote; at most 15 open agent PRs; draft age 48 h.
+Binding: [reference](docs/development/AGENTS_REFERENCE.md#pull-requests-and-ci-minutes).
 
 ## Routing: task type to profile (AP-6a)
 
-- This is the routing contract; setup recipes are dated guidance, not dispatch authority. Profile IDs come from `src-tauri/resources/agent-defaults.json`; observe actual model, effort and access before use.
-- An absent profile is "profile pending CLI check": do not dispatch until a CLI probe exists. Use the eligibility/reviewer table in the full reference; no fixed family preference or exclusion replaces the usage rule (2026-10-07).
-- Pick the eligible provider with most headroom in `usage_overview`; at the user’s cap (coordinator’s private record), exclude it until its window resets. Record the pick and observed value in the dispatch note (rule 9).
-- Reviewer family must differ from the author’s (rule 5); a vendor-hiding router such as Cursor `auto` requires proof of the actual vendor first.
-
-See [the full reference](docs/development/AGENTS_REFERENCE.md#routing-task-type-to-profile-ap-6a).
+agent-defaults.json; observe model/effort/access; usage_overview; reviewer rule 5.
+Binding: [reference](docs/development/AGENTS_REFERENCE.md#routing-task-type-to-profile-ap-6a).
 
 ## Merging (Mergify queue, since 2026-09-24)
 
-- Merge only through the Mergify queue; a red `main` stops the queue.
-- After `gh pr checks <n>` is green, the coordinator posts a standalone `@Mergifyio queue` comment.
-- Only Root (Chief as deputy) sets `review-ok`, bound to the reviewed head; any push invalidates it.
-- Required reviews come from families other than the author's (rule 5); workers and reviewers never queue themselves.
-- Package branch PR bodies need a line starting with `## Report`.
-- `do-not-merge` excludes even green PRs from the queue.
-- Nobody merges manually; the emergency procedure is in the full reference below.
-
-See [the full reference](docs/development/AGENTS_REFERENCE.md#merging-mergify-queue-since-2026-09-24).
+Mergify; red main stops queue; @Mergifyio queue; review-ok; ## Report; do-not-merge.
+Binding: [reference](docs/development/AGENTS_REFERENCE.md#merging-mergify-queue-since-2026-09-24).
 
 ## Record and learn
 
@@ -156,12 +127,5 @@ OPERATOR AUTHORITY GOAL NON-GOALS BASE FILES/SEAM SIZE RED-FIRST ACCEPTANCE TIER
 
 ## Detailed operating reference
 
-`docs/development/WORKFLOW.md` is the reference for architecture, release
-procedures, provider properties and environment gotchas. It carries no rules of
-its own: where it disagrees with this file, this file wins. Its provider table
-is historical (current provider setup: `docs/setup/`). All paths and commands there are
-relative to the repository root. The local Node requirement is 24 or newer.
-The canonical architecture patterns live in
-[`docs/architecture-rules.md`](docs/architecture-rules.md); reviews check them
-and the drift gate `scripts/ci/architecture-drift.mjs` (package ARCH-G2)
-enforces them.
+WORKFLOW.md; architecture-rules.md.
+Binding: [reference](docs/development/AGENTS_REFERENCE.md#detailed-operating-reference).
