@@ -88,7 +88,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {steuerung ? <SteuerungRoute path={path} /> : null}
               {start ? <StartRoute /> : null}
               {betrieb ? <BetriebRoute /> : null}
-              {freshSettings ? <EinstellungenScreen onOpenClassic={openClassicSettings} /> : null}
+              {freshSettings ? <EinstellungenScreen path={path} onNavigate={(target) => { window.location.hash = `#${target}`; }} onOpenClassic={openClassicSettings} /> : null}
               {gallery ? <Suspense fallback={null}><Gallery /></Suspense> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
