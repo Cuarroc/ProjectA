@@ -1202,7 +1202,7 @@ async fn require_active_run_authority(
 }
 
 /// The one refusal of every planning-authority check.
-pub(super) const PLANNING_REFUSED: &str = "planning target is outside the run project";
+pub(crate) const PLANNING_REFUSED: &str = "planning target is outside the run project";
 
 /// What a planning write is aimed at: the project itself, or the project of a
 /// goal or task.

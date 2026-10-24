@@ -12,6 +12,7 @@ pub(super) fn route(
     method: &str,
     path: &[&str],
     project_id: Option<&str>,
+    authority: Option<PlanningAuthority<'_>>,
 ) -> Option<Response> {
     // Ownership test for the arms moved so far: it goes away once every hq
     // arm lives here and the fallback is the final 404.
@@ -33,7 +34,7 @@ pub(super) fn route(
             )
             | ("POST", ["api", "hq", "v1", "control"])
     );
-    owned.then(|| handle(inner, request, method, path, project_id))
+    owned.then(|| handle(inner, request, method, path, project_id, authority))
 }
 
 fn handle(
@@ -42,6 +43,7 @@ fn handle(
     method: &str,
     path: &[&str],
     project_id: Option<&str>,
+    authority: Option<PlanningAuthority<'_>>,
 ) -> Response {
     let backend = inner.backend.as_ref();
     match (method, path) {
@@ -124,7 +126,8 @@ fn handle(
                 Some(Value::String(value)) => Some(value.as_str()),
                 Some(_) => return Response::error(400, "rollbackReason must be a string"),
             };
-            plan_response(backend.import_development_plan(
+            plan_response(backend.import_development_plan_with_authority(
+                authority,
                 &project_id,
                 &plan_id,
                 expected,
@@ -223,7 +226,8 @@ fn handle(
                 Ok(value) => value.unwrap_or(false),
                 Err(err) => return Response::error(400, err),
             };
-            match backend.create_continuous_goal(
+            match backend.create_continuous_goal_with_authority(
+                authority,
                 &project_id,
                 &objective,
                 optional_str(&body, "acceptanceCriteria"),
@@ -251,7 +255,8 @@ fn handle(
                 Ok(value) => value,
                 Err(err) => return Response::error(400, err),
             };
-            match backend.create_continuous_task(
+            match backend.create_continuous_task_with_authority(
+                authority,
                 goal_id,
                 &objective,
                 optional_str(&body, "profileId"),
@@ -279,7 +284,7 @@ fn handle(
                     return Response::error(400, format!("invalid team assignment: {error}"))
                 }
             };
-            match backend.assign_continuous_task(task_id, body) {
+            match backend.assign_continuous_task_with_authority(authority, task_id, body) {
                 Ok(assignment) => Response::ok(
                     json!({"apiVersion":1,"source":"rust/sqlite","assignment":assignment,"approvalAuthority":false}),
                 ),
@@ -346,5 +351,19 @@ fn handle(
             continuous_response(backend.control_continuous(&project_id, &action))
         }
         _ => unreachable!("route() only hands over owned arms"),
+    }
+}
+
+pub(super) fn continuous_response<T: Serialize>(result: Result<T, String>) -> Response {
+    match result {
+        Ok(value) => into_response(Ok(value)),
+        Err(err) => continuous_error(err),
+    }
+}
+
+pub(super) fn plan_response(result: Result<Value, String>) -> Response {
+    match result {
+        Ok(value) => Response::ok(value),
+        Err(reason) => Response::error(error_status(&reason, StatusPolicy::Plan), reason),
     }
 }

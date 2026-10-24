@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,7 +59,11 @@ beforeEach(() => {
   delete document.documentElement.dataset.theme;
 });
 afterEach(cleanup);
-const show = () => render(<EinstellungenScreen onOpenClassic={open} />);
+function SettingsFixture() {
+  const [path, navigate] = useState("/einstellungen");
+  return <EinstellungenScreen path={path} onNavigate={navigate} onOpenClassic={open} />;
+}
+const show = () => render(<SettingsFixture />);
 
 it("renders the newest bundled changelog entry in the settings version section", async () => {
   show();
@@ -239,7 +243,7 @@ describe("tab MCP & Tresor", () => {
       }
       return base(command, args);
     });
-    render(<StrictMode><EinstellungenScreen onOpenClassic={open} /></StrictMode>);
+    render(<StrictMode><SettingsFixture /></StrictMode>);
     vaultTab();
     expect(await screen.findByText("Anbieter neu")).toBeVisible();
     await act(async () => { finishOld([provider("veraltet", "api_key")]); });

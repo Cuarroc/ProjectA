@@ -14,9 +14,7 @@
 //! would multiply planning authority). Every target project, goal or task is
 //! confined to the coordinator run's project before routing.
 //!
-//! Role and authority are read before the write, in a separate transaction,
-//! like on every agent route. A fence that moves in between lets that one
-//! write through; the planning writes themselves do not take the fence.
+//! All four writers recheck authority under their SQLite writer lock; import does so after loading.
 //!
 //! Every refusal and every successful write appends one audit envelope
 //! (M4-R19-08, `audit`): the run's project, the run, the result, the route.
@@ -28,6 +26,47 @@
 //! plans as before.
 use super::*;
 use crate::store::development_launches::DispatchRole;
+
+pub use crate::store::PlanningAuthority;
+
+// Every backend must explicitly forward planning authority to its writer.
+macro_rules! planning_writer_adapters {
+    () => {
+        fn import_development_plan_with_authority(
+            &self,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
+            project_id: &str,
+            plan_id: &str,
+            expected_projection_revision: i64,
+            rollback_reason: Option<&str>,
+        ) -> Result<Value, String>;
+        fn create_continuous_goal_with_authority(
+            &self,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
+            project_id: &str,
+            objective: &str,
+            acceptance_criteria: Option<String>,
+            source_goal_id: Option<String>,
+            admit: bool,
+        ) -> Result<crate::store::ContinuousGoal, String>;
+        fn create_continuous_task_with_authority(
+            &self,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
+            goal_id: &str,
+            objective: &str,
+            profile_id: Option<String>,
+            owned_paths: Vec<String>,
+            dependencies: Vec<String>,
+        ) -> Result<crate::store::ContinuousTask, String>;
+        fn assign_continuous_task_with_authority(
+            &self,
+            authority: Option<crate::api::PlanningAuthority<'_>>,
+            task_id: &str,
+            request: crate::store::team_assignments::AssignmentRequest,
+        ) -> Result<crate::store::team_assignments::TeamAssignment, String>;
+    };
+}
+pub(crate) use planning_writer_adapters;
 
 /// Plan import, goal and task creation, team assignment. Reordering and
 /// priorities have no route of their own; the legacy `/api/queue` and the
@@ -187,7 +226,12 @@ fn decide(inner: &Inner, request: &Request, run: &str, owner: &str, fence: i64) 
              assigns only implementer, reviewer and integrator work",
         );
     }
-    route(inner, request, VerdictProof::Absent)
+    route(
+        inner,
+        request,
+        VerdictProof::Absent,
+        Some(PlanningAuthority { run, owner, fence }),
+    )
 }
 
 /// `POST /api/hq/v1/goals` with `admit: true` and no `sourceGoalId` opens a

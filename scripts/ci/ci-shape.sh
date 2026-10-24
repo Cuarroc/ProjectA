@@ -38,7 +38,7 @@
 # The YAML is read line-wise (awk), like the other workflow gates here: no
 # YAML library is guaranteed on the runner, the Git-Bash or WSL. Limit
 # (review PR #149, glm-5.2 F4): it understands block style only - jobs as
-# two-space keys, steps as "      - name:", Mergify conditions as "- item"
+# two-space keys, block step sequences, Mergify conditions as "- item"
 # lists. Another style (inline lists `[a, b]`, flow maps) finds nothing and
 # fails LOUD ("empty or missing", "step ... missing"), never silently green;
 # restyling the YAML means adapting job(), step() and mg_list() here.
@@ -75,13 +75,23 @@ job() {
   ' "$CI"
 }
 
-# Lines of the step named <name> inside a job text (stdin): from
-# "      - name: <name>" to the next "      - " item.
+# Read the step sequence indentation, then normalize the selected step to
+# six spaces so direct-field checks still exclude nested env/run content.
+# Headers may have trailing comments and simple [A-Za-z0-9_-]+ anchors.
 step() {
   awk -v name="$1" '
-    $0 == "      - name: " name { on = 1; print; next }
-    on && /^      - / { on = 0 }
-    on { print }
+    /^    steps:([[:space:]]+&[A-Za-z0-9_-]+)?([[:space:]]+#.*)?[[:space:]]*$/ { in_steps = 1; ind = 0; on = 0; next }
+    !in_steps { next }
+    /^[ ]*[^ ]/ {
+      match($0, /^ */)
+      if (RLENGTH <= 4 && $0 !~ /^    - /) {
+        in_steps = 0; on = 0; next
+      }
+      if (!ind && /^ +- /) ind = RLENGTH
+      if (ind && RLENGTH == ind && /^ +- /)
+        on = (substr($0, ind + 1) == "- name: " name)
+    }
+    on { print "      " substr($0, ind + 1) }
   '
 }
 
@@ -116,9 +126,9 @@ winpart="$(job windows-part)"
 redfirst="$(job red-first)"
 
 # 1. Check names.
-has "$linux_check" "name: gates (linux)" || err "job linux does not report 'gates (linux)'"
-has "$windows" "name: gates (windows)" || err "job windows does not report 'gates (windows)'"
-has "$redfirst" "name: red-first" || err "job red-first does not report 'red-first'"
+has "$(grep -E '^    name:' <<< "$linux_check")" "name: gates (linux)" || err "job linux does not report 'gates (linux)'"
+has "$(grep -E '^    name:' <<< "$windows")" "name: gates (windows)" || err "job windows does not report 'gates (windows)'"
+has "$(grep -E '^    name:' <<< "$redfirst")" "name: red-first" || err "job red-first does not report 'red-first'"
 for key in queue_conditions merge_conditions auto_merge_conditions; do
   list="$(mg_list "$key")"
   [ -n "$list" ] || { err ".mergify.yml: $key is empty or missing"; continue; }

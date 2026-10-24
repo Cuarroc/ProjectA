@@ -147,10 +147,10 @@ use pty::{PtyManager, SubmitGuardEvent};
 use quota::{QuotaSink, QuotaStateRow, QuotaTracker};
 use skills::SkillPack;
 use status::{BoardState, StatusEngine, StatusPayload, StatusSink, WorkerBoardState};
-use store::now_unix_secs;
+use store::team_assignments::{AssignmentRequest, TeamAssignment};
 use store::{
-    ActivityEntry, AgentQuota, DiffComment, Learning, Message, Project, QueueEntry, Recommendation,
-    RoleVariant, Store, Worker,
+    now_unix_secs, ActivityEntry, AgentQuota, ContinuousGoal, DiffComment, Learning, Message,
+    Project, QueueEntry, Recommendation, RoleVariant, Store, Worker,
 };
 use web_interface::WebInterfaceState;
 use workers::{AgentControl, DeliveryCallback, DeliveryOutcome};
@@ -2783,15 +2783,17 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
-    fn import_development_plan(
+    fn import_development_plan_with_authority(
         &self,
+        authority: Option<api::PlanningAuthority<'_>>,
         project_id: &str,
         plan_id: &str,
         expected_projection_revision: i64,
         rollback_reason: Option<&str>,
     ) -> Result<Value, String> {
-        tauri::async_runtime::block_on(development_plan_access::import(
+        tauri::async_runtime::block_on(development_plan_access::import_with_authority(
             &self.store,
+            authority,
             project_id,
             plan_id,
             expected_projection_revision,
@@ -2799,22 +2801,21 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
-    fn list_continuous_goals(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<store::ContinuousGoal>, String> {
+    fn list_continuous_goals(&self, project_id: &str) -> Result<Vec<ContinuousGoal>, String> {
         tauri::async_runtime::block_on(self.store.list_continuous_goals(project_id))
     }
 
-    fn create_continuous_goal(
+    fn create_continuous_goal_with_authority(
         &self,
+        authority: Option<api::PlanningAuthority<'_>>,
         project_id: &str,
         objective: &str,
         acceptance_criteria: Option<String>,
         source_goal_id: Option<String>,
         admit: bool,
     ) -> Result<store::ContinuousGoal, String> {
-        tauri::async_runtime::block_on(self.store.create_continuous_goal(
+        tauri::async_runtime::block_on(self.store.create_continuous_goal_with_authority(
+            authority,
             project_id,
             objective,
             acceptance_criteria,
@@ -2823,15 +2824,17 @@ impl ControlBackend for ApiBackend {
         ))
     }
 
-    fn create_continuous_task(
+    fn create_continuous_task_with_authority(
         &self,
+        authority: Option<crate::api::PlanningAuthority<'_>>,
         goal_id: &str,
         objective: &str,
         profile_id: Option<String>,
         owned_paths: Vec<String>,
         dependencies: Vec<String>,
     ) -> Result<store::ContinuousTask, String> {
-        tauri::async_runtime::block_on(self.store.create_continuous_task(
+        tauri::async_runtime::block_on(self.store.create_continuous_task_with_authority(
+            authority,
             goal_id,
             objective,
             profile_id,
@@ -2839,18 +2842,18 @@ impl ControlBackend for ApiBackend {
             dependencies,
         ))
     }
-
-    fn assign_continuous_task(
+    fn assign_continuous_task_with_authority(
         &self,
+        authority: Option<crate::api::PlanningAuthority<'_>>,
         task_id: &str,
-        request: store::team_assignments::AssignmentRequest,
-    ) -> Result<store::team_assignments::TeamAssignment, String> {
-        tauri::async_runtime::block_on(self.store.assign_continuous_task(task_id, request))
+        request: AssignmentRequest,
+    ) -> Result<TeamAssignment, String> {
+        tauri::async_runtime::block_on(
+            self.store
+                .assign_continuous_task_with_authority(authority, task_id, request),
+        )
     }
-    fn continuous_task_assignment(
-        &self,
-        task_id: &str,
-    ) -> Result<Option<store::team_assignments::TeamAssignment>, String> {
+    fn continuous_task_assignment(&self, task_id: &str) -> Result<Option<TeamAssignment>, String> {
         tauri::async_runtime::block_on(self.store.continuous_task_assignment(task_id))
     }
     fn claim_continuous_task(

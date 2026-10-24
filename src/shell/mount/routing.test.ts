@@ -134,11 +134,16 @@ describe("goal and route mapping (ia.md section 4)", () => {
 });
 
 describe("new Einstellungen route (V2-S10a)", () => {
-  it("owns exactly /einstellungen and leaves the classic and tab paths to the old view", () => {
-    expect(isNewEinstellungen("/einstellungen")).toBe(true);
-    expect(isNewEinstellungen("/einstellungen/")).toBe(true);
-    expect(isNewEinstellungen("/einstellungen/klassisch")).toBe(false);
-    expect(isNewEinstellungen("/einstellungen/mcp")).toBe(false);
+  it("owns only registered settings tabs and keeps their legacy viewer hidden", () => {
+    for (const path of ["/einstellungen", "/einstellungen/mcp", "/einstellungen/benachrichtigungen", "/einstellungen/projekt"]) {
+      for (const suffix of ["", "/", "/?source=bookmark"]) {
+        expect(isNewEinstellungen(path + suffix)).toBe(true);
+        expect(shouldMountLegacyTerminal(path + suffix)).toBe(false);
+      }
+    }
+    for (const path of ["/einstellungen/klassisch", "/einstellungen/unbekannt", "/einstellungen/mcp/unbekannt", "/einstellungenx", "/projekt", "/benachrichtigungen"]) {
+      expect(isNewEinstellungen(path)).toBe(false);
+    }
     expect(hasLegacyPanel("/einstellungen/klassisch")).toBe(true);
   });
 });

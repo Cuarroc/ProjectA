@@ -709,6 +709,34 @@ mod tests {
             serde_json::to_value(review).map_err(|error| error.to_string())
         }
         unavailable! {
+            fn import_development_plan_with_authority(
+                _authority: Option<crate::api::PlanningAuthority<'_>>,
+                _project_id: &str,
+                _plan_id: &str,
+                _expected_projection_revision: i64,
+                _rollback_reason: Option<&str>
+            ) -> Result<Value, String>;
+            fn assign_continuous_task_with_authority(
+                _authority: Option<crate::api::PlanningAuthority<'_>>,
+                _task_id: &str,
+                _request: crate::store::team_assignments::AssignmentRequest
+            ) -> Result<crate::store::team_assignments::TeamAssignment, String>;
+            fn create_continuous_task_with_authority(
+                _authority: Option<crate::api::PlanningAuthority<'_>>,
+                _goal_id: &str,
+                _objective: &str,
+                _profile_id: Option<String>,
+                _owned_paths: Vec<String>,
+                _dependencies: Vec<String>
+            ) -> Result<crate::store::ContinuousTask, String>;
+            fn create_continuous_goal_with_authority(
+                _authority: Option<crate::api::PlanningAuthority<'_>>,
+                _project_id: &str,
+                _objective: &str,
+                _acceptance_criteria: Option<String>,
+                _source_goal_id: Option<String>,
+                _admit: bool
+            ) -> Result<crate::store::ContinuousGoal, String>;
             fn project_exists(_project_id: &str) -> Result<bool, String>; fn create_worker(_project_id: &str, _task: &str, _profile_id: &str, _spawned_by: Option<String>) -> Result<Worker, String>; fn list_workers(_project_id: Option<&str>) -> Result<Vec<Worker>, String>; fn worker_state(_worker_id: &str) -> Result<Option<WorkerBoardState>, String>; fn send_to_worker(_worker_id: &str, _text: &str) -> Result<(), String>; fn merge_worker(_worker_id: &str, _remove: bool) -> Result<Worker, String>; fn send_to_orchestrator(_project_id: &str, _text: &str) -> Result<Worker, String>; fn list_worker_messages(_worker_id: &str, _limit: Option<usize>) -> Result<Vec<Message>, String>; fn board(_project_id: Option<&str>) -> Result<Vec<WorkerBoardState>, String>; fn quota() -> Result<Vec<QuotaStateRow>, String>; fn updater_state() -> Result<UpdaterState, String>; fn providers() -> Result<Vec<ProviderOverview>, String>; fn usage(_limit: u32) -> Result<UsageReport, String>; fn list_budgets() -> Result<Vec<BudgetLimits>, String>; fn set_budget(_profile_id: &str, _five: Option<Option<u8>>, _seven: Option<Option<u8>>) -> Result<BudgetLimits, String>; fn enqueue_task(_project_id: &str, _text: &str, _profile: Option<String>, _sharpen: bool, _priority: Option<i32>, _spawned_by: Option<String>) -> Result<QueueEntry, String>; fn list_queue(_project_id: Option<&str>) -> Result<Vec<QueueEntry>, String>; fn cancel_queued_task(_id: &str) -> Result<(), String>; fn create_scout(_project_id: &str) -> Result<Worker, String>; fn triage_repos(_project_id: &str, _urls: &[String]) -> Result<Worker, String>; fn list_recommendations(_project_id: Option<&str>) -> Result<Vec<Recommendation>, String>; fn add_recommendation(_project_id: &str, _title: &str, _rationale: &str, _url: Option<String>, _effort: Option<String>) -> Result<Recommendation, String>; fn set_recommendation_status(_id: &str, _status: &str) -> Result<(), String>; fn accept_recommendation(_id: &str) -> Result<QueueEntry, String>; fn list_learnings(_project_id: Option<&str>, _status: Option<&str>) -> Result<Vec<Learning>, String>; fn approve_learning(_id: &str, _text: &str) -> Result<(), String>; fn reject_learning(_id: &str) -> Result<(), String>; fn ask_question(_project_id: &str, _worker_id: Option<&str>, _question: &str, _options: Option<&str>) -> Result<Question, String>; fn answer_question(_id: &str, _answer: &str, _by: &str) -> Result<Question, String>; fn list_questions(_project_id: Option<&str>, _status: Option<&str>) -> Result<Vec<Question>, String>; fn list_role_variants(_project_id: Option<&str>, _status: Option<&str>) -> Result<Vec<RoleVariant>, String>; fn approve_role_variant(_id: &str) -> Result<(), String>; fn reject_role_variant(_id: &str) -> Result<(), String>; fn get_activity(_project_id: Option<&str>, _limit: u32) -> Result<Vec<ActivityEntry>, String>; fn list_projects() -> Result<Vec<ProjectOverview>, String>; fn create_project(_name: &str, _repo: &str) -> Result<ProjectOverview, String>; fn create_github_repo(_project_id: &str, _name: &str, _private: bool) -> Result<String, String>; fn link_github_remote(_project_id: &str, _url: &str) -> Result<(), String>; fn get_landing_page(_project_id: &str) -> Result<Option<String>, String>; fn set_landing_page(_project_id: &str, _markdown: Option<&str>) -> Result<(), String>; fn list_digests(_project_id: &str) -> Result<Vec<String>, String>; fn read_digest(_project_id: &str, _date: &str) -> Result<Option<String>, String>; fn project_stats(_project_id: &str, _range: crate::stats::StatsRange) -> Result<crate::stats::ProjectStats, String>;
         }
     }
