@@ -1,9 +1,8 @@
-import { useRef, useState } from "react";
-
 import { HonestState } from "../../../design/data/HonestState";
 import { StateGlyph } from "../../../design/state/StateMark";
 import { fill } from "../leitstand";
 import { Ask } from "./Ask";
+import { ClosedHistory } from "./ClosedHistory";
 import { classifyQuestion } from "./classify";
 import { DecisionLane, LANES } from "./DecisionLane";
 import { useT } from "../../../i18n/useT";
@@ -11,9 +10,6 @@ import type { QuestionsState } from "../../../lib/useQuestions";
 import type { Worker } from "../../../types";
 import "../../../design/glass.css";
 import "./needs.css";
-
-/** How many "answered" lines stay under the list. */
-const SAID_LIMIT = 20;
 
 export interface NeedsYouProps {
   questions: QuestionsState;
@@ -24,15 +20,7 @@ export interface NeedsYouProps {
 /** The "Braucht dich" area of the Leitstand: open questions with an inline answer. */
 export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const t = useT();
-  const { open, loading, error, answer } = questions;
-  // Answers given here, newest first: the stream line stays after the item left the list.
-  // Capped, and keyed by a counter: the same question can be answered twice.
-  const [said, setSaid] = useState<{ key: number; text: string }[]>([]);
-  const seq = useRef(0);
-  const onAnswer = async (id: string, text: string) => {
-    await answer(id, text);
-    setSaid((prev) => [{ key: seq.current++, text }, ...prev].slice(0, SAID_LIMIT));
-  };
+  const { open, history, loading, error, answer } = questions;
 
   const classes = open.map((q) => classifyQuestion(q.question));
   const others = open.filter((_, i) => classes[i] === "other");
@@ -48,7 +36,7 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
     body = (
       <ul className="n-list" aria-label={t("state.need")}>
         {others.map((q) => (
-          <Ask key={q.id} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={onAnswer} />
+          <Ask key={q.id} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={answer} />
         ))}
       </ul>
     );
@@ -62,15 +50,10 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
       </div>
       {listRead &&
         LANES.map((lane) => (
-          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={onAnswer} />
+          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={answer} />
         ))}
       {body}
-      {said.map((s) => (
-        <p key={s.key} className="n-answered" role="status">
-          <StateGlyph form="done" />
-          {fill(t("needs.answered"), { text: s.text })}
-        </p>
-      ))}
+      <ClosedHistory history={history} />
     </aside>
   );
 }
