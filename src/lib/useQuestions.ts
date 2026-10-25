@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { answerQuestion, describeError, listQuestions } from "./ipc";
 import { usePolledResource } from "./usePolledResource";
@@ -68,6 +68,12 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
 
   const resourceKey = enabled ? `${scope}:${projectId ?? ""}` : null;
   const beginRequest = usePolledResource(resourceKey);
+
+  useLayoutEffect(() => {
+    setQuestions([]);
+    setError(null);
+    setLoading(enabled && (scope === "all" || projectId !== null));
+  }, [enabled, projectId, scope]);
 
   const load = useCallback(
     async (showSpinner: boolean, replace = false) => {

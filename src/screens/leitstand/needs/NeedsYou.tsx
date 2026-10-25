@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Button, ButtonGroup } from "../../../design/controls/Button";
+import { T } from "./texts";
 import { HonestState } from "../../../design/data/HonestState";
 import { StateGlyph } from "../../../design/state/StateMark";
 import { fill } from "../leitstand";
@@ -17,12 +19,14 @@ export interface NeedsYouProps {
   questions: QuestionsState;
   /** The workers the questions can be resolved against (name and task). */
   workers: Worker[];
+  projectId?: string | null;
 }
 
 /** The "Braucht dich" area of the Leitstand: open questions with an inline answer. */
-export function NeedsYou({ questions, workers }: NeedsYouProps) {
+export function NeedsYou({ questions, workers, projectId }: NeedsYouProps) {
   const t = useT();
-  const { open, history, loading, error, answer } = questions;
+  const { open, history, loading, error, answer, scope, setScope } = questions;
+  const noProject = scope === "project" && projectId === null;
   const [confirmation, setConfirmation] = useState("");
   const lifetime = useRef(0);
   // The hook's answer identity changes with project/scope, never with a poll.
@@ -45,17 +49,18 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const others = open.filter((_, i) => classes[i] === "other");
 
   // The lanes show their rule only once the list was read; an empty list says "Nichts offen" once, in the body.
-  const listRead = open.length > 0 || (error === null && !loading);
+  const listRead = !noProject && (open.length > 0 || (error === null && !loading));
 
   let body;
-  if (error !== null && open.length === 0) body = <HonestState kind="offline" hint={t("needs.offlineHint")} />;
+  if (noProject) body = <p className="n-note">{t("leitstand.noProject")}</p>;
+  else if (error !== null && open.length === 0) body = <HonestState kind="offline" hint={t("needs.offlineHint")} />;
   else if (loading && open.length === 0) body = <p className="n-note">{t("needs.loading")}</p>;
   else if (open.length === 0) body = <HonestState kind="empty" title={t("needs.emptyTitle")} hint={t("needs.emptyHint")} />;
   else if (others.length > 0)
     body = (
       <ul className="n-list" aria-label={t("state.need")}>
         {others.map((q) => (
-          <Ask key={q.id} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={confirmAnswer} />
+          <Ask key={q.id} fleet={scope === "all"} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={confirmAnswer} />
         ))}
       </ul>
     );
@@ -67,12 +72,16 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
         <h2 id="n-title">{t("state.need")}</h2>
         {open.length > 0 && <span className="n-count">{fill(t("needs.open"), { n: open.length })}</span>}
       </div>
+      <ButtonGroup aria-label={T.scope}>
+        <Button size="sm" aria-pressed={scope === "project"} onClick={() => setScope("project")}>{T.project}</Button>
+        <Button size="sm" aria-pressed={scope === "all"} onClick={() => setScope("all")}>{T.all}</Button>
+      </ButtonGroup>
       {listRead &&
         LANES.map((lane) => (
-          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={confirmAnswer} />
+          <DecisionLane key={lane} fleet={scope === "all"} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={confirmAnswer} />
         ))}
       {body}
-      <p className="n-note" role="status" aria-live="polite" aria-atomic="true">{confirmation}</p>
+      {!noProject && <p className="n-note" role="status" aria-live="polite" aria-atomic="true">{confirmation}</p>}
       <ClosedHistory history={history} />
     </aside>
   );
