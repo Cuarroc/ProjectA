@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { readActiveProjectId, subscribeActiveProject } from "../../lib/activeProject";
-import { listAgentProfiles } from "../../lib/ipc";
+import { listAgentProfiles, listProjects } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
 import { HonestState } from "../../design/data/HonestState";
@@ -51,12 +51,17 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   const questions = useQuestions(projectId, !fabrik);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [profilesFailed, setProfilesFailed] = useState(false);
+  const [projectNames, setProjectNames] = useState<ReadonlyMap<string, string> | null>();
   const [now, setNow] = useState(() => Date.now() / 1000);
   useEffect(() => {
     let live = true;
     listAgentProfiles().then(
       (list) => live && setProfiles(list),
       () => live && setProfilesFailed(true),
+    );
+    listProjects().then(
+      (list) => live && setProjectNames(new Map(list.map((project) => [project.id, project.name]))),
+      () => live && setProjectNames(null),
     );
     const timer = window.setInterval(() => setNow(Date.now() / 1000), TICK_MS);
     return () => {
@@ -82,9 +87,8 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   return (
     <div className="g-lr">
       <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
-      {/* Without a project neither list can be read, so neither may claim it is empty. */}
-      {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} action={{ label: t("leitstand.addProject"), onClick: () => go(TOOLS_PATH) }} /></div> : (
-        <div className="g-lr-body">
+      <div className="g-lr-body">
+        {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} action={{ label: t("leitstand.addProject"), onClick: () => go(TOOLS_PATH) }} /></div> : (
           <div className="g-lr-main">
             {profilesFailed && <div role="status"><HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("leitstand.profilesHint")} /></div>}
             {board.loading && unread ? <div className="ls-none" role="status"><p>{t("leitstand.loading")}</p></div>
@@ -102,11 +106,11 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
                     />
                   </>}
           </div>
-          <div className="g-lr-side">
-            <NeedsYou questions={questions} workers={board.cards.map((c) => c.worker)} />
-          </div>
+        )}
+        <div className="g-lr-side">
+          <NeedsYou key={`${projectId}:${questions.scope}`} projectId={projectId} projectNames={projectNames} questions={questions} workers={board.cards.map((c) => c.worker)} />
         </div>
-      )}
+      </div>
     </div>
   );
 }
