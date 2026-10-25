@@ -1135,3 +1135,46 @@ it("keeps the same request pending across empty live and empty subscription view
     await finishLaunchTest(failure, () => { for (const settle of subscriptions) settle(); mocks.listen.mockImplementation(listen); });
   }
 });
+
+it("preserves an explicit restart and its restore panel when a pending launch inserts", async () => {
+  workerData(); window.location.hash = "#/leitstand/terminal?worker=one"; render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  const base = mocks.invoke.getMockImplementation()!;
+  const inserts: Array<() => void> = [], restarts: Array<() => void> = [];
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "spawn_pty") return new Promise((resolve) => { inserts.push(() => resolve({ sessionId: "restart-ad-hoc" })); });
+    if (command === "respawn_worker") return new Promise((resolve) => { restarts.push(() => resolve(workers[1])); });
+    if (command === "list_workers") return Promise.resolve([workers[0], { ...workers[1], status: "exited", sessionId: null }]);
+    return base(command, args);
+  });
+  let failure: unknown;
+  try {
+    fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
+    expect(inserts).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Neue Sitzung" })).toHaveAttribute("aria-busy", "true");
+    go("#/leitstand/terminal?worker=two");
+    const restart = await screen.findByRole("button", { name: "Agent neu starten" });
+    fireEvent.click(restart);
+    expect(restarts).toHaveLength(1);
+    expect(restart).toBeDisabled();
+    await act(async () => { inserts[0](); });
+    expect(screen.getByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Agent neu starten" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Shell" })).toBeVisible();
+    await act(async () => { restarts[0](); });
+    expect(screen.queryByRole("region", { name: "Sitzungs-Wiederherstellung" })).toBeNull();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task one", "Shell", "Task two"]);
+    expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(active(ptyOutput("pty-two"))).toHaveLength(1));
+    expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "respawn_worker", "kill_pty"].includes(name))).toEqual([
+      ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }], ["respawn_worker", { workerId: "two" }],
+    ]);
+  } catch (error) { failure = error; throw error; } finally {
+    await finishLaunchTest(failure, () => {
+      for (const settle of [...inserts, ...restarts]) settle();
+      mocks.invoke.mockImplementation(base);
+    });
+  }
+});
