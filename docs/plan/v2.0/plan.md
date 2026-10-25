@@ -772,7 +772,7 @@ Stand 15.10.2026, 19:44 UTC: `gh pr list --state all --search "KR-"`; „geplant
 | 2 | 07d / 07e | Kommentare / Disposition portieren | B | 07c | geplant |
 | 2 | 07f / 07g | Reviewurteil / Setup-Vertrauen erhalten | A | 07e | geplant |
 | 2 | 07h / 07i | Tests auslösen / Merge bestätigen | A | 07f, 07g | geplant |
-| 2 | 08c / 08d | Terminalsitzungen steuern / Ansichten teilen | A | 08a, 08b | KR-08c-1 nach Merge: nur sichtbaren Live-Tab schließen; Mock-Belege. Ad-hoc-Start (08c), Split (08d), native V2-ACC1b/UAT und Elternziel offen |
+| 2 | 08c / 08d | Terminalsitzungen steuern / Ansichten teilen | A | 08a, 08b | KR-08c-1/#1906: sichtbaren Live-Tab schließen; KR-08c-2a nach Merge: nur expliziter Ad-hoc-Start aus generisch leerer Ansicht; Mock-Belege. Start neben Live-/Restore-Ansichten (08c), Split (08d), native V2-ACC1b/UAT und Elternabnahme offen |
 | 2 | 09a' | Eine Schriftgröße einstellen | B | 01a | geplant |
 | 2 | 09b | Port, Digest und Hängerschwelle portieren | B | 01a | geplant |
 | 2 | 09c | Umgebungsisolation und Produktmodus erhalten | A | 09a' | geplant |
