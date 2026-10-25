@@ -6,7 +6,7 @@ import * as sessionProvider from "../../sessions/SessionProvider";
 import { saveTerminalFont, saveTerminalFontSize } from "../../lib/settings";
 import { CLASSIC_PATH } from "../leitstand/LeitstandRoute";
 import { FEATURE_FLAG_STORAGE_PREFIX } from "../../flags/featureFlags";
-import { ptyOutput } from "../../lib/eventNames";
+import { ptyExit, ptyOutput } from "../../lib/eventNames";
 import { useEffect } from "react";
 
 const D1_FLAG_KEY = `${FEATURE_FLAG_STORAGE_PREFIX}d1_neue_oberflaeche`;
@@ -749,8 +749,8 @@ it("offers launch in empty and eligible live views but not lookup error restore 
     go("#/leitstand/terminal?worker=two");
     await screen.findByRole("tab", { name: "Task two" });
     expect(await screen.findByRole("button", { name: "Neue Sitzung" })).toBeVisible();
-    await waitFor(() => expect(active("pty:exit:pty-two")).toHaveLength(1));
-    act(() => { active("pty:exit:pty-two")[0].handler({ payload: { code: 0 } }); });
+    await waitFor(() => expect(active(ptyExit("pty-two"))).toHaveLength(1));
+    act(() => { active(ptyExit("pty-two"))[0].handler({ payload: { code: 0 } }); });
     expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
     expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([]);
   } catch (error) { failure = error; throw error; } finally {
@@ -1025,7 +1025,7 @@ it("fences live insertion before exit subscription", async () => {
       if (command === "list_workers") return new Promise((resolve) => { lookup = () => resolve(workers); });
       return base(command, args);
     });
-    mocks.listen.mockImplementation((event, handler) => event === "pty:exit:live-pending"
+    mocks.listen.mockImplementation((event, handler) => event === ptyExit("live-pending")
       ? new Promise((resolve, fail) => { subscribe = () => resolve(vi.fn()); reject = () => fail(new Error("live subscription rejected")); })
       : listen(event, handler));
     let failure: unknown;
@@ -1102,7 +1102,7 @@ it("keeps the same request pending across empty live and empty subscription view
   window.location.hash = "#/leitstand/terminal"; render(<App />);
   const listen = mocks.listen.getMockImplementation()!;
   let settle: (() => void) | undefined;
-  mocks.listen.mockImplementation((event, handler) => event === "pty:exit:session-a"
+  mocks.listen.mockImplementation((event, handler) => event === ptyExit("session-a")
     ? new Promise((resolve) => { settle = () => resolve(vi.fn()); }) : listen(event, handler));
   let failure: unknown;
   try {
