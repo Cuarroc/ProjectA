@@ -753,11 +753,11 @@ Stand 15.10.2026, 19:44 UTC: `gh pr list --state all --search "KR-"`; „geplant
 | 1 | 07a | Beweiskette anschließen | B | 04a | geplant |
 | 1 | 11c | Lektionen anschließen und bearbeiten | B | 07a | geplant |
 | 1 | 11d | Rollenvarianten anschließen | B | 11c | geplant |
-| 1 | 06b | Fragenumfang, Verlauf und Zuordnung erhalten | B | 04a | geplant |
+| 1 | 06b | Fragenumfang, Verlauf und Zuordnung erhalten | B | 04a | gemergt #1896/#1898/#1900; KR-06b durch Root im Zustand gemergt abgenommen (25.10. 06:16Z); Browser-/Tauri-Mock, native V2-ACC1b/UAT offen |
 | 1 | 09m | Changelog unter Version anzeigen | B | 01a | gemergt #1551 (`56671126`) |
 | 1 | 08a | Terminalsuche portieren | A | 01a | gemergt #1556 (`9528ff8c`) |
 | 1 | 08b | Wiederherstellungspanel portieren | A | 01a | geplant |
-| 1 | 04b | Chatentwurf und Verlauf erhalten | B | 04a | geplant |
+| 1 | 04b | Chatentwurf und Verlauf erhalten | B | 04a | gemergt #1894 (`ae9abb5f`); begrenzter Chatentwurf/Verlauf im Dokument; Mock-Belege, native/Glass-Gesamtabnahme offen |
 | 2 | 02a | Projekt anlegen | B | 01a | geplant |
 | 2 | 02b | Projekt entfernen bestätigen | B | 02a | geplant |
 | 2 | 02c / 02d | GitHub verknüpfen / Repository anlegen | B | 02a | geplant |
