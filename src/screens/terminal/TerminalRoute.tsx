@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import TerminalLauncher from "./TerminalLauncher";
 import TerminalView from "../../components/TerminalView";
 import SessionRestorePanel from "../../components/SessionRestorePanel";
 import { Button } from "../../design/controls/Button";
@@ -106,8 +107,8 @@ export default function TerminalRoute() {
               font={fonts.terminalFont} fontSize={fonts.terminalFontSize} /> : null}
           </TabPanel>
         ))}
-      </> : !restore && !opening && !error && <HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.emptyHint"]}
-        action={{ label: de["leitstand.tab.classic"], onClick: () => { window.location.hash = "#/leitstand/klassisch"; } }} />}
+      </> : !restore && !opening && !error && <div className="g-terminal-empty"><HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.launchHint"]}
+        action={{ label: de["leitstand.tab.classic"], onClick: () => { window.location.hash = "#/leitstand/klassisch"; } }} /><TerminalLauncher /></div>}
       {restore ? <TabPanel idBase="terminal" id={`restore:${restore.id}`} active><SessionRestorePanel key={restore.id} worker={restore} busy={restarting} onRespawn={() => {
         const token = request.current;
         setRestarting(true); setError(null);
