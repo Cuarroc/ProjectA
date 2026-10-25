@@ -86,7 +86,7 @@ it("keeps fleet reachable without a project and never calls unread or offline li
 it("isolates late reads and answers across project and scope round trips", async () => {
   for (const change of ["project", "scope"]) for (const result of ["stored", "null", "refused"]) {
     const lateRead = deferred(), lateAnswer = deferred();
-    read = () => [row, { ...row, id: "history", status: "answered", answer: "Old history" }];
+    read = () => [row, { ...row, id: "history", question: "Old history question?", status: "answered", answer: "Old history" }];
     answer = () => lateAnswer.promise;
     const view = render(<LeitstandRoute />);
     await pane().findByText(row.question);
