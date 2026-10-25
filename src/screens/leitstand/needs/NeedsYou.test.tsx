@@ -62,6 +62,49 @@ describe("NeedsYou", () => {
     expect(screen.queryByRole("list", { name: "Verlauf" })).toBeNull();
   });
 
+  it("announces only the latest recorded answer in one polite live status", async () => {
+    const rows = Array.from({ length: 50 }, (_, n) => ({
+      ...row, id: `old-${n}`, status: "answered", answer: `Stored answer ${n}`,
+    }));
+    let finish: (v: unknown) => void = () => {};
+    backend([...rows,
+      { ...row, id: "missing", status: "answered", answer: null },
+      { ...row, id: "expired", status: "expired", answer: "Timeout answer" },
+      { ...row, id: "refused", status: "refused", answer: "Refused answer" }, row,
+    ], () => new Promise((resolve) => (finish = resolve)));
+    render(<Harness />);
+    fireEvent.change(await screen.findByRole("textbox", { name: "Antwort" }), { target: { value: "Submitted text" } });
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent(/^Antwort gespeichert: Stored answer 49$/);
+    const history = await screen.findByRole("list", { name: "Verlauf" });
+    expect(within(history).getAllByRole("listitem")).toHaveLength(50);
+    expect(within(history).queryByRole("status")).toBeNull();
+    expect(history).not.toHaveAttribute("aria-live");
+    fireEvent.click(send());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sendet …" })).toBeDisabled());
+    expect(status).toHaveTextContent(/^Antwort gespeichert: Stored answer 49$/);
+    await act(async () => finish({ ...row, status: "answered", answer: "Recorded result", answeredBy: "human" }));
+    await waitFor(() => expect(status).toHaveTextContent(/^Antwort gespeichert: Recorded result$/));
+    expect(screen.getAllByRole("status")).toEqual([status]);
+    expect(screen.queryByText(/Antwort gespeichert: Submitted text/)).toBeNull();
+    expect(within(history).getByText("Beantwortet: Recorded result")).toBeInTheDocument();
+  });
+
+  it("keeps the live confirmation empty without a recorded answer", async () => {
+    backend([
+      { ...row, id: "missing", status: "answered", answer: null },
+      { ...row, id: "blank", status: "answered", answer: "  " },
+      { ...row, id: "expired", status: "expired", answer: "Timeout answer" },
+      { ...row, id: "refused", status: "refused", answer: "Refused answer" },
+    ], () => null);
+    render(<Harness />);
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
+    await screen.findByRole("list", { name: "Verlauf" });
+    expect(status).toBeEmptyDOMElement();
+  });
+
   it("disables send while the answer is pending", async () => {
     let finish: (v: unknown) => void = () => {};
     backend([row], () => new Promise((resolve) => (finish = resolve)));
@@ -121,6 +164,7 @@ describe("NeedsYou", () => {
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-1", answer: "second" }));
     await waitFor(() => expect(field()).toBeEnabled());
     expect(screen.queryByText(/Beantwortet:/)).toBeNull();
+    expect(screen.queryByText(/Antwort gespeichert:/)).toBeNull();
     expect(screen.queryByRole("list", { name: "Verlauf" })).toBeNull();
     expect(mocks.invoke.mock.calls.filter(([cmd]) => cmd === "answer_question")).toHaveLength(2);
   });
