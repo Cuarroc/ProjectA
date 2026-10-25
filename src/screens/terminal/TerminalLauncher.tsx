@@ -27,7 +27,7 @@ const setPending = (value: boolean) => {
 };
 
 /** Eligible empty and live routes share this chooser; the provider owns sessions. */
-export default function TerminalLauncher({ onLaunch }: { onLaunch: () => void }) {
+export default function TerminalLauncher({ onLaunch }: { onLaunch: () => () => void }) {
   const { openAdHoc } = useSessions();
   const [open, setOpen] = useState(false);
   const [profiles, setProfiles] = useState<AgentProfile[] | null>(null);
@@ -49,7 +49,7 @@ export default function TerminalLauncher({ onLaunch }: { onLaunch: () => void })
   }, [open]);
   const launch = async (profile: AgentProfile) => {
     if (pending) return;
-    onLaunch();
+    const settled = onLaunch();
     setPending(true); setError(null);
     try {
       await openAdHoc(profile);
@@ -59,6 +59,7 @@ export default function TerminalLauncher({ onLaunch }: { onLaunch: () => void })
       // The provider may already have inserted a session before a subscription rejects.
       setError(`${de["terminal.launchFailed"]} ${describeError(cause)}`);
     } finally {
+      settled();
       setPending(false);
     }
   };

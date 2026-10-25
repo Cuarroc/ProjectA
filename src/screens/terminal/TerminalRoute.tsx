@@ -64,17 +64,27 @@ export default function TerminalRoute() {
     return () => { request.current = Symbol(); };
   }, [hash, enterWorker]);
   const launchSessions = useRef<Set<string> | null>(null);
-  const trackLaunch = () => { launchSessions.current = new Set(sessions.map((session) => session.sessionId)); };
+  const [launchPending, setLaunchPending] = useState(false);
+  const trackLaunch = () => {
+    launchSessions.current = new Set(sessions.map((session) => session.sessionId));
+    setLaunchPending(true);
+    return () => setLaunchPending(false);
+  };
   useEffect(() => {
     const inserted = sessions.some((session) => !session.workerId &&
       launchSessions.current && !launchSessions.current.has(session.sessionId));
-    if (!inserted) return;
+    if (!inserted) {
+      if (!launchPending) launchSessions.current = null;
+      return;
+    }
     launchSessions.current = null;
+    // An explicit restart owns its newer restore route and must finish unchanged.
+    if (restarting) return;
     // Insertion precedes exit subscription settlement; fence the old worker lookup now.
-    request.current = Symbol(); setOpening(false); setRestarting(false); setError(null); setRestore(null);
+    request.current = Symbol(); setOpening(false); setError(null); setRestore(null);
     window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
     setHash(window.location.hash);
-  }, [sessions]);
+  }, [sessions, launchPending, restarting]);
   const fonts = loadFontSettings();
   const active = sessions.find((session) => session.sessionId === activeSessionId) ?? sessions[0];
   return (
