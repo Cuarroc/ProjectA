@@ -12,8 +12,10 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 const workers = [{ id: "w-1", branch: "tester/red-first", task: "Fix the start block" }] as Worker[];
 const row = { id: "q-1", projectId: "p-1", workerId: "w-1", scope: "worker", question: "Cover only this case?", optionsJson: '["Only this case"]', status: "open", answer: null, createdAt: 1, expiresAt: null };
 
-function Harness() {
-  return <NeedsYou questions={useQuestions("p-1", true)} workers={workers} />;
+function Harness({ projectId = "p-1" }: { projectId?: string }) {
+  const questions = useQuestions(projectId, true);
+  return <><button onClick={() => questions.setScope("all")}>All projects</button>
+    <NeedsYou questions={questions} workers={workers} /></>;
 }
 
 /** list_questions answers from `rows`; answer_question is `onAnswer`. */
@@ -31,6 +33,87 @@ const field = () => screen.getByRole("textbox", { name: "Antwort" });
 describe("NeedsYou", () => {
   beforeEach(() => {
     mocks.invoke.mockReset();
+  });
+
+  it("confirms its own stored answer even beyond the history cap", async () => {
+    for (const count of [1, 50]) {
+      const rows = [row, ...Array.from({ length: count }, (_, n) => ({
+        ...row, id: `new-${n}`, createdAt: n + 2, status: "answered", answer: "Newer answer",
+      }))];
+      backend(rows, () => ({ ...row, status: "answered", answer: "Stored older answer" }));
+      const view = render(<Harness />);
+      fireEvent.change(await screen.findByRole("textbox", { name: "Antwort" }), { target: { value: "Submitted draft" } });
+      expect(screen.queryByRole("status")?.textContent ?? "").toBe("");
+      fireEvent.click(send());
+      await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Antwort gespeichert: Stored older answer"));
+      expect(screen.getAllByRole("status")).toHaveLength(1);
+      expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
+      expect(screen.getByRole("status")).toHaveAttribute("aria-atomic", "true");
+      expect(screen.getByRole("status")).not.toHaveTextContent("Submitted draft");
+      const history = screen.getByRole("list", { name: "Verlauf" });
+      expect(history.closest("[aria-live], [role=status]")).toBeNull();
+      expect(within(history).getAllByRole("listitem")[0]).toHaveTextContent("Newer answer");
+      if (count === 50) expect(history).not.toHaveTextContent("Stored older answer");
+      view.unmount();
+      const remount = render(<Harness />);
+      await screen.findByRole("list", { name: "Verlauf" });
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      remount.unmount();
+    }
+  });
+
+  it("stays silent for polls and null results despite another surface answering the same ID", async () => {
+    const rows: unknown[] = [row];
+    let finish: (value: unknown) => void = () => {};
+    backend(rows, () => new Promise((resolve) => (finish = resolve)));
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const view = render(<Harness />);
+    fireEvent.change(await screen.findByRole("textbox", { name: "Antwort" }), { target: { value: "Local draft" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sendet …" })).toBeDisabled());
+    try {
+      rows.splice(0, 1, { ...row, status: "answered", answer: "Other surface answer" });
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+      expect(screen.getByText("Beantwortet: Other surface answer")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      await act(async () => finish(null));
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      view.rerender(<Harness projectId="p-2" />);
+      await act(async () => {});
+      fireEvent.click(screen.getByRole("button", { name: "All projects" }));
+      await act(async () => {});
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("does not confirm invalid stored results or failed writes", async () => {
+    for (const result of [null, {}, { id: "other" }, { status: "open" }, { status: "expired" },
+      { status: "refused" }, { answer: null }, { answer: "   " }, new Error("write failed")]) {
+      backend([row], () => {
+        if (result instanceof Error) throw result;
+        return result === null || Object.keys(result).length === 0 ? result : { ...row, status: "answered", answer: "Stored", ...result };
+      });
+      const view = render(<Harness />);
+      fireEvent.click(await screen.findByRole("button", { name: "Only this case" }));
+      await act(async () => {});
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      view.unmount();
+    }
+  });
+
+  it("ignores a stored callback after project scope or mount changes", async () => {
+    for (const change of ["project", "scope", "mount"]) {
+      let finish: (value: unknown) => void = () => {};
+      backend([row], () => new Promise((resolve) => (finish = resolve)));
+      const view = render(<Harness />);
+      fireEvent.click(await screen.findByRole("button", { name: "Only this case" }));
+      if (change === "project") view.rerender(<Harness projectId="p-2" />);
+      if (change === "scope") fireEvent.click(screen.getByRole("button", { name: "All projects" }));
+      if (change === "mount") view.unmount();
+      await act(async () => finish({ ...row, status: "answered", answer: "Late stored answer" }));
+      if (change !== "mount") expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      view.unmount();
+    }
   });
 
   it("shows the stored answer rather than the submitted text", async () => {
