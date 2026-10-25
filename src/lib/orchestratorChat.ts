@@ -17,8 +17,8 @@ export interface OrchestratorChat {
   error: string | null;
   /** No project selected — every surface disables its input on this. */
   disabled: boolean;
-  /** Sends a prompt; resolves `true` when it went out and the draft may clear. */
-  send: (text: string) => Promise<boolean>;
+  /** Resolves true on acceptance; optional failure callback also reaches an unmounted draft owner. */
+  send: (text: string, onFailure?: (error: string) => void) => Promise<boolean>;
   /** Reads the history again, so a failed read can be retried without waiting for the poll. */
   reload: () => void;
   clearError: () => void;
@@ -126,7 +126,7 @@ export function useOrchestratorChat(
   }, [activeOrchestratorId, projectId, loadMessages]);
 
   const send = useCallback(
-    async (text: string): Promise<boolean> => {
+    async (text: string, onFailure?: (error: string) => void): Promise<boolean> => {
       const draft = text.trim();
       if (draft === "" || sending || projectId === null) return false;
 
@@ -147,6 +147,7 @@ export function useOrchestratorChat(
         // up in the history without waiting out the poll interval.
         return true;
       } catch (cause) {
+        onFailure?.(describeError(cause));
         // Showing this under another project would blame the wrong one, so a
         // late failure stays quiet and only keeps the draft.
         if (shownProjectId.current !== target) return false;
