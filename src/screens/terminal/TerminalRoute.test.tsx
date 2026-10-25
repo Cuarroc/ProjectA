@@ -465,6 +465,11 @@ describe("terminal route", () => {
 });
 
 it("closes only the visible worker tab without stopping workers", async () => {
+  const { Terminal } = await import("@xterm/xterm");
+  vi.spyOn(Terminal.prototype, "focus").mockImplementation(function (this: InstanceType<typeof Terminal>) {
+    this.element!.tabIndex = -1;
+    this.element!.focus();
+  });
   workerData();
   window.location.hash = "#/leitstand/terminal?worker=one";
   render(<App />);
@@ -482,6 +487,7 @@ it("closes only the visible worker tab without stopping workers", async () => {
   await waitFor(() => expect(active(ptyOutput("pty-one"))).toHaveLength(1));
   act(() => { active(ptyOutput("pty-one"))[0].handler({ payload: "remaining worker output" }); });
   expect(mocks.writes).toContain("remaining worker output");
+  expect(screen.getByRole("tab", { name: "Task one" })).toHaveFocus();
   expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([]);
 });
 
