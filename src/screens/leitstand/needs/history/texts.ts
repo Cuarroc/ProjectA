@@ -1,5 +1,6 @@
 /** Closed-history copy; local dictionary until the shared catalog absorbs it. */
 export const HISTORY_TEXT = {
+  confirmed: "Antwort gespeichert: {text}",
   expired: "Abgelaufen: {text}",
   refused: "Abgewiesen: {text}",
   human: "von einem Menschen beantwortet",
