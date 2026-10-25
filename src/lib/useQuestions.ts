@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { answerQuestion, describeError, listQuestions } from "./ipc";
 import { usePolledResource } from "./usePolledResource";
@@ -69,14 +69,19 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
   const resourceKey = enabled ? `${scope}:${projectId ?? ""}` : null;
   const beginRequest = usePolledResource(resourceKey);
 
+  const lifetime = useMemo(() => ({ enabled, projectId, scope }), [enabled, projectId, scope]);
+  const active = useRef<typeof lifetime | null>(null);
   useLayoutEffect(() => {
+    active.current = lifetime;
     setQuestions([]);
     setError(null);
     setLoading(enabled && (scope === "all" || projectId !== null));
-  }, [enabled, projectId, scope]);
+    return () => { active.current = null; };
+  }, [enabled, projectId, scope, lifetime]);
 
   const load = useCallback(
     async (showSpinner: boolean, replace = false) => {
+      if (active.current !== lifetime) return;
       // The fleet read needs no project; the project read has nothing to ask
       // about without one.
       if (scope === "project" && !projectId) {
@@ -105,7 +110,7 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
         request.finish();
       }
     },
-    [beginRequest, projectId, scope],
+    [beginRequest, projectId, scope, lifetime],
   );
 
   const refresh = useCallback(() => {
@@ -114,7 +119,9 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
 
   const answer = useCallback(
     async (id: string, text: string, onStored?: (row: Question) => void) => {
+      if (active.current !== lifetime) return;
       const closed = await answerQuestion(id, text);
+      if (active.current !== lifetime) return;
       if (closed === null) {
         void load(false);
         return;
@@ -127,7 +134,7 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
       );
       onStored?.(closed);
     },
-    [load],
+    [load, lifetime],
   );
 
   useEffect(() => {
