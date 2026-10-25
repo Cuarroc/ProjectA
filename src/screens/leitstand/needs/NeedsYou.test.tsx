@@ -149,6 +149,15 @@ describe("NeedsYou", () => {
     expect(mocks.invoke.mock.calls.map(([cmd]) => cmd)).toEqual(["list_questions", "list_questions"]);
   });
 
+  it("labels legacy answered questions without attribution as unknown origin", async () => {
+    backend([{ ...row, status: "answered", answer: "Legacy answer", answeredBy: null }], () => null);
+    render(<Harness />);
+    const history = within(await screen.findByRole("list", { name: "Verlauf" }));
+    expect(history.getByText("Beantwortet: Legacy answer")).toBeInTheDocument();
+    expect(history.getByText("Herkunft nicht gespeichert")).toBeInTheDocument();
+    expect(history.queryByText("niemand hat entschieden")).toBeNull();
+  });
+
   it("preserves closed status attribution timestamps and stored context", async () => {
     backend([
       { ...row, id: "human", question: "Human question?", status: "answered", answer: "Approved", answeredBy: "human", answeredAt: 60 },
@@ -182,7 +191,7 @@ describe("NeedsYou", () => {
     expect(items[1]).toHaveTextContent("Erstellt:");
     expect(items[1].querySelector("time")).toHaveAttribute("dateTime", "1970-01-01T00:00:01.000Z");
     expect(items[0]).toHaveTextContent("Beantwortet: Keine Antwort gespeichert");
-    expect(items[0]).toHaveTextContent("niemand hat entschieden");
+    expect(items[0]).toHaveTextContent("Herkunft nicht gespeichert");
     expect(items[0]).toHaveTextContent("Agent: Unbekannt");
     expect(history.queryByText("tester/red-first")).toBeNull();
   });
