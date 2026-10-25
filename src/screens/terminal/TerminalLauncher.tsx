@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "../../design/controls/Button";
 import { Popover } from "../../design/layout/Popover";
 import { de } from "../../i18n/de";
@@ -8,12 +8,19 @@ import type { AgentProfile } from "../../types";
 
 // Route remounts must share the guard until the provider request settles.
 let pending = false;
+// Keep the request outcome until deliberate acknowledgement, independently of the guard.
+let requestError: string | null = null;
 const listeners = new Set<() => void>();
 const subscribePending = (listener: () => void) => {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 };
 const getPending = () => pending;
+const getError = () => requestError;
+const setError = (value: string | null) => {
+  requestError = value;
+  for (const listener of listeners) listener();
+};
 const setPending = (value: boolean) => {
   pending = value;
   for (const listener of listeners) listener();
@@ -25,10 +32,8 @@ export default function TerminalLauncher() {
   const [open, setOpen] = useState(false);
   const [profiles, setProfiles] = useState<AgentProfile[] | null>(null);
   const [fetchError, setFetchError] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const error = useSyncExternalStore(subscribePending, getError);
   const busy = useSyncExternalStore(subscribePending, getPending);
-  const mounted = useRef(false);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (!open) return;
     let current = true;
@@ -43,7 +48,7 @@ export default function TerminalLauncher() {
     try { await openAdHoc(profile); }
     catch (cause) {
       // The provider may already have inserted a session before a subscription rejects.
-      if (mounted.current) setError(`${de["terminal.launchFailed"]} ${describeError(cause)}`);
+      setError(`${de["terminal.launchFailed"]} ${describeError(cause)}`);
     } finally {
       setPending(false);
     }
@@ -52,11 +57,12 @@ export default function TerminalLauncher() {
     <Popover open={open} onOpenChange={setOpen} panelClassName="g-terminal-chooser" trigger={(props) => (
       <button {...props} type="button" className="g-btn g-btn--primary" aria-busy={busy || undefined} onClick={() => {
         if (pending) return;
-        if (!open) { setProfiles(null); setFetchError(false); }
+        if (!open) { setError(null); setProfiles(null); setFetchError(false); }
         setOpen(!open);
       }}>{de["terminal.newSession"]}</button>
     )}>
       <h2>{de["terminal.chooseProfile"]}</h2>
+      {open && error ? <p role="alert">{error}</p> : null}
       {fetchError ? <p role="alert">{de["terminal.profilesFailed"]}</p>
         : profiles === null ? <p role="status">{de["terminal.profilesLoading"]}</p>
         : profiles.length === 0 ? <p role="status">{de["terminal.noEnabledProfiles"]}</p>
@@ -65,6 +71,6 @@ export default function TerminalLauncher() {
         </li>)}</ul>}
       <Button size="sm" onClick={() => setOpen(false)}>{de["confirm.cancel"]}</Button>
     </Popover>
-    {error ? <p role="alert">{error}</p> : null}
+    {!open && error ? <p role="alert">{error}</p> : null}
   </>;
 }
