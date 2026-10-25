@@ -215,6 +215,66 @@ it("reports a failed respawn and opens the session after an explicit retry", asy
   expect(respawn).toHaveBeenCalledTimes(2);
 });
 
+it("keeps the restart name while busy and isolates a late restart after a worker change", async () => {
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "respawn_worker") return new Promise((resolve) => { finish = resolve; });
+    if (command === "get_session_restore") return Promise.resolve({ liveSession: false, workspace: "present",
+      scrollback: "persisted terminal output", draft: "unsent reply", lastConfirmed: "app_crash" });
+    return base(command, args);
+  });
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<sessionProvider.SessionProvider><TerminalRoute /></sessionProvider.SessionProvider>);
+  expect(await screen.findByLabelText("Gespeicherter Scrollback")).toHaveTextContent("persisted terminal output");
+  expect(screen.getByLabelText("Gespeicherter Entwurf")).toHaveTextContent("unsent reply");
+  expect(mocks.invoke.mock.calls.some(([name]) => ["respawn_worker", "spawn_pty"].includes(name))).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Agent neu starten" }));
+  const busy = screen.getByRole("button", { name: "Agent neu starten" });
+  expect(busy).toBeDisabled();
+  expect(busy).toHaveAttribute("aria-busy", "true");
+  fireEvent.click(busy);
+  expect(mocks.invoke.mock.calls.filter(([name]) => name === "respawn_worker")).toEqual([
+    ["respawn_worker", { workerId: "one" }],
+  ]);
+  go("#/leitstand/terminal?worker=two");
+  await screen.findByRole("tab", { name: "Task two" });
+  await act(async () => { finish(workers[0]); });
+  expect(screen.getByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByRole("tab", { name: "Task one" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Agent neu starten" })).toBeEnabled();
+  expect(mocks.invoke.mock.calls.some(([name]) => name === "spawn_pty")).toBe(false);
+});
+
+it("describes the disabled restart with the missing worktree warning and ignores stale restore data", async () => {
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "get_session_restore") return (args as { workerId: string }).workerId === "one"
+      ? new Promise((resolve) => { finish = resolve; })
+      : Promise.resolve({ liveSession: false, workspace: "missing", scrollback: "second saved output", draft: "second draft" });
+    return base(command, args);
+  });
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<sessionProvider.SessionProvider><TerminalRoute /></sessionProvider.SessionProvider>);
+  await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("get_session_restore", { workerId: "one" }));
+  go("#/leitstand/terminal?worker=two");
+  const warning = await screen.findByRole("alert");
+  await act(async () => { finish({ liveSession: false, workspace: "present", scrollback: "stale output", draft: "stale draft" }); });
+  const restart = screen.getByRole("button", { name: "Agent neu starten" });
+  expect(restart).toBeDisabled();
+  expect(restart).toHaveAccessibleDescription("Worktree fehlt — „Agent neu starten“ legt ihn nicht still neu an.");
+  expect(restart).toHaveAttribute("aria-describedby", warning.id);
+  expect(screen.getByLabelText("Gespeicherter Scrollback")).toHaveTextContent("second saved output");
+  expect(screen.getByLabelText("Gespeicherter Entwurf")).toHaveTextContent("second draft");
+  expect(screen.queryByText("stale output")).toBeNull();
+  expect(screen.queryByText("stale draft")).toBeNull();
+  fireEvent.click(restart);
+  expect(mocks.invoke.mock.calls.some(([name]) => ["respawn_worker", "spawn_pty"].includes(name))).toBe(false);
+});
+
 it("recovers a late respawn through a fresh lookup without respawning again", async () => {
   workerData(true);
   const base = mocks.invoke.getMockImplementation()!;
