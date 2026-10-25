@@ -82,3 +82,76 @@ it("keeps fleet reachable without a project and never calls unread or offline li
   await pane().findByText("Nicht verbunden");
   expect(pane().queryByText(/\d+ offen|Nichts offen/)).toBeNull();
 });
+
+it("isolates late reads and answers across project and scope round trips", async () => {
+  for (const change of ["project", "scope"]) for (const result of ["stored", "null", "refused"]) {
+    const lateRead = deferred(), lateAnswer = deferred();
+    read = () => [row, { ...row, id: "history", status: "answered", answer: "Old history" }];
+    answer = () => lateAnswer.promise;
+    const view = render(<LeitstandRoute />);
+    await pane().findByText(row.question);
+    fireEvent.change(input(), { target: { value: "Old draft" } });
+    fireEvent.click(pane().getByRole("button", { name: "Antworten" }));
+    expect(input()).toBeDisabled();
+    read = () => lateRead.promise;
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(input()).toHaveValue("Old draft");
+    read = () => [{ ...row, id: "q2", projectId: "p2", question: "Other project?" }];
+    if (change === "project") await switchProject("p2"); else scope("Alle Projekte");
+    await pane().findByText("Other project?");
+    expect(pane().queryByText(row.question)).toBeNull();
+    expect(pane().queryByText("Beantwortet: Old history")).toBeNull();
+    expect(input()).toHaveValue("");
+    read = () => [row];
+    if (change === "project") await switchProject("p1"); else scope("Nur dieses Projekt");
+    await pane().findByText(row.question);
+    const calls = mocks.invoke.mock.calls.filter(([cmd]) => cmd === "list_questions").length;
+    await act(async () => {
+      lateRead.resolve([{ ...row, question: "Stale read" }]);
+      lateAnswer.resolve(result === "stored" ? { ...row, status: "answered", answer: "Stale answer" }
+        : result === "null" ? null : Promise.reject(new Error("Stale refusal")));
+    });
+    expect(pane().getByText(row.question)).toBeInTheDocument();
+    expect(input()).toHaveValue("");
+    expect(input()).toBeEnabled();
+    expect(pane().queryByText(/Stale read|Stale answer|Stale refusal|Old history/)).toBeNull();
+    expect(pane().getByRole("status")).toBeEmptyDOMElement();
+    expect(mocks.invoke.mock.calls.filter(([cmd]) => cmd === "list_questions")).toHaveLength(calls);
+    view.unmount();
+  }
+});
+
+it("keeps current drafts through polls and resets refused drafts on scope and project switches", async () => {
+  answer = () => { throw new Error("Current refusal"); };
+  render(<LeitstandRoute />);
+  await pane().findByText(row.question);
+  fireEvent.change(input(), { target: { value: "Keep this draft" } });
+  fireEvent.click(pane().getByRole("button", { name: "Antworten" }));
+  await pane().findByRole("alert");
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(input()).toHaveValue("Keep this draft");
+  expect(pane().getByRole("alert")).toHaveTextContent("Current refusal");
+  expect(input()).toBeEnabled();
+  scope("Alle Projekte");
+  await pane().findByText(row.question);
+  expect(input()).toHaveValue("");
+  expect(pane().queryByRole("alert")).toBeNull();
+  fireEvent.change(input(), { target: { value: "Fleet draft" } });
+  const pending = deferred();
+  read = () => pending.promise;
+  await switchProject("p2");
+  expect(pane().queryByRole("textbox")).toBeNull();
+  expect(pane().queryByText(/\d+ offen|Nichts offen/)).toBeNull();
+  await act(async () => pending.resolve([row]));
+  expect(input()).toHaveValue("");
+  const current = deferred();
+  answer = () => current.promise;
+  fireEvent.change(input(), { target: { value: "Submitted" } });
+  fireEvent.click(pane().getByRole("button", { name: "Antworten" }));
+  read = () => [row];
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(input()).toHaveValue("Submitted");
+  expect(input()).toBeDisabled();
+  await act(async () => current.resolve({ ...row, status: "answered", answer: "Stored current answer" }));
+  expect(pane().getByRole("status")).toHaveTextContent("Antwort gespeichert: Stored current answer");
+});
