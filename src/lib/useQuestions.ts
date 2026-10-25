@@ -48,7 +48,7 @@ export interface QuestionsState {
    * card leaves the list on the click rather than on the next poll. Throws
    * what the core said when it refuses, for the card to show.
    */
-  answer: (id: string, text: string) => Promise<void>;
+  answer: (id: string, text: string, onStored?: (row: Question) => void) => Promise<void>;
 }
 
 /**
@@ -107,7 +107,7 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
   }, [load]);
 
   const answer = useCallback(
-    async (id: string, text: string) => {
+    async (id: string, text: string, onStored?: (row: Question) => void) => {
       const closed = await answerQuestion(id, text);
       if (closed === null) {
         void load(false);
@@ -119,6 +119,7 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
       setQuestions((prev) =>
         prev.map((entry) => (entry.id === closed.id ? closed : entry)),
       );
+      onStored?.(closed);
     },
     [load],
   );

@@ -1,8 +1,10 @@
+import { useEffect, useRef, useState } from "react";
 import { HonestState } from "../../../design/data/HonestState";
 import { StateGlyph } from "../../../design/state/StateMark";
 import { fill } from "../leitstand";
 import { Ask } from "./Ask";
 import { ClosedHistory } from "./ClosedHistory";
+import { HISTORY_TEXT } from "./history/texts";
 import { classifyQuestion } from "./classify";
 import { DecisionLane, LANES } from "./DecisionLane";
 import { useT } from "../../../i18n/useT";
@@ -21,6 +23,23 @@ export interface NeedsYouProps {
 export function NeedsYou({ questions, workers }: NeedsYouProps) {
   const t = useT();
   const { open, history, loading, error, answer } = questions;
+  const [confirmation, setConfirmation] = useState("");
+  const lifetime = useRef(0);
+  // The hook's answer identity changes with project/scope, never with a poll.
+  useEffect(() => {
+    setConfirmation("");
+    return () => { lifetime.current += 1; };
+  }, [answer]);
+
+  const confirmAnswer = (id: string, text: string) => {
+    const current = lifetime.current;
+    setConfirmation("");
+    return answer(id, text, (stored) => {
+      if (current === lifetime.current && stored.id === id && stored.status === "answered" && stored.answer?.trim()) {
+        setConfirmation(fill(HISTORY_TEXT.confirmed, { text: stored.answer }));
+      }
+    });
+  };
 
   const classes = open.map((q) => classifyQuestion(q.question));
   const others = open.filter((_, i) => classes[i] === "other");
@@ -36,7 +55,7 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
     body = (
       <ul className="n-list" aria-label={t("state.need")}>
         {others.map((q) => (
-          <Ask key={q.id} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={answer} />
+          <Ask key={q.id} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={confirmAnswer} />
         ))}
       </ul>
     );
@@ -50,9 +69,10 @@ export function NeedsYou({ questions, workers }: NeedsYouProps) {
       </div>
       {listRead &&
         LANES.map((lane) => (
-          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={answer} />
+          <DecisionLane key={lane} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={confirmAnswer} />
         ))}
       {body}
+      <p className="n-note" role="status" aria-live="polite" aria-atomic="true">{confirmation}</p>
       <ClosedHistory history={history} />
     </aside>
   );

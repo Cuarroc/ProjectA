@@ -88,7 +88,7 @@ describe("NeedsYou", () => {
 
   it("does not confirm invalid stored results or failed writes", async () => {
     for (const result of [null, {}, { id: "other" }, { status: "open" }, { status: "expired" },
-      { status: "refused" }, { answer: null }, { answer: "   " }, new Error("write failed")]) {
+      { status: "refused" }, { answer: undefined }, { answer: null }, { answer: "   " }, new Error("write failed")]) {
       backend([row], () => {
         if (result instanceof Error) throw result;
         return result === null || Object.keys(result).length === 0 ? result : { ...row, status: "answered", answer: "Stored", ...result };
@@ -323,6 +323,7 @@ describe("NeedsYou", () => {
     fireEvent.change(lane.getByRole("textbox", { name: "Antwort" }), { target: { value: "Ja" } });
     fireEvent.click(lane.getByRole("button", { name: "Antworten" }));
     await screen.findByText("Beantwortet: Ja");
+    expect(screen.getByRole("status")).toHaveTextContent("Antwort gespeichert: Ja");
     expect(mocks.invoke).toHaveBeenCalledWith("answer_question", { id: "q-del", answer: "Ja" });
   });
 
