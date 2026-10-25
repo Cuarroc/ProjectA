@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "../../design/controls/Button";
 import { Popover } from "../../design/layout/Popover";
 import { de } from "../../i18n/de";
@@ -26,12 +26,17 @@ const setPending = (value: boolean) => {
   for (const listener of listeners) listener();
 };
 
-/** Only the empty route mounts this chooser; the provider owns the resulting session. */
-export default function TerminalLauncher() {
+/** Eligible empty and live routes share this chooser; the provider owns sessions. */
+export default function TerminalLauncher({ onLaunch }: { onLaunch: () => void }) {
   const { openAdHoc } = useSessions();
   const [open, setOpen] = useState(false);
   const [profiles, setProfiles] = useState<AgentProfile[] | null>(null);
   const [fetchError, setFetchError] = useState(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const error = useSyncExternalStore(subscribePending, getError);
   const busy = useSyncExternalStore(subscribePending, getPending);
   useEffect(() => {
@@ -44,8 +49,12 @@ export default function TerminalLauncher() {
   }, [open]);
   const launch = async (profile: AgentProfile) => {
     if (pending) return;
+    onLaunch();
     setPending(true); setError(null);
-    try { await openAdHoc(profile); }
+    try {
+      await openAdHoc(profile);
+      if (mounted.current) setOpen(false);
+    }
     catch (cause) {
       // The provider may already have inserted a session before a subscription rejects.
       setError(`${de["terminal.launchFailed"]} ${describeError(cause)}`);

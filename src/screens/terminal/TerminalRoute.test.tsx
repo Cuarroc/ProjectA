@@ -614,7 +614,8 @@ it("launches exactly one chosen enabled profile from the empty Glass route", asy
     expect(await screen.findByRole("tab", { name: "Chosen shell" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
     expect(screen.getByRole("button", { name: "Tab schließen" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Neue Sitzung" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("alert")).toBeNull();
   } catch (error) { failure = error; throw error; } finally {
     await finishLaunchTest(failure, () => { for (const finish of finishes) finish(); });
   }
@@ -716,7 +717,8 @@ it("preserves late provider insertion without navigating back to an unmounted la
     expect(window.location.hash).toBe("#/leitstand");
     go("#/leitstand/terminal");
     expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByText(/Sitzungsanfrage fehlgeschlagen/)).toBeNull();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Sitzungsanfrage fehlgeschlagen. exit subscription failed");
     expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
       ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
     ]);
@@ -725,7 +727,7 @@ it("preserves late provider insertion without navigating back to an unmounted la
   }
 });
 
-it("offers launch only in the generic empty route and not lookup error restore or live views", async () => {
+it("offers launch in empty and eligible live views but not lookup error restore or exited views", async () => {
   window.location.hash = "#/leitstand/terminal"; render(<App />);
   expect(await screen.findByRole("button", { name: "Neue Sitzung" })).toBeVisible();
   const base = mocks.invoke.getMockImplementation()!;
@@ -746,6 +748,9 @@ it("offers launch only in the generic empty route and not lookup error restore o
     mocks.invoke.mockImplementation(base); workerData();
     go("#/leitstand/terminal?worker=two");
     await screen.findByRole("tab", { name: "Task two" });
+    expect(await screen.findByRole("button", { name: "Neue Sitzung" })).toBeVisible();
+    await waitFor(() => expect(active("pty:exit:pty-two")).toHaveLength(1));
+    act(() => { active("pty:exit:pty-two")[0].handler({ payload: { code: 0 } }); });
     expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
     expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([]);
   } catch (error) { failure = error; throw error; } finally {
@@ -766,7 +771,8 @@ it("keeps an inserted session visible when its exit subscription rejects", async
     fireEvent.click(profile);
     expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
-    expect(screen.queryByText(/Sitzungsanfrage fehlgeschlagen/)).toBeNull();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Sitzungsanfrage fehlgeschlagen. exit subscription failed");
     expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
       ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
     ]);
@@ -1005,49 +1011,52 @@ it("appends an explicit live launch without replacing existing worker tabs", asy
   }
 });
 
-it.each(["resolve", "reject"] as const)("fences live insertion before exit subscription %s and guards remounts", async (settlement) => {
-  workerData(); window.location.hash = "#/leitstand/terminal?worker=one"; render(<App />);
-  await screen.findByRole("tab", { name: "Task one" });
-  const base = mocks.invoke.getMockImplementation()!;
-  const listen = mocks.listen.getMockImplementation()!;
-  let insert: (() => void) | undefined, lookup: (() => void) | undefined;
-  let subscribe: (() => void) | undefined, reject: (() => void) | undefined;
-  mocks.invoke.mockImplementation((command: string, args: unknown) => {
-    if (command === "spawn_pty") return new Promise((resolve) => { insert = () => resolve({ sessionId: "live-pending" }); });
-    if (command === "list_workers") return new Promise((resolve) => { lookup = () => resolve(workers); });
-    return base(command, args);
-  });
-  mocks.listen.mockImplementation((event, handler) => event === "pty-exit-live-pending"
-    ? new Promise((resolve, fail) => { subscribe = () => resolve(vi.fn()); reject = () => fail(new Error("live subscription rejected")); })
-    : listen(event, handler));
-  let failure: unknown;
-  try {
-    fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
-    go("#/leitstand/terminal?worker=two");
-    expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
-    await act(async () => { insert!(); });
-    expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
-    expect(window.location.hash).toBe("#/leitstand/terminal");
-    await act(async () => { lookup!(); });
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task one", "Shell"]);
-    go("#/leitstand"); go("#/leitstand/terminal");
-    const launch = await screen.findByRole("button", { name: "Neue Sitzung" });
-    expect(launch).toHaveAttribute("aria-busy", "true");
-    fireEvent.click(launch); fireEvent.click(launch, { detail: 0 });
-    expect(launch).toHaveAttribute("aria-expanded", "false");
-    await act(async () => { if (settlement === "resolve") subscribe!(); else reject!(); });
-    expect(launch).not.toHaveAttribute("aria-busy", "true");
-    expect(screen.getByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
-    if (settlement === "reject") {
-      expect(screen.getAllByRole("alert")).toHaveLength(1);
-      expect(screen.getByRole("alert")).toHaveTextContent("Sitzungsanfrage fehlgeschlagen. live subscription rejected");
-    } else expect(screen.queryByRole("alert")).toBeNull();
-    expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
-      ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
-    ]);
-  } catch (error) { failure = error; throw error; } finally {
-    await finishLaunchTest(failure, () => { insert?.(); lookup?.(); subscribe?.(); mocks.invoke.mockImplementation(base); mocks.listen.mockImplementation(listen); });
+it("fences live insertion before exit subscription", async () => {
+  for (const settlement of ["resolve", "reject"] as const) {
+    cleanup(); mocks.invoke.mockClear();
+    workerData(); window.location.hash = "#/leitstand/terminal?worker=one"; render(<App />);
+    await screen.findByRole("tab", { name: "Task one" });
+    const base = mocks.invoke.getMockImplementation()!;
+    const listen = mocks.listen.getMockImplementation()!;
+    let insert: (() => void) | undefined, lookup: (() => void) | undefined;
+    let subscribe: (() => void) | undefined, reject: (() => void) | undefined;
+    mocks.invoke.mockImplementation((command: string, args: unknown) => {
+      if (command === "spawn_pty") return new Promise((resolve) => { insert = () => resolve({ sessionId: "live-pending" }); });
+      if (command === "list_workers") return new Promise((resolve) => { lookup = () => resolve(workers); });
+      return base(command, args);
+    });
+    mocks.listen.mockImplementation((event, handler) => event === "pty:exit:live-pending"
+      ? new Promise((resolve, fail) => { subscribe = () => resolve(vi.fn()); reject = () => fail(new Error("live subscription rejected")); })
+      : listen(event, handler));
+    let failure: unknown;
+    try {
+      fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
+      go("#/leitstand/terminal?worker=two");
+      expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
+      await act(async () => { insert!(); });
+      expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+      expect(window.location.hash).toBe("#/leitstand/terminal");
+      await act(async () => { lookup!(); });
+      expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task one", "Shell"]);
+      go("#/leitstand"); go("#/leitstand/terminal");
+      const launch = await screen.findByRole("button", { name: "Neue Sitzung" });
+      expect(launch).toHaveAttribute("aria-busy", "true");
+      fireEvent.click(launch); fireEvent.click(launch, { detail: 0 });
+      expect(launch).toHaveAttribute("aria-expanded", "false");
+      await act(async () => { if (settlement === "resolve") subscribe!(); else reject!(); });
+      expect(launch).not.toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+      if (settlement === "reject") {
+        expect(screen.getAllByRole("alert")).toHaveLength(1);
+        expect(screen.getByRole("alert")).toHaveTextContent("Sitzungsanfrage fehlgeschlagen. live subscription rejected");
+      } else expect(screen.queryByRole("alert")).toBeNull();
+      expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
+        ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
+      ]);
+    } catch (error) { failure = error; throw error; } finally {
+      await finishLaunchTest(failure, () => { insert?.(); lookup?.(); subscribe?.(); mocks.invoke.mockImplementation(base); mocks.listen.mockImplementation(listen); });
+    }
   }
 });
 
@@ -1086,5 +1095,40 @@ it("retains live launch failure across dismissal restore and remount until ackno
     expect(screen.queryByRole("alert")).toBeNull();
   } catch (error) { failure = error; throw error; } finally {
     await finishLaunchTest(failure, () => { mocks.invoke.mockImplementation(base); });
+  }
+});
+
+it("keeps the same request pending across empty live and empty subscription views", async () => {
+  window.location.hash = "#/leitstand/terminal"; render(<App />);
+  const listen = mocks.listen.getMockImplementation()!;
+  let settle: (() => void) | undefined;
+  mocks.listen.mockImplementation((event, handler) => event === "pty:exit:session-a"
+    ? new Promise((resolve) => { settle = () => resolve(vi.fn()); }) : listen(event, handler));
+  let failure: unknown;
+  try {
+    fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
+    expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+    const live = screen.getByRole("button", { name: "Neue Sitzung" });
+    expect(live).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(live);
+    expect(live).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Tab schließen" }));
+    expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+    go("#/leitstand"); go("#/leitstand/terminal");
+    const empty = await screen.findByRole("button", { name: "Neue Sitzung" });
+    fireEvent.click(empty); fireEvent.click(empty, { detail: 0 });
+    expect(empty).toHaveAttribute("aria-busy", "true");
+    expect(empty).toHaveAttribute("aria-expanded", "false");
+    expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
+      ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }], ["kill_pty", { sessionId: "session-a" }],
+    ]);
+    await act(async () => { settle!(); });
+    expect(empty).not.toHaveAttribute("aria-busy", "true");
+    fireEvent.click(empty);
+    expect(await screen.findByRole("button", { name: "Shell" })).toBeEnabled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  } catch (error) { failure = error; throw error; } finally {
+    await finishLaunchTest(failure, () => { settle?.(); mocks.listen.mockImplementation(listen); });
   }
 });
