@@ -6,6 +6,7 @@ import { texts, userError } from "../../../errors/texts";
 import { Input } from "../../../design/inputs/Input";
 import { fill } from "../leitstand";
 import { HISTORY_TEXT } from "./history/texts";
+import { T } from "./texts";
 import { useT } from "../../../i18n/useT";
 import { describeError } from "../../../lib/ipc";
 import type { Question, Worker } from "../../../types";
@@ -26,13 +27,15 @@ function age(createdAt: number, nowMs: number, t: ReturnType<typeof useT>): stri
   return minutes < 60 ? fill(t("needs.minutes"), { n: minutes }) : fill(t("needs.hours"), { n: Math.floor(minutes / 60) });
 }
 
-export function Ask({ q, worker, fleet, onAnswer }: { q: Question; worker?: Worker; fleet?: boolean; onAnswer: (id: string, text: string) => Promise<void> }) {
+export function Ask({ q, worker, fleet, projectNames, onAnswer }: { q: Question; worker?: Worker; fleet?: boolean; projectNames?: ReadonlyMap<string, string> | null; onAnswer: (id: string, text: string) => Promise<void> }) {
   const t = useT();
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (worker?.projectId !== q.projectId || worker?.id !== q.workerId) worker = undefined;
   const preflight = q.scope === "preflight";
+  const projectLabel = !q.projectId ? t("state.unknown") : projectNames?.get(q.projectId)
+    ?? `${q.projectId} (${projectNames === undefined ? T.projectLoading : projectNames === null ? T.projectFailed : T.projectMissing})`;
 
   const send = async (text: string) => {
     if (busy || text.trim() === "") return;
@@ -57,7 +60,7 @@ export function Ask({ q, worker, fleet, onAnswer }: { q: Question; worker?: Work
 
   return (
     <li className="n-ask">
-      {fleet && <p className="n-note">{HISTORY_TEXT.project}: {q.projectId || t("state.unknown")}</p>}
+      {fleet && <p className="n-note">{HISTORY_TEXT.project}: {projectLabel}</p>}
       <div className="n-from">
         <b>{worker?.branch ?? (preflight ? t("needs.preflight") : fill(HISTORY_TEXT.worker, { id: q.workerId || t("state.unknown") }))}</b>
         {worker?.task}

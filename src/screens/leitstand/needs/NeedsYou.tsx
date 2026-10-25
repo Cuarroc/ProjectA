@@ -20,10 +20,11 @@ export interface NeedsYouProps {
   /** The workers the questions can be resolved against (name and task). */
   workers: Worker[];
   projectId?: string | null;
+  projectNames?: ReadonlyMap<string, string> | null;
 }
 
 /** The "Braucht dich" area of the Leitstand: open questions with an inline answer. */
-export function NeedsYou({ questions, workers, projectId }: NeedsYouProps) {
+export function NeedsYou({ questions, workers, projectId, projectNames }: NeedsYouProps) {
   const t = useT();
   const { open, history, loading, error, answer, scope, setScope } = questions;
   const noProject = scope === "project" && projectId === null;
@@ -60,7 +61,7 @@ export function NeedsYou({ questions, workers, projectId }: NeedsYouProps) {
     body = (
       <ul className="n-list" aria-label={t("state.need")}>
         {others.map((q) => (
-          <Ask key={q.id} fleet={scope === "all"} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={confirmAnswer} />
+          <Ask key={q.id} fleet={scope === "all"} projectNames={projectNames} q={q} worker={workers.find((w) => w.id === q.workerId)} onAnswer={confirmAnswer} />
         ))}
       </ul>
     );
@@ -78,7 +79,7 @@ export function NeedsYou({ questions, workers, projectId }: NeedsYouProps) {
       </ButtonGroup>
       {listRead &&
         LANES.map((lane) => (
-          <DecisionLane key={lane} fleet={scope === "all"} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={confirmAnswer} />
+          <DecisionLane key={lane} fleet={scope === "all"} projectNames={projectNames} lane={lane} questions={open.filter((_, i) => classes[i] === lane)} anyOpen={open.length > 0} workers={workers} onAnswer={confirmAnswer} />
         ))}
       {body}
       {!noProject && <p className="n-note" role="status" aria-live="polite" aria-atomic="true">{confirmation}</p>}

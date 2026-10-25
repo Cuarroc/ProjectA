@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { readActiveProjectId, subscribeActiveProject } from "../../lib/activeProject";
-import { listAgentProfiles } from "../../lib/ipc";
+import { listAgentProfiles, listProjects } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
 import { HonestState } from "../../design/data/HonestState";
@@ -51,12 +51,17 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   const questions = useQuestions(projectId, !fabrik);
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
   const [profilesFailed, setProfilesFailed] = useState(false);
+  const [projectNames, setProjectNames] = useState<ReadonlyMap<string, string> | null>();
   const [now, setNow] = useState(() => Date.now() / 1000);
   useEffect(() => {
     let live = true;
     listAgentProfiles().then(
       (list) => live && setProfiles(list),
       () => live && setProfilesFailed(true),
+    );
+    listProjects().then(
+      (list) => live && setProjectNames(new Map(list.map((project) => [project.id, project.name]))),
+      () => live && setProjectNames(null),
     );
     const timer = window.setInterval(() => setNow(Date.now() / 1000), TICK_MS);
     return () => {
@@ -103,7 +108,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
           </div>
         )}
         <div className="g-lr-side">
-          <NeedsYou key={`${projectId}:${questions.scope}`} projectId={projectId} questions={questions} workers={board.cards.map((c) => c.worker)} />
+          <NeedsYou key={`${projectId}:${questions.scope}`} projectId={projectId} projectNames={projectNames} questions={questions} workers={board.cards.map((c) => c.worker)} />
         </div>
       </div>
     </div>
