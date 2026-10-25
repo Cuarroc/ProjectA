@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { HonestState } from "../../../design/data/HonestState";
 import { ErrorDetails } from "../../../errors/ErrorDetails";
@@ -9,6 +9,7 @@ import { describeError, listWorkers } from "../../../lib/ipc";
 import { useOrchestratorChat } from "../../../lib/orchestratorChat";
 import { resolveRoute } from "../../../shell/routes";
 import { VerlaufChat } from "./VerlaufChat";
+import { useChatDraft } from "./chatDraft";
 import { T } from "./texts";
 
 function ProjectChat({ projectId }: { projectId: string | null }) {
@@ -17,6 +18,12 @@ function ProjectChat({ projectId }: { projectId: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const chat = useOrchestratorChat(projectId, orchestratorId);
+  const { sending } = useChatDraft(projectId, true);
+  const wasSending = useRef(sending);
+  useEffect(() => {
+    if (wasSending.current && !sending && chat.orchestratorId === null) setAttempt((value) => value + 1);
+    wasSending.current = sending;
+  }, [sending, chat.orchestratorId]);
 
   useEffect(() => {
     if (projectId === null) return;
@@ -45,10 +52,10 @@ function ProjectChat({ projectId }: { projectId: string | null }) {
       <ErrorDetails raw={userError(error).detail} />
     </div>
   );
-  return <VerlaufChat chat={chat} projectId={projectId} />;
+  return <VerlaufChat chat={chat} projectId={projectId} retainDraft />;
 }
 
-/** Owns the chat only while this route is open; project changes discard pending reads and drafts. */
+/** Reads history while open; drafts outlive route and project changes within this UI session. */
 export default function VerlaufRoute() {
   const t = useT();
   const route = resolveRoute("/leitstand/verlauf");

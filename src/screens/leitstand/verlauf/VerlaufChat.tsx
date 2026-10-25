@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 
 import { Button } from "../../../design/controls/Button";
 import { ErrorDetails } from "../../../errors/ErrorDetails";
@@ -9,13 +9,16 @@ import { roleLabel, type OrchestratorChat } from "../../../lib/orchestratorChat"
 import { formatClock, formatDayMonth } from "../../../lib/time";
 import "../../../design/glass.css";
 import { T } from "./texts";
+import { useChatDraft } from "./chatDraft";
 import "./verlauf.css";
 
 export interface VerlaufChatProps {
   /** Chat state supplied by the route; this view starts no poller and calls no IPC directly. */
   chat: OrchestratorChat;
-  /** Only read to notice a project switch: an unsent draft must not follow the user into another project. */
+  /** Drafts always belong to this project. */
   projectId: string | null;
+  /** The route retains drafts for this UI session, including while it is unmounted. */
+  retainDraft?: boolean;
 }
 
 /** German 24-hour clock time of a message, with day and month when it is not from today. */
@@ -32,15 +35,12 @@ function messageTime(seconds: number): string {
  * Layout follows the glass board Core.dc.html: the input row of the "Frag den Core" pane (:548-553)
  * and the `.msg` card, accent-tinted for the orchestrator's answers (:319-320).
  */
-export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
-  const [draft, setDraft] = useState("");
+export function VerlaufChat({ chat, projectId, retainDraft = false }: VerlaufChatProps) {
+  const draft = useChatDraft(projectId, retainDraft);
   const recipientHintId = useId();
-  // Counts project switches: a send that finishes after a switch must not clear the new project's draft.
-  const generation = useRef(0);
-  useEffect(() => {
-    generation.current += 1;
-    setDraft("");
-  }, [projectId]);
+  const sending = chat.sending || draft.sending;
+  const error = draft.error ?? chat.error;
+  const clearError = () => { draft.clearError(); chat.clearError(); };
 
   const stream = useRef<HTMLDivElement>(null);
   // A streamed answer grows the last message without adding one, so its length is a scroll trigger too.
@@ -55,20 +55,8 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
     if (el) stuck.current = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
   };
 
-  const canSend = !chat.disabled && !chat.sending && draft.trim() !== "";
-  // `sending` only flips after the parent re-renders, so a second Enter or click can slip in before it.
-  const inFlight = useRef(false);
-  const submit = async () => {
-    if (!canSend || inFlight.current) return;
-    inFlight.current = true;
-    const started = generation.current;
-    try {
-      const sent = await chat.send(draft);
-      if (sent && generation.current === started) setDraft("");
-    } finally {
-      inFlight.current = false;
-    }
-  };
+  const canSend = !chat.disabled && !sending && draft.text.trim() !== "";
+  const submit = () => { if (canSend) return draft.submit(chat.send); };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "Enter" || e.shiftKey) return;
     e.preventDefault();
@@ -96,10 +84,10 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
       <div className="vc-stream" ref={stream} onScroll={onScroll} role="log" aria-label={T.list}>
         {body}
       </div>
-      {chat.error !== null && (
+      {error !== null && (
         <div role="alert">
-          <HonestState kind="offline" title={T.errorTitle} hint={userError(chat.error).text} action={{ label: T.errorHide, onClick: chat.clearError }} />
-          <ErrorDetails raw={userError(chat.error).detail} />
+          <HonestState kind="offline" title={T.errorTitle} hint={userError(error).text} action={{ label: T.errorHide, onClick: clearError }} />
+          <ErrorDetails raw={userError(error).detail} />
           <Button size="sm" variant="tint" onClick={chat.reload}>{T.errorRetry}</Button>
         </div>
       )}
@@ -115,13 +103,13 @@ export function VerlaufChat({ chat, projectId }: VerlaufChatProps) {
           aria-describedby={recipientHintId}
           placeholder={chat.disabled ? T.noProject : T.placeholder}
           rows={2}
-          value={draft}
+          value={draft.text}
           disabled={chat.disabled}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => draft.setText(e.target.value)}
           onKeyDown={onKeyDown}
         />
         <Button variant="primary" disabled={!canSend} onClick={() => void submit()}>
-          {chat.sending ? T.sending : T.send}
+          {sending ? T.sending : T.send}
         </Button>
       </div>
       <p className="vc-note">{T.keys}</p>
