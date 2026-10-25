@@ -1018,15 +1018,15 @@ it("fences live insertion before exit subscription", async () => {
     await screen.findByRole("tab", { name: "Task one" });
     const base = mocks.invoke.getMockImplementation()!;
     const listen = mocks.listen.getMockImplementation()!;
-    let insert: (() => void) | undefined, lookup: (() => void) | undefined;
-    let subscribe: (() => void) | undefined, reject: (() => void) | undefined;
+    const inserts: Array<() => void> = [], lookups: Array<() => void> = [];
+    const subscriptions: Array<() => void> = [], rejections: Array<() => void> = [];
     mocks.invoke.mockImplementation((command: string, args: unknown) => {
-      if (command === "spawn_pty") return new Promise((resolve) => { insert = () => resolve({ sessionId: "live-pending" }); });
-      if (command === "list_workers") return new Promise((resolve) => { lookup = () => resolve(workers); });
+      if (command === "spawn_pty") return new Promise((resolve) => { inserts.push(() => resolve({ sessionId: "live-pending" })); });
+      if (command === "list_workers") return new Promise((resolve) => { lookups.push(() => resolve(workers)); });
       return base(command, args);
     });
     mocks.listen.mockImplementation((event, handler) => event === ptyExit("live-pending")
-      ? new Promise((resolve, fail) => { subscribe = () => resolve(vi.fn()); reject = () => fail(new Error("live subscription rejected")); })
+      ? new Promise((resolve, fail) => { subscriptions.push(() => resolve(vi.fn())); rejections.push(() => fail(new Error("live subscription rejected"))); })
       : listen(event, handler));
     let failure: unknown;
     try {
@@ -1034,17 +1034,17 @@ it("fences live insertion before exit subscription", async () => {
       fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
       go("#/leitstand/terminal?worker=two");
       expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
-      await act(async () => { insert!(); });
+      await act(async () => { inserts[0](); });
       expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
       expect(window.location.hash).toBe("#/leitstand/terminal");
-      await act(async () => { lookup!(); });
+      await act(async () => { for (const lookup of lookups) lookup(); });
       expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task one", "Shell"]);
       go("#/leitstand"); go("#/leitstand/terminal");
       const launch = await screen.findByRole("button", { name: "Neue Sitzung" });
       expect(launch).toHaveAttribute("aria-busy", "true");
       fireEvent.click(launch); fireEvent.click(launch, { detail: 0 });
       expect(launch).toHaveAttribute("aria-expanded", "false");
-      await act(async () => { if (settlement === "resolve") subscribe!(); else reject!(); });
+      await act(async () => { if (settlement === "resolve") subscriptions[0](); else rejections[0](); });
       expect(launch).not.toHaveAttribute("aria-busy", "true");
       expect(screen.getByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
       if (settlement === "reject") {
@@ -1055,7 +1055,10 @@ it("fences live insertion before exit subscription", async () => {
         ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
       ]);
     } catch (error) { failure = error; throw error; } finally {
-      await finishLaunchTest(failure, () => { insert?.(); lookup?.(); subscribe?.(); mocks.invoke.mockImplementation(base); mocks.listen.mockImplementation(listen); });
+      await finishLaunchTest(failure, () => {
+        for (const settle of [...inserts, ...lookups, ...subscriptions]) settle();
+        mocks.invoke.mockImplementation(base); mocks.listen.mockImplementation(listen);
+      });
     }
   }
 });
@@ -1101,9 +1104,9 @@ it("retains live launch failure across dismissal restore and remount until ackno
 it("keeps the same request pending across empty live and empty subscription views", async () => {
   window.location.hash = "#/leitstand/terminal"; render(<App />);
   const listen = mocks.listen.getMockImplementation()!;
-  let settle: (() => void) | undefined;
+  const subscriptions: Array<() => void> = [];
   mocks.listen.mockImplementation((event, handler) => event === ptyExit("session-a")
-    ? new Promise((resolve) => { settle = () => resolve(vi.fn()); }) : listen(event, handler));
+    ? new Promise((resolve) => { subscriptions.push(() => resolve(vi.fn())); }) : listen(event, handler));
   let failure: unknown;
   try {
     fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
@@ -1123,12 +1126,12 @@ it("keeps the same request pending across empty live and empty subscription view
     expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
       ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }], ["kill_pty", { sessionId: "session-a" }],
     ]);
-    await act(async () => { settle!(); });
+    await act(async () => { subscriptions[0](); });
     expect(empty).not.toHaveAttribute("aria-busy", "true");
     fireEvent.click(empty);
     expect(await screen.findByRole("button", { name: "Shell" })).toBeEnabled();
     expect(screen.queryByRole("alert")).toBeNull();
   } catch (error) { failure = error; throw error; } finally {
-    await finishLaunchTest(failure, () => { settle?.(); mocks.listen.mockImplementation(listen); });
+    await finishLaunchTest(failure, () => { for (const settle of subscriptions) settle(); mocks.listen.mockImplementation(listen); });
   }
 });
