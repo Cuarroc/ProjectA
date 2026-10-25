@@ -19,16 +19,19 @@ function deferred() {
 }
 let read: (id?: string) => unknown;
 let answer: () => unknown;
+let projects: () => unknown;
 beforeEach(() => {
   localStorage.clear();
   writeActiveProjectId("p1");
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   read = () => [row];
   answer = () => null;
+  projects = () => [{ id: "p1", name: "First project" }, { id: "p2", name: "Second project" }];
   mocks.invoke.mockReset().mockImplementation(async (cmd: string, args: { projectId?: string }) => {
     if (cmd === "list_questions") return read(args.projectId);
     if (cmd === "answer_question") return answer();
     if (cmd === "list_agent_profiles") return [];
+    if (cmd === "list_projects") return projects();
     if (cmd === "get_board_state") return { cards: [{ worker, column: "working" }], coordinators: [] };
     throw new Error(`Unexpected command: ${cmd}`);
   });
@@ -48,10 +51,10 @@ it("reads real scopes and labels fleet projects and workers without borrowing ac
   expect(mocks.invoke).toHaveBeenCalledWith("list_questions", { projectId: undefined, status: undefined });
   expect(pane().getByRole("button", { name: "Alle Projekte" })).toHaveAttribute("aria-pressed", "true");
   const lane = within(pane().getByRole("region", { name: "Löschen" }));
-  expect(lane.getByText("Projekt: p2")).toBeInTheDocument();
+  expect(lane.getByText("Projekt: Second project")).toBeInTheDocument();
   expect(lane.getByText("Agent: w1")).toBeInTheDocument();
   expect(lane.queryByText(/correct\/branch|Correct task|Kein Agent/)).toBeNull();
-  expect(pane().getByText("Projekt: p1")).toBeInTheDocument();
+  expect(pane().getByText("Projekt: First project")).toBeInTheDocument();
   expect(pane().getByText("Projekt: Unbekannt")).toBeInTheDocument();
   expect(pane().getByText("Vorabfrage, noch kein Agent")).toBeInTheDocument();
   fireEvent.change(pane().getAllByRole("textbox")[0], { target: { value: "Fleet draft" } });
@@ -59,6 +62,35 @@ it("reads real scopes and labels fleet projects and workers without borrowing ac
   await pane().findByText("1 offen");
   expect(input()).toHaveValue("");
   expect(pane().queryByText(foreign.question)).toBeNull();
+});
+
+it("resolves registered fleet names in ordinary and decision cards and identifies missing registrations", async () => {
+  read = () => [row, { ...row, id: "q2", projectId: "p2", question: "Darf ich löschen?" }, { ...row, id: "q3", projectId: "gone" }];
+  render(<LeitstandRoute />);
+  scope("Alle Projekte");
+  await pane().findByText("3 offen");
+  expect(pane().getByText("Projekt: First project")).toBeInTheDocument();
+  const lane = within(pane().getByRole("region", { name: "Löschen" }));
+  expect(lane.getByText("Projekt: Second project")).toBeInTheDocument();
+  expect(lane.queryByText(/First project|correct\/branch|Correct task/)).toBeNull();
+  expect(pane().getByText("Projekt: gone (Projekt nicht registriert)")).toBeInTheDocument();
+});
+
+it("distinguishes pending and failed project reads from missing registrations", async () => {
+  for (const outcome of ["loaded", "failed"]) {
+    const pending = deferred();
+    projects = () => pending.promise;
+    read = () => [{ ...row, projectId: "p2" }];
+    const view = render(<LeitstandRoute />);
+    scope("Alle Projekte");
+    await pane().findByText(row.question);
+    expect(pane().getByText("Projekt: p2 (Projektname wird gelesen …)")).toBeInTheDocument();
+    expect(pane().queryByText(/nicht registriert|First project|correct\/branch/)).toBeNull();
+    await act(async () => pending.resolve(outcome === "loaded" ? [{ id: "p2", name: "Second project" }] : Promise.reject(new Error("Registry offline"))));
+    expect(pane().getByText(outcome === "loaded" ? "Projekt: Second project" : "Projekt: p2 (Projektname nicht lesbar)")).toBeInTheDocument();
+    expect(pane().queryByText(/nicht registriert|First project|correct\/branch/)).toBeNull();
+    view.unmount();
+  }
 });
 
 it("keeps fleet reachable without a project and never calls unread or offline lists empty", async () => {
