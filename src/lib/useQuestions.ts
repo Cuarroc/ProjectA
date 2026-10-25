@@ -119,6 +119,7 @@ export function useQuestions(projectId: string | null, enabled: boolean): Questi
 
   const answer = useCallback(
     async (id: string, text: string, onStored?: (row: Question) => void) => {
+      // Stale calls resolve silently; Leitstand key-remounts the owning view on project/scope changes.
       if (active.current !== lifetime) return;
       const closed = await answerQuestion(id, text);
       if (active.current !== lifetime) return;

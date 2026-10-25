@@ -32,7 +32,7 @@ export function Ask({ q, worker, fleet, projectNames, onAnswer }: { q: Question;
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (worker?.projectId !== q.projectId || worker?.id !== q.workerId) worker = undefined;
+  const matchingWorker = worker?.projectId === q.projectId && worker?.id === q.workerId ? worker : undefined;
   const preflight = q.scope === "preflight";
   const projectLabel = !q.projectId ? t("state.unknown") : projectNames?.get(q.projectId)
     ?? fill(T.projectFallback, { id: q.projectId, state: projectNames === undefined ? T.projectLoading : projectNames === null ? T.projectFailed : T.projectMissing });
@@ -62,8 +62,8 @@ export function Ask({ q, worker, fleet, projectNames, onAnswer }: { q: Question;
     <li className="n-ask">
       {fleet && <p className="n-note">{HISTORY_TEXT.project}: {projectLabel}</p>}
       <div className="n-from">
-        <b>{worker?.branch ?? (preflight ? t("needs.preflight") : fill(HISTORY_TEXT.worker, { id: q.workerId || t("state.unknown") }))}</b>
-        {worker?.task}
+        <b>{matchingWorker?.branch ?? (preflight ? t("needs.preflight") : fleet ? fill(HISTORY_TEXT.worker, { id: q.workerId?.slice(0, 8) || t("state.unknown") }) : t("needs.noAgent"))}</b>
+        {matchingWorker?.task}
         <span className="n-age">{age(q.createdAt, Date.now(), t)}</span>
       </div>
       <p>{q.question}</p>
