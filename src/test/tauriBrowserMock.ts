@@ -637,10 +637,28 @@ window.__PROJECTA_E2E_UNKNOWN_IPC__ = unknown;
 
 let adHocCounter = 0;
 
+// Explicit screenshot input only; all default and rich response tables stay unchanged.
+const restoration = new URLSearchParams(window.location.search).get("restore") === "1";
+const RESTORE_RESPONSES: Readonly<Record<string, unknown>> = {
+  list_workers: [{
+    id: "restore-demo", projectId: "restore-project", task: "Gespeicherte Sitzung wiederherstellen",
+    profileId: "shell", branch: "example/restore", worktreePath: "/example/worktree",
+    sessionId: null, status: "exited", kind: "worker", spawnedBy: null, pausedReason: null, createdAt: 1,
+  }],
+  get_session_restore: {
+    liveSession: false, workspace: "missing", lastConfirmed: "app_crash",
+    scrollback: "$ npm run test:unit\nTests erfolgreich abgeschlossen.\nSitzung beendet; Ausgabe gespeichert.",
+    draft: "Bitte prüfe als Nächstes die Änderungen am Terminal.",
+  },
+};
+
 mockWindows("main");
 mockIPC(
   (command, args) => {
     calls.push(command);
+    if (restoration && Object.prototype.hasOwnProperty.call(RESTORE_RESPONSES, command)) {
+      return RESTORE_RESPONSES[command];
+    }
     if (command === "spawn_pty") {
       adHocCounter += 1;
       void args;

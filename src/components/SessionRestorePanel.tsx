@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
+import { Button } from "../design/controls/Button";
+import "../design/controls/controls.css";
 import { describeError, getSessionRestore } from "../lib/ipc";
 import type { SessionRestore, Worker } from "../types";
 
@@ -32,6 +34,7 @@ export default function SessionRestorePanel({
 }: SessionRestorePanelProps) {
   const [restore, setRestore] = useState<SessionRestore | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const missingId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +66,7 @@ export default function SessionRestorePanel({
       </p>
       {confirmed ? <p className="session-restore-confirmed">Zuletzt bestätigt: {confirmed}</p> : null}
       {workspaceMissing ? (
-        <p className="session-restore-missing" role="alert">
+        <p id={missingId} className="session-restore-missing" role="alert">
           Worktree fehlt — „Agent neu starten“ legt ihn nicht still neu an.
         </p>
       ) : null}
@@ -88,14 +91,15 @@ export default function SessionRestorePanel({
         </div>
       ) : null}
       <div className="session-restore-actions">
-        <button
-          type="button"
-          className="empty-action"
+        <Button
+          variant="primary"
+          loading={busy}
           disabled={!canRespawn}
+          aria-describedby={workspaceMissing ? missingId : undefined}
           onClick={onRespawn}
         >
-          {busy ? "…" : "Agent neu starten"}
-        </button>
+          Agent neu starten
+        </Button>
       </div>
     </section>
   );
