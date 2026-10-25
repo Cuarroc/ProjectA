@@ -639,6 +639,7 @@ let adHocCounter = 0;
 
 // Explicit screenshot input only; all default and rich response tables stay unchanged.
 const restoration = new URLSearchParams(window.location.search).get("restore") === "1";
+const launchFailure = new URLSearchParams(window.location.search).get("launchFailure") === "1";
 const RESTORE_RESPONSES: Readonly<Record<string, unknown>> = {
   list_workers: [{
     id: "restore-demo", projectId: "restore-project", task: "Gespeicherte Sitzung wiederherstellen",
@@ -661,6 +662,7 @@ mockIPC(
     }
     if (command === "spawn_pty") {
       adHocCounter += 1;
+      if (launchFailure && adHocCounter === 1) throw new Error("Explicit launch request rejected (browser fixture)");
       void args;
       return { sessionId: `ses-adhoc-${adHocCounter}` };
     }
