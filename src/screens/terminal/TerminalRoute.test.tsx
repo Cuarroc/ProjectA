@@ -578,3 +578,39 @@ it("hides close during restore and ignores a late restart after closing a live t
     ["respawn_worker", { workerId: "two" }],
   ]);
 });
+
+it("launches exactly one chosen enabled profile from the empty Glass route", async () => {
+  window.location.hash = "#/leitstand/terminal";
+  render(<App />);
+  const launch = await screen.findByRole("button", { name: "Neue Sitzung" });
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => {
+    if (command === "list_agent_profiles") return Promise.resolve([
+      { id: "chosen", name: "Chosen shell", enabled: true }, { id: "disabled", name: "Disabled shell", enabled: false },
+    ]);
+    if (command === "spawn_pty") return new Promise((resolve) => { finish = resolve; });
+    return base(command, args);
+  });
+  const mutations = () => mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name));
+  expect(mutations()).toEqual([]);
+  fireEvent.click(launch);
+  const choice = await screen.findByRole("button", { name: "Chosen shell" });
+  expect(screen.queryByRole("button", { name: "Disabled shell" })).toBeNull();
+  expect(mutations()).toEqual([]);
+  choice.focus(); fireEvent.keyDown(choice, { key: "Escape" });
+  expect(launch).toHaveFocus();
+  fireEvent.click(launch);
+  fireEvent.click(await screen.findByRole("button", { name: "Abbrechen" }));
+  expect(mutations()).toEqual([]);
+  fireEvent.click(launch);
+  const selected = await screen.findByRole("button", { name: "Chosen shell" });
+  fireEvent.click(selected); fireEvent.click(selected); fireEvent.click(launch);
+  expect(screen.getByRole("button", { name: "Neue Sitzung" })).toHaveAttribute("aria-busy", "true");
+  expect(mutations()).toEqual([["spawn_pty", { profileId: "chosen", cols: 80, rows: 24 }]]);
+  await act(async () => { finish({ sessionId: "session-a" }); });
+  expect(await screen.findByRole("tab", { name: "Chosen shell" })).toHaveAttribute("aria-selected", "true");
+  await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+  expect(screen.getByRole("button", { name: "Tab schließen" })).toBeVisible();
+  expect(screen.queryByRole("button", { name: "Neue Sitzung" })).toBeNull();
+});
