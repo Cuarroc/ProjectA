@@ -115,6 +115,25 @@ it("keeps fleet reachable without a project and never calls unread or offline li
   expect(pane().queryByText(/\d+ offen|Nichts offen/)).toBeNull();
 });
 
+it("preserves project missing-worker wording and shortens only fleet fallback identities", async () => {
+  await switchProject("p2");
+  read = () => [
+    { ...row, projectId: "p2", question: "Wrong-project worker?" },
+    { ...row, id: "q2", projectId: "p2", workerId: "abcdefgh-ijklmnop", question: "Missing worker?" },
+    { ...row, id: "q3", projectId: "p2", workerId: null, question: "Unknown worker?" },
+  ];
+  render(<LeitstandRoute />);
+  await pane().findByText("3 offen");
+  expect(pane().getAllByText("Agent nicht mehr da")).toHaveLength(3);
+  expect(pane().queryByText(/correct\/branch|Correct task|Agent: /)).toBeNull();
+  scope("Alle Projekte");
+  await pane().findByText("3 offen");
+  expect(pane().getByText("Agent: w1")).toBeInTheDocument();
+  expect(pane().getByText("Agent: abcdefgh")).toBeInTheDocument();
+  expect(pane().getByText("Agent: Unbekannt")).toBeInTheDocument();
+  expect(pane().queryByText(/correct\/branch|Correct task|Agent nicht mehr da|ijklmnop/)).toBeNull();
+});
+
 it("isolates late reads and answers across project and scope round trips", async () => {
   for (const change of ["project", "scope"]) for (const result of ["stored", "null", "refused"]) {
     const lateRead = deferred(), lateAnswer = deferred();
