@@ -463,3 +463,112 @@ describe("terminal route", () => {
     expect(mocks.invoke.mock.calls.some(([name]) => name === "spawn_pty")).toBe(false);
   });
 });
+
+it("closes only the visible worker tab without stopping workers", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  go("#/leitstand/terminal?worker=two");
+  await screen.findByRole("tab", { name: "Task two" });
+  const close = screen.getByRole("button", { name: "Tab schließen" });
+  expect(close.closest('[role="tab"], [role="tablist"]')).toBeNull();
+  close.focus();
+  fireEvent.click(close);
+  expect(screen.queryByRole("tab", { name: "Task two" })).toBeNull();
+  expect(screen.getByRole("tab", { name: "Task one" })).toHaveFocus();
+  expect(screen.getByRole("tab", { name: "Task one" })).toHaveAttribute("aria-selected", "true");
+  expect(window.location.hash).toBe("#/leitstand/terminal");
+  await waitFor(() => expect(active(ptyOutput("pty-one"))).toHaveLength(1));
+  act(() => { active(ptyOutput("pty-one"))[0].handler({ payload: "remaining worker output" }); });
+  expect(mocks.writes).toContain("remaining worker output");
+  expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([]);
+});
+
+it("closes only the visible ad hoc session at the PTY boundary", async () => {
+  render(<App />);
+  await openShellTab();
+  await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+  fireEvent.click(screen.getByRole("button", { name: "Neue Sitzung" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Shellshell" }));
+  go("#/leitstand/terminal");
+  await waitFor(() => expect(screen.getAllByRole("tab", { name: "Shell" })).toHaveLength(2));
+  const tabs = screen.getAllByRole("tab", { name: "Shell" });
+  expect(tabs[1]).toHaveAttribute("aria-selected", "true");
+  const retained = mocks.listeners.filter((entry) => entry.event.endsWith("session-a") && !entry.stop.mock.calls.length);
+  expect(retained.length).toBeGreaterThan(0);
+  mocks.invoke.mockClear();
+  fireEvent.click(screen.getByRole("button", { name: "Tab schließen" }));
+  expect(screen.getAllByRole("tab", { name: "Shell" })).toHaveLength(1);
+  expect(screen.getByRole("tab", { name: "Shell" })).toHaveFocus();
+  expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([
+    ["kill_pty", { sessionId: "session-b" }],
+  ]);
+  for (const listener of retained) expect(listener.stop).not.toHaveBeenCalled();
+  await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+  act(() => { active(ptyOutput("session-a"))[0].handler({ payload: "remaining shell output" }); });
+  expect(mocks.writes).toContain("remaining shell output");
+});
+
+it("focuses an honest empty state after closing the last worker tab", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  fireEvent.click(screen.getByRole("button", { name: "Tab schließen" }));
+  expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+  expect(within(screen.getByRole("region", { name: "Terminal" })).getByRole("button", { name: "Klassisch" })).toHaveFocus();
+  expect(screen.queryByRole("button", { name: "Tab schließen" })).toBeNull();
+  go("#/leitstand");
+  go("#/leitstand/terminal");
+  expect(await screen.findByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+  expect(screen.queryByRole("tab", { name: "Task one" })).toBeNull();
+  expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([]);
+  fireEvent.click(within(screen.getByRole("region", { name: "Terminal" })).getByRole("button", { name: "Klassisch" }));
+  await screen.findByRole("tab", { name: "Agenten" });
+  expect(window.location.hash).toBe("#/leitstand/klassisch");
+});
+
+it("discards a pending worker lookup when the visible tab is closed", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "list_workers"
+    ? new Promise((resolve) => { finish = resolve; }) : base(command, args));
+  go("#/leitstand/terminal?worker=two");
+  fireEvent.click(screen.getByRole("button", { name: "Tab schließen" }));
+  await act(async () => { finish(workers); });
+  expect(window.location.hash).toBe("#/leitstand/terminal");
+  expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+  expect(screen.queryByRole("tablist", { name: "Terminal-Sitzungen" })).toBeNull();
+  expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([]);
+});
+
+it("hides close during restore and ignores a late restart after closing a live tab", async () => {
+  workerData();
+  window.location.hash = "#/leitstand/terminal?worker=one";
+  render(<App />);
+  await screen.findByRole("tab", { name: "Task one" });
+  workerData(true);
+  const base = mocks.invoke.getMockImplementation()!;
+  let finish!: (value: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "respawn_worker"
+    ? new Promise((resolve) => { finish = resolve; }) : base(command, args));
+  go("#/leitstand/terminal?worker=two");
+  const restart = await screen.findByRole("button", { name: "Agent neu starten" });
+  expect(screen.queryByRole("button", { name: "Tab schließen" })).toBeNull();
+  expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([]);
+  fireEvent.click(restart);
+  expect(screen.queryByRole("button", { name: "Tab schließen" })).toBeNull();
+  fireEvent.click(screen.getByRole("tab", { name: "Task one" }));
+  fireEvent.click(screen.getByRole("button", { name: "Tab schließen" }));
+  await act(async () => { finish(workers[1]); });
+  expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+  expect(screen.queryByRole("tablist", { name: "Terminal-Sitzungen" })).toBeNull();
+  expect(mocks.invoke.mock.calls.filter(([name]) => ["kill_pty", "spawn_pty", "respawn_worker"].includes(name))).toEqual([
+    ["respawn_worker", { workerId: "two" }],
+  ]);
+});
