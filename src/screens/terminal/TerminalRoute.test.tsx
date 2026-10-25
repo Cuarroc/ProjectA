@@ -652,15 +652,19 @@ it("keeps a failed launch empty and retries only after another profile activatio
   const base = mocks.invoke.getMockImplementation()!;
   mocks.invoke.mockImplementation((command: string, args: unknown) => command === "spawn_pty"
     ? Promise.reject(new Error("spawn rejected")) : base(command, args));
-  fireEvent.click(profile);
-  expect(await screen.findByRole("alert")).toHaveTextContent("Sitzungsanfrage fehlgeschlagen.");
-  expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
-  expect(screen.queryByRole("tablist", { name: "Terminal-Sitzungen" })).toBeNull();
-  expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
-  mocks.invoke.mockImplementation(base);
-  fireEvent.click(profile);
-  expect(await screen.findByRole("tab", { name: "Shell" })).toBeVisible();
-  expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(2);
+  try {
+    fireEvent.click(profile);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sitzungsanfrage fehlgeschlagen.");
+    expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+    expect(screen.queryByRole("tablist", { name: "Terminal-Sitzungen" })).toBeNull();
+    expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(1);
+    mocks.invoke.mockImplementation(base);
+    fireEvent.click(profile);
+    expect(await screen.findByRole("tab", { name: "Shell" })).toBeVisible();
+    expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toHaveLength(2);
+  } finally {
+    await acknowledgeLaunchFailure();
+  }
 });
 
 it("preserves late provider insertion without navigating back to an unmounted launcher", async () => {
@@ -671,16 +675,21 @@ it("preserves late provider insertion without navigating back to an unmounted la
   let finish!: (value: unknown) => void;
   mocks.invoke.mockImplementation((command: string, args: unknown) => command === "spawn_pty"
     ? new Promise((resolve) => { finish = resolve; }) : base(command, args));
-  fireEvent.click(profile); go("#/leitstand");
-  mocks.listen.mockRejectedValueOnce(new Error("exit subscription failed"));
-  await act(async () => { finish({ sessionId: "session-a" }); });
-  expect(window.location.hash).toBe("#/leitstand");
-  go("#/leitstand/terminal");
-  expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
-  expect(screen.queryByText(/Sitzungsanfrage fehlgeschlagen/)).toBeNull();
-  expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
-    ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
-  ]);
+  try {
+    fireEvent.click(profile); go("#/leitstand");
+    mocks.listen.mockRejectedValueOnce(new Error("exit subscription failed"));
+    await act(async () => { finish({ sessionId: "session-a" }); });
+    expect(window.location.hash).toBe("#/leitstand");
+    go("#/leitstand/terminal");
+    expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText(/Sitzungsanfrage fehlgeschlagen/)).toBeNull();
+    expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
+      ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
+    ]);
+  } finally {
+    await act(async () => { finish?.({ sessionId: "session-a" }); });
+    await acknowledgeLaunchFailure();
+  }
 });
 
 it("offers launch only in the generic empty route and not lookup error restore or live views", async () => {
@@ -711,13 +720,18 @@ it("keeps an inserted session visible when its exit subscription rejects", async
   fireEvent.click(await screen.findByRole("button", { name: "Neue Sitzung" }));
   const profile = await screen.findByRole("button", { name: "Shell" });
   mocks.listen.mockRejectedValueOnce(new Error("exit subscription failed"));
-  fireEvent.click(profile);
-  expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
-  await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
-  expect(screen.queryByText(/Sitzungsanfrage fehlgeschlagen/)).toBeNull();
-  expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
-    ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
-  ]);
+  try {
+    fireEvent.click(profile);
+    expect(await screen.findByRole("tab", { name: "Shell" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
+    expect(screen.queryByText(/Sitzungsanfrage fehlgeschlagen/)).toBeNull();
+    expect(mocks.invoke.mock.calls.filter(([name]) => ["spawn_pty", "kill_pty", "respawn_worker"].includes(name))).toEqual([
+      ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
+    ]);
+  } finally {
+    await act(async () => {});
+    await acknowledgeLaunchFailure();
+  }
 });
 
 async function pendingLaunchAcrossRemount(settlement: "resolve" | "reject") {
@@ -772,6 +786,7 @@ async function pendingLaunchAcrossRemount(settlement: "resolve" | "reject") {
   } finally {
     // Settle through the public boundary even when an assertion fails.
     await act(async () => { for (const finish of finishes) finish(); });
+    await acknowledgeLaunchFailure();
   }
 }
 
