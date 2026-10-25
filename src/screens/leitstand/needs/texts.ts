@@ -7,6 +7,7 @@ export const T = {
   projectLoading: "Projektname wird gelesen …",
   projectFailed: "Projektname nicht lesbar",
   projectMissing: "Projekt nicht registriert",
+  projectFallback: "{id} ({state})",
   none: "Keine offene Entscheidung.",
   money: { title: "Geld", rule: "Geld ausgeben braucht deine Freigabe." },
   install: { title: "Installieren", rule: "Installieren braucht deine Freigabe." },

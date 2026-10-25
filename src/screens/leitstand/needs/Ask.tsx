@@ -35,7 +35,7 @@ export function Ask({ q, worker, fleet, projectNames, onAnswer }: { q: Question;
   if (worker?.projectId !== q.projectId || worker?.id !== q.workerId) worker = undefined;
   const preflight = q.scope === "preflight";
   const projectLabel = !q.projectId ? t("state.unknown") : projectNames?.get(q.projectId)
-    ?? `${q.projectId} (${projectNames === undefined ? T.projectLoading : projectNames === null ? T.projectFailed : T.projectMissing})`;
+    ?? fill(T.projectFallback, { id: q.projectId, state: projectNames === undefined ? T.projectLoading : projectNames === null ? T.projectFailed : T.projectMissing });
 
   const send = async (text: string) => {
     if (busy || text.trim() === "") return;
