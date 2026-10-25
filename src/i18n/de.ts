@@ -51,6 +51,7 @@ export const de = {
   "bootstrap.loading": "Arbeitsbereich wird geladen …",
   "terminal.title": "Terminal",
   "terminal.sessions": "Terminal-Sitzungen",
+  "terminal.closeTab": "Tab schließen",
   "terminal.empty": "Keine Terminal-Sitzung geöffnet.",
   "terminal.emptyHint": "Öffne eine Sitzung in der klassischen Ansicht. Sie bleibt beim Seitenwechsel erhalten.",
   "nav.leitstand": "Fabrik",
