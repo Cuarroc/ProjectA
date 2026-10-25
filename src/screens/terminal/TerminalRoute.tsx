@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import TerminalView from "../../components/TerminalView";
 import SessionRestorePanel from "../../components/SessionRestorePanel";
+import { Button } from "../../design/controls/Button";
 import { HonestState } from "../../design/data/HonestState";
 import { TabPanel, Tabs } from "../../design/layout/Tabs";
 import { de } from "../../i18n/de";
@@ -17,13 +18,20 @@ const loadProfiles = () => listAgentProfiles().catch((): AgentProfile[] => []);
 
 /** A route owns viewers only; sessions and their PTYs outlive navigation. */
 export default function TerminalRoute() {
-  const { sessions, activeSessionId, select, openWorker, showRestore } = useSessions();
+  const { sessions, activeSessionId, select, close, openWorker, showRestore } = useSessions();
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState(window.location.hash);
   const [restore, setRestore] = useState<Worker | null>(null);
   const [opening, setOpening] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const request = useRef(Symbol());
+  const section = useRef<HTMLElement>(null);
+  const focusAfterClose = useRef(false);
+  useEffect(() => {
+    if (!focusAfterClose.current) return;
+    if (!sessions.length) focusAfterClose.current = false;
+    section.current?.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"], .g-hs button')?.focus();
+  }, [sessions, activeSessionId]);
   const enterWorker = useCallback((worker: Worker, profiles: AgentProfile[]) => {
     if (!worker.sessionId || worker.status !== "running") {
       showRestore(worker.id); setRestore(worker); return;
@@ -57,18 +65,40 @@ export default function TerminalRoute() {
   const fonts = loadFontSettings();
   const active = sessions.find((session) => session.sessionId === activeSessionId) ?? sessions[0];
   return (
-    <section className="g-terminal" aria-label={de["terminal.title"]}>
+    <section ref={section} className="g-terminal" aria-label={de["terminal.title"]}
+      onPointerDownCapture={() => { focusAfterClose.current = false; }}
+      onKeyDownCapture={() => { focusAfterClose.current = false; }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) focusAfterClose.current = false;
+      }}
+      onFocusCapture={(event) => {
+        // The remaining viewer focuses asynchronously; preserve the close target until user input.
+        if (focusAfterClose.current && event.target.closest('[role="tabpanel"]')) {
+          focusAfterClose.current = false;
+          section.current?.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus();
+        }
+      }}>
       {error ? <p role="alert">{error}</p> : null}
       {active || restore ? <>
-        <Tabs idBase="terminal" aria-label={de["terminal.sessions"]}
-          tabs={[...sessions.map((session) => ({ id: session.sessionId, label: session.title })),
-            ...(restore ? [{ id: `restore:${restore.id}`, label: shortTask(restore.task) }] : [])]}
-          value={restore ? `restore:${restore.id}` : active.sessionId} onChange={(id) => {
-            if (id === `restore:${restore?.id}`) return;
-            request.current = Symbol(); setOpening(false); setRestarting(false); setError(null); setRestore(null); select(id);
+        <div className="g-terminal-actions">
+          <Tabs idBase="terminal" aria-label={de["terminal.sessions"]}
+            tabs={[...sessions.map((session) => ({ id: session.sessionId, label: session.title })),
+              ...(restore ? [{ id: `restore:${restore.id}`, label: shortTask(restore.task) }] : [])]}
+            value={restore ? `restore:${restore.id}` : active.sessionId} onChange={(id) => {
+              if (id === `restore:${restore?.id}`) return;
+              request.current = Symbol(); setOpening(false); setRestarting(false); setError(null); setRestore(null); select(id);
+              window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
+              setHash(window.location.hash);
+            }} />
+          {!restore && active ? <Button size="sm" onClick={() => {
+            // A close supersedes route lookup/restart results, just like manual selection.
+            request.current = Symbol(); setOpening(false); setRestarting(false); setError(null);
+            focusAfterClose.current = true;
+            close(active.sessionId);
             window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
             setHash(window.location.hash);
-          }} />
+          }}>{de["terminal.closeTab"]}</Button> : null}
+        </div>
         {sessions.map((session) => (
           <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId}
             active={!restore && session.sessionId === active?.sessionId}>
@@ -76,7 +106,8 @@ export default function TerminalRoute() {
               font={fonts.terminalFont} fontSize={fonts.terminalFontSize} /> : null}
           </TabPanel>
         ))}
-      </> : !restore && !opening && !error && <HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.emptyHint"]} />}
+      </> : !restore && !opening && !error && <HonestState kind="empty" title={de["terminal.empty"]} hint={de["terminal.emptyHint"]}
+        action={{ label: de["leitstand.tab.classic"], onClick: () => { window.location.hash = "#/leitstand/klassisch"; } }} />}
       {restore ? <TabPanel idBase="terminal" id={`restore:${restore.id}`} active><SessionRestorePanel key={restore.id} worker={restore} busy={restarting} onRespawn={() => {
         const token = request.current;
         setRestarting(true); setError(null);
