@@ -7,6 +7,7 @@ export const HISTORY_TEXT = {
   nobody: "niemand hat entschieden",
   unknownOrigin: "Herkunft nicht gespeichert",
   missingAnswer: "Keine Antwort gespeichert",
+  recordedAnswer: "Antwort gespeichert: {text}",
   project: "Projekt",
   worker: "Agent: {id}",
   closed: "Geschlossen",
