@@ -5,6 +5,7 @@ export const HISTORY_TEXT = {
   human: "von einem Menschen beantwortet",
   unverified: "beantwortet, Herkunft ungeprüft",
   nobody: "niemand hat entschieden",
+  unknownOrigin: "Herkunft nicht gespeichert",
   missingAnswer: "Keine Antwort gespeichert",
   project: "Projekt",
   worker: "Agent: {id}",

@@ -11,7 +11,9 @@ export function ClosedHistory({ history }: { history: Question[] }) {
     <ul className="n-list" aria-label={t("tab.history")}>
       {history.map((q) => {
         const answer = q.answer?.trim() ? q.answer : text.missingAnswer;
-        const who = q.answeredBy === null ? text.nobody : text[q.answeredBy];
+        const who = q.answeredBy === null
+          ? (q.status === "answered" ? text.unknownOrigin : text.nobody)
+          : text[q.answeredBy];
         const stamp = new Date((q.answeredAt ?? q.createdAt) * 1000);
         return (
           <li key={q.id} className="n-ask">
