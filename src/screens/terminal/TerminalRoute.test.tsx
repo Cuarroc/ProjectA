@@ -719,3 +719,65 @@ it("keeps an inserted session visible when its exit subscription rejects", async
     ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
   ]);
 });
+
+async function pendingLaunchAcrossRemount(settlement: "resolve" | "reject") {
+  window.location.hash = "#/leitstand/terminal"; render(<App />);
+  const base = mocks.invoke.getMockImplementation()!;
+  const finishes: Array<() => void> = [];
+  let rejectFirst!: (cause: unknown) => void;
+  mocks.invoke.mockImplementation((command: string, args: unknown) => command === "spawn_pty"
+    ? new Promise((resolve, reject) => {
+      const sessionId = `remount-${finishes.length}`;
+      if (!finishes.length) rejectFirst = reject;
+      finishes.push(() => resolve({ sessionId }));
+    }) : base(command, args));
+  const spawns = () => mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty");
+  try {
+    const original = await screen.findByRole("button", { name: "Neue Sitzung" });
+    fireEvent.click(original);
+    fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
+    expect(spawns()).toEqual([["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }]]);
+    go("#/leitstand");
+    expect(original).not.toBeInTheDocument();
+    go("#/leitstand/terminal");
+    const remounted = await screen.findByRole("button", { name: "Neue Sitzung" });
+    expect(remounted).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(remounted);
+    remounted.focus();
+    // Native keyboard activation reaches a button as a click with detail zero.
+    fireEvent.click(remounted, { detail: 0 });
+    expect(remounted).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: "Shell" })).toBeNull();
+    expect(spawns()).toHaveLength(1);
+    await act(async () => {
+      if (settlement === "resolve") finishes[0]();
+      else rejectFirst(new Error("pending spawn rejected"));
+    });
+    if (settlement === "resolve") {
+      expect(await screen.findByRole("tab", { name: "Shell" })).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Tab schließen" }));
+    }
+    expect(screen.getByText("Keine Terminal-Sitzung geöffnet.")).toBeVisible();
+    const next = screen.getByRole("button", { name: "Neue Sitzung" });
+    expect(next).not.toHaveAttribute("aria-busy", "true");
+    fireEvent.click(next);
+    const profile = await screen.findByRole("button", { name: "Shell" });
+    expect(profile).toBeEnabled();
+    expect(spawns()).toHaveLength(1);
+    fireEvent.click(profile); fireEvent.click(profile);
+    expect(spawns()).toHaveLength(2);
+    await act(async () => { finishes[1](); });
+    expect(await screen.findByRole("tab", { name: "Shell" })).toBeVisible();
+    expect(spawns()).toHaveLength(2);
+  } finally {
+    // Settle through the public boundary even when an assertion fails.
+    await act(async () => { for (const finish of finishes) finish(); });
+  }
+}
+
+it("blocks launch across remount until the original spawn resolves", async () => {
+  await pendingLaunchAcrossRemount("resolve");
+});
+it("blocks launch across remount until the original spawn rejects", async () => {
+  await pendingLaunchAcrossRemount("reject");
+});
