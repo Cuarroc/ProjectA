@@ -1,3 +1,6 @@
+/* global window, document, localStorage, innerWidth, innerHeight, location, matchMedia */
+import process from "node:process";
+import console from "node:console";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
