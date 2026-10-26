@@ -342,6 +342,36 @@ describe("BetriebPanel", () => {
     expect(check.textContent).not.toMatch(/\d/);
   });
 
+  it("shows process CPU and free disk from the existing snapshot", async () => {
+    backend([], snapshot({ cpuPermille: 125, diskFreeBytes: 1610612736 }));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const check = section("Startprüfung");
+    expect(await within(check).findByText("12,5 %")).toBeInTheDocument();
+    expect(within(check).getByText("CPU der App, Durchschnitt seit Start")).toBeInTheDocument();
+    expect(within(check).getByText("1,5 GiB")).toBeInTheDocument();
+    expect(within(check).getByText("Freier Platz auf dem Datenträger der App-Daten")).toBeInTheDocument();
+    expect(callsOf("get_resource_snapshot")).toHaveLength(1);
+  });
+
+  it("keeps CPU and disk facts when RAM is missing and each fact stands alone", async () => {
+    backend([], snapshot({ ramTotalBytes: null, cpuPermille: 0, diskFreeBytes: null }));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const check = section("Startprüfung");
+    expect(await within(check).findByText("Arbeitsspeicher noch nicht verbunden")).toBeInTheDocument();
+    expect(within(check).getByText("0 %")).toBeInTheDocument();
+    const disk = within(check).getByText("Freier Platz auf dem Datenträger der App-Daten");
+    expect(disk.nextElementSibling).toHaveTextContent("Der Kern liefert gerade keinen Wert");
+  });
+
+  it("never turns an invalid CPU or disk reading into zero", async () => {
+    backend([], snapshot({ cpuPermille: -5, diskFreeBytes: 0 }));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const check = section("Startprüfung");
+    const cpu = await within(check).findByText("CPU der App, Durchschnitt seit Start");
+    expect(cpu.nextElementSibling).toHaveTextContent("Der Kern liefert gerade keinen Wert");
+    expect(within(check).getByText("0 GiB")).toBeInTheDocument();
+  });
+
   it("shows the RAM the frontend does get", async () => {
     backend([]);
     render(<BetriebPanel projectId="p1" profiles={profiles} />);
