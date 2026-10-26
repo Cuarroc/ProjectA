@@ -16,6 +16,7 @@ import { pathFromHash, ROUTES } from "../../shell/routes";
 import { DiagnoseSection } from "./DiagnoseSection";
 import { T } from "./texts";
 import { TresorPanel } from "./tresor/TresorPanel";
+import { WebPortControl } from "./WebPortControl";
 import { VersionUpdates } from "./VersionUpdates";
 import { VersionChangelog } from "./version/VersionChangelog";
 import "./einstellungen.css";
@@ -69,6 +70,7 @@ export function EinstellungenScreen({ path, onNavigate, onOpenClassic }: {
                   {listFeatureFlags().map((flag) => <PreviewFlagRow key={flag.id} flag={flag} />)}
                 </ul>
               </Section>
+              <Section title={T.web}><WebPortControl /></Section>
               <Section title={T.version}><VersionUpdates /><VersionChangelog /></Section>
               <Section title={T.diag} hint={T.diagHint}><DiagnoseSection /></Section>
               <Section title={T.stop} className="es-sec--stop"><p>{de["shell.estopLocation"]}</p></Section>
