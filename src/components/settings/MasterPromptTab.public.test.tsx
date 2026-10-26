@@ -15,6 +15,10 @@ it("names the master prompt preview and preserves the controlled draft", () => {
   expect(preview.querySelector("pre")?.textContent).toBe("  Regel A\n\nRegel B \n\n\n---\n\n<Aufgabe des Agenten>");
 
   const area = screen.getByRole("textbox", { name: "Globaler Masterprompt" });
+  expect(area.tagName).toBe("TEXTAREA");
+  expect(area.tabIndex).toBeGreaterThanOrEqual(0);
+  area.focus();
+  expect(area).toHaveFocus();
   expect(area).toHaveValue("  Regel A\n\nRegel B \n");
   fireEvent.change(area, { target: { value: "  neu \n" } });
   expect(setMasterPrompt).toHaveBeenCalledExactlyOnceWith("  neu \n");
@@ -30,6 +34,10 @@ it("shows the empty wording for a blank draft", () => {
 it("saves once from the keyboard-focusable button", () => {
   const { handleSaveMasterPrompt } = setup({ masterPrompt: "x" });
   const save = screen.getByRole("button", { name: "Speichern" });
+  expect(save.tagName).toBe("BUTTON");
+  expect(save).toHaveAttribute("type", "button");
+  expect(save).toBeEnabled();
+  expect(save.tabIndex).toBeGreaterThanOrEqual(0);
   save.focus();
   expect(save).toHaveFocus();
   fireEvent.click(save);
@@ -39,6 +47,10 @@ it("saves once from the keyboard-focusable button", () => {
 it.each([false, true])("delegates the switch to the parent while enabled is %s", (enabled) => {
   const { handleToggleMaster } = setup({ masterEnabled: enabled });
   const toggle = screen.getByRole("switch", { name: "Masterprompt für alle Agenten verwenden" });
+  expect(toggle.tagName).toBe("INPUT");
+  expect(toggle).toHaveAttribute("type", "checkbox");
+  expect(toggle).toBeEnabled();
+  expect(toggle.tabIndex).toBeGreaterThanOrEqual(0);
   expect(toggle).toHaveProperty("checked", enabled);
   toggle.focus();
   expect(toggle).toHaveFocus();
