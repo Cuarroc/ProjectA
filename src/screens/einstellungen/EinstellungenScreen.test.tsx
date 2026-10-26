@@ -259,10 +259,10 @@ describe("tab Allgemein", () => {
     expect(screen.getByText("Der Not-Aus befindet sich oben rechts.")).toBeVisible();
   });
 
-  it("shows the six sections", async () => {
+  it("shows the seven sections", async () => {
     show();
     const heads = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(heads).toEqual(["Darstellung", "Vorschau-Funktionen", "Version & Updates", "Diagnose", "Not-Aus", "Weitere Einstellungen"]);
+    expect(heads).toEqual(["Darstellung", "Vorschau-Funktionen", "Web-Ansicht", "Version & Updates", "Diagnose", "Not-Aus", "Weitere Einstellungen"]);
     expect(await screen.findByText("logs/projecta.log")).toBeInTheDocument();
   });
 
