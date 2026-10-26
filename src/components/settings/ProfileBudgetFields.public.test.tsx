@@ -20,10 +20,10 @@ const beta = profile("beta", "Beta");
 function setup(over: Partial<Parameters<typeof ProfileBudgetFields>[0]> = {}) {
   const onChange = vi.fn();
   const onSave = vi.fn();
-  render(
+  const { rerender } = render(
     <ProfileBudgetFields profile={alpha} budget={{ five: "", seven: "0" }} busy={false} onChange={onChange} onSave={onSave} {...over} />,
   );
-  return { onChange, onSave };
+  return { onChange, onSave, rerender };
 }
 
 describe("ProfileBudgetFields (public)", () => {
@@ -59,19 +59,38 @@ describe("ProfileBudgetFields (public)", () => {
   });
 
   it("saves the original profile object once per click when idle", () => {
-    const { onSave } = setup();
+    const { onChange, onSave, rerender } = setup();
     const save = screen.getByRole("button", { name: "Budget" });
+    expect(save.tagName).toBe("BUTTON");
+    expect(save).toHaveAttribute("type", "button");
     expect(save).toBeEnabled();
     expect(save).not.toHaveAttribute("aria-busy");
     fireEvent.click(save);
     expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledWith(alpha);
     expect(onSave.mock.calls[0][0]).toBe(alpha);
+    rerender(
+      <ProfileBudgetFields profile={alpha} budget={{ five: "", seven: "0" }} busy={true} onChange={onChange} onSave={onSave} />,
+    );
+    const busySave = screen.getByRole("button", { name: "Budget" });
+    expect(busySave).toBeDisabled();
+    expect(busySave).toHaveAttribute("aria-busy", "true");
+    fireEvent.click(busySave);
+    fireEvent.click(busySave);
+    expect(onSave).toHaveBeenCalledTimes(1);
   });
 
   it("keeps both fields and the save button focusable while idle", () => {
     const idle = setup();
-    const focusable = [screen.getByLabelText("5 h"), screen.getByLabelText("7 T."), screen.getByRole("button", { name: "Budget" })];
+    const fields = [screen.getByLabelText("5 h"), screen.getByLabelText("7 T.")];
+    for (const field of fields) {
+      expect(field.tagName).toBe("INPUT");
+      expect(field).toHaveProperty("type", "text");
+    }
+    const focusable = [...fields, screen.getByRole("button", { name: "Budget" })];
     for (const el of focusable) {
+      expect(el).toBeEnabled();
+      expect(el.tabIndex).toBeGreaterThanOrEqual(0);
       el.focus();
       expect(el).toHaveFocus();
     }
