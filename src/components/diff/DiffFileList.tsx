@@ -1,4 +1,5 @@
 import { Button } from "../../design/controls/Button";
+import "../../design/controls/controls.css";
 import { fileLabel } from "../../lib/diff";
 import { classifyDiff, reviewClassInfo } from "../../lib/reviewClass";
 import type { DiffFile } from "../../types";
@@ -13,7 +14,7 @@ interface DiffFileListProps {
 
 export function DiffFileList({ files, selectedPath, commentCounts, onSelect }: DiffFileListProps) {
   return (
-    <aside className="diff-files" role="group" aria-label={fileTexts.group}>
+    <div className="diff-files" role="group" aria-label={fileTexts.group}>
       {files.map((file) => {
         const active = selectedPath === file.path;
         const notes = commentCounts.get(file.path) ?? 0;
@@ -24,13 +25,12 @@ export function DiffFileList({ files, selectedPath, commentCounts, onSelect }: D
             key={file.path}
             variant="ghost"
             className={`diff-file${active ? " diff-file-active" : ""}`}
-            style={{ height: "auto", whiteSpace: "normal", flexShrink: 0 }}
             title={label}
             aria-label={fileTexts.file(label)}
             aria-current={active ? "true" : undefined}
             onClick={() => onSelect(file.path)}
           >
-            <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, minWidth: 0 }}>
+            <span className="diff-file-content">
               <span className="diff-file-path">{label}</span>
               <span className="diff-file-counts">
                 <span className="diff-file-class" title={fileTexts.review(info.label, info.explanation)}>{info.label}</span>
@@ -43,6 +43,6 @@ export function DiffFileList({ files, selectedPath, commentCounts, onSelect }: D
           </Button>
         );
       })}
-    </aside>
+    </div>
   );
 }
