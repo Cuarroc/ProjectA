@@ -62,6 +62,29 @@ describe("sessionReducer", () => {
     expect(after.activeSessionId).toBe("x");
   });
 
+  it("clears the shared restore selector only when an ad hoc tab is inserted", () => {
+    const before = sessionReducer(stateOf(["a"], "a"), { type: "showRestore", workerId: "saved" });
+    const after = sessionReducer(before, { type: "openAdHoc", session: tab("new") });
+    expect(before.restoreWorkerId).toBe("saved");
+    expect(after.restoreWorkerId).toBeNull();
+    expect(ids(after)).toEqual(["a", "new"]);
+    expect(after.activeSessionId).toBe("new");
+    expect(after.sessions[0]).toBe(before.sessions[0]);
+  });
+
+  it("duplicate openAdHoc keeps restoreWorkerId", () => {
+    const before = sessionReducer(stateOf(["a", "b"], "b"), {
+      type: "showRestore",
+      workerId: "saved-worker",
+    });
+    const after = sessionReducer(before, { type: "openAdHoc", session: tab("b") });
+    expect(after.restoreWorkerId).toBe("saved-worker");
+    expect(ids(after)).toEqual(["a", "b"]);
+    expect(after.sessions).toHaveLength(2);
+    expect(after.sessions).toBe(before.sessions);
+    expect(after.activeSessionId).toBe("b");
+  });
+
   it("select of the other split column only swaps focus", () => {
     const after = sessionReducer(stateOf(["a", "b", "c"], "a", "c"), {
       type: "select",

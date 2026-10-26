@@ -16,6 +16,7 @@ it("names the master prompt preview and preserves the controlled draft", () => {
 
   const area = screen.getByRole("textbox", { name: "Globaler Masterprompt" });
   expect(area.tagName).toBe("TEXTAREA");
+  expect(area).toBeEnabled();
   expect(area.tabIndex).toBeGreaterThanOrEqual(0);
   area.focus();
   expect(area).toHaveFocus();
