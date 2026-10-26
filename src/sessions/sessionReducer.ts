@@ -104,10 +104,16 @@ function add(state: SessionState, session: TerminalSession): SessionState {
 export function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
     // Ported from App.tsx openWorkerTab, state part (S01d-1): append when new,
-    // focus, leave the restore view. An ad-hoc spawn leaves the restore view.
+    // focus, leave the restore view.
     case "openWorker":
-    case "openAdHoc":
       return { ...focus(add(state, action.session), action.session.sessionId), restoreWorkerId: null };
+    case "openAdHoc": {
+      const added = add(state, action.session);
+      return {
+        ...focus(added, action.session.sessionId),
+        restoreWorkerId: added === state ? state.restoreWorkerId : null,
+      };
+    }
     case "select":
       return focus(state, action.sessionId);
     case "drop":

@@ -772,7 +772,7 @@ Stand 15.10.2026, 19:44 UTC: `gh pr list --state all --search "KR-"`; „geplant
 | 2 | 07d / 07e | Kommentare / Disposition portieren | B | 07c | geplant |
 | 2 | 07f / 07g | Reviewurteil / Setup-Vertrauen erhalten | A | 07e | geplant |
 | 2 | 07h / 07i | Tests auslösen / Merge bestätigen | A | 07f, 07g | geplant |
-| 2 | 08c / 08d | Terminalsitzungen steuern / Ansichten teilen | A | 08a, 08b | KR-08c-1/#1906: sichtbaren Live-Tab schließen; KR-08c-2a + KR-08c-2b-LIVE nach Merge: expliziter EMPTY+LIVE-Profilstart, gemeinsame Startsperre und wahrheitsgemäße Anfragefehler; begrenzte Mock-/Browserbelege. RESTORE-Start (08c), Split (08d), Root-Reviews/Abnahme, native V2-ACC1b/UAT, installiert/wirksam, Glass- und Elternabnahme offen |
+| 2 | 08c / 08d | Terminalsitzungen steuern / Ansichten teilen | A | 08a, 08b | KR-08c-1/#1906: sichtbaren Live-Tab schließen; nach den jeweiligen Merges von KR-08c-2a/#1908, LIVE/#1915 und RESTORE/#1924 ist der explizite EMPTY+LIVE+RESTORE-Profilstart geliefert (#1924 derzeit Draft); gemeinsame Startsperre, Anfragefehler, Restore-Auswahl und Vorrang eines neueren expliziten Neustarts durch begrenzte Browser-/Tauri-Mocks belegt. Split (08d), Root-Reviews/Abnahme, D1, beendete Tabs, native V2-ACC1b/UAT, installiert/wirksam, Glass- und Elternabnahme offen |
 | 2 | 09a' | Eine Schriftgröße einstellen | B | 01a | geplant |
 | 2 | 09b | Port, Digest und Hängerschwelle portieren | B | 01a | geplant |
 | 2 | 09c | Umgebungsisolation und Produktmodus erhalten | A | 09a' | geplant |
