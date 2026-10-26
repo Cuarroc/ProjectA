@@ -63,7 +63,7 @@ export const DEFAULT_PATH = "/leitstand";
  * V2-SCOPE-1: the areas of the shell, Leitstand and Betrieb (NAV-2a), the one list to edit. Every other area stays
  * hidden until the "weitere Bereiche" flag is on; Ersteinrichtung stays reachable via `/start`.
  */
-export const SCOPE_ROUTE_IDS: readonly string[] = ["leitstand", "betrieb", "einstellungen", "start"];
+export const SCOPE_ROUTE_IDS: readonly string[] = ["leitstand", "beweise", "betrieb", "einstellungen", "start"];
 
 const inScope = (route: ShellRoute) => SCOPE_ROUTE_IDS.includes(route.id) || isFeatureFlagEnabled("weitere_bereiche");
 

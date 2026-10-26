@@ -93,6 +93,7 @@ mod proc;
 #[allow(dead_code)] // Native parent activation awaits shared session-registry integration.
 mod process_capture;
 mod profiles;
+mod project_settings_cmds;
 mod providers;
 mod pty;
 mod questions;
@@ -124,6 +125,7 @@ mod workers;
 mod worktree;
 
 use diagnosis_cmds::*;
+use project_settings_cmds::*;
 use settings_cmds::*;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -145,7 +147,6 @@ use profiles::AgentProfile;
 use providers::{KeyVault, ProviderOverview, SystemProbe};
 use pty::{PtyManager, SubmitGuardEvent};
 use quota::{QuotaSink, QuotaStateRow, QuotaTracker};
-use skills::SkillPack;
 use status::{BoardState, StatusEngine, StatusPayload, StatusSink, WorkerBoardState};
 use store::team_assignments::{AssignmentRequest, TeamAssignment};
 use store::{
@@ -885,90 +886,6 @@ async fn link_github_remote(
     tauri::async_runtime::spawn_blocking(move || gh::link_github_remote(&project.repo_path, &url))
         .await
         .map_err(|e| format!("the github link did not finish: {e}"))?
-}
-
-/// The skill packs bundled with this build, including their display metadata.
-#[tauri::command]
-fn list_skill_packs(app: AppHandle) -> Result<Vec<SkillPack>, String> {
-    skills::list_packs(&skills::bundled_skills_dir(&app)?)
-}
-
-/// Persist a project's skill-pack selection. An empty selection deliberately
-/// means the default: all packs currently bundled with ProjectA.
-#[tauri::command]
-async fn set_project_skill_packs(
-    store: State<'_, Store>,
-    project_id: String,
-    packs: Vec<String>,
-) -> Result<(), String> {
-    store.set_project_skill_packs(&project_id, &packs).await
-}
-
-/// Resolve the project's selection against this build's bundled packs. This
-/// makes a NULL/empty database value useful to the frontend: it receives the
-/// concrete default-all list rather than having to reproduce that policy.
-#[tauri::command]
-async fn get_project_skill_packs(
-    app: AppHandle,
-    store: State<'_, Store>,
-    project_id: String,
-) -> Result<Vec<String>, String> {
-    let available = skills::pack_ids(&skills::bundled_skills_dir(&app)?)?;
-    let selected = store.get_project_skill_packs(&project_id).await?;
-    Ok(skills::resolve_enabled(&available, selected.as_deref()))
-}
-
-/// The Markdown content of the project's landing page, or `None` when nobody
-/// has written one yet.
-#[tauri::command]
-async fn get_landing_page(
-    store: State<'_, Store>,
-    project_id: String,
-) -> Result<Option<String>, String> {
-    store.get_landing_page(&project_id).await
-}
-
-/// Store (or with `markdown: null`, clear) the project's landing page content.
-#[tauri::command]
-async fn set_landing_page(
-    store: State<'_, Store>,
-    project_id: String,
-    markdown: Option<String>,
-) -> Result<(), String> {
-    store
-        .set_landing_page(&project_id, markdown.as_deref())
-        .await
-}
-
-// -- dispatcher (Phase 9) --------------------------------------------------
-
-/// Store (or with `None`, clear) the cap on this project's concurrently
-/// running employees. Clearing it hands the project back to the dispatcher's
-/// own default; the change takes effect on the next sweep, without a restart.
-#[tauri::command]
-async fn set_project_max_workers(
-    store: State<'_, Store>,
-    project_id: String,
-    max_workers: Option<i64>,
-) -> Result<(), String> {
-    store
-        .set_project_max_workers(&project_id, max_workers)
-        .await
-}
-
-// -- test gate (Phase 12) --------------------------------------------------
-
-/// Store (or with `None`, clear) the shell command the test gate runs for this
-/// project. Clearing it switches the gate off for every worker at once.
-#[tauri::command]
-async fn set_project_test_command(
-    store: State<'_, Store>,
-    project_id: String,
-    command: Option<String>,
-) -> Result<(), String> {
-    store
-        .set_project_test_command(&project_id, command.as_deref())
-        .await
 }
 
 /// Run the project's test command in this worker's worktree, now, and return
@@ -1891,6 +1808,28 @@ fn parse_stats_range(range: Option<&str>) -> Result<stats::StatsRange, String> {
         Some(name) => stats::StatsRange::parse(name)
             .ok_or_else(|| format!("unknown range: {name} (today, week, month, all, 7d or 30d)")),
     }
+}
+
+#[tauri::command]
+async fn get_development_records(
+    store: State<'_, Store>,
+    project_id: String,
+) -> Result<Value, String> {
+    read_development_records(&store, &project_id).await
+}
+
+pub(crate) async fn read_development_records(
+    store: &Store,
+    project_id: &str,
+) -> Result<Value, String> {
+    if project_id.trim().is_empty() {
+        return Err("projectId is required".into());
+    }
+    store
+        .get_project(project_id)
+        .await?
+        .ok_or_else(|| format!("{}project: {project_id}", workers::ERR_UNKNOWN))?;
+    store.development_records_snapshot(project_id).await
 }
 
 /// F5 baseline: CPU/RAM/disk plus the OmniRoute token totals. No ceilings.
@@ -4014,6 +3953,7 @@ fn main() {
             get_activity,
             get_omniroute_usage,
             get_resource_snapshot,
+            get_development_records,
             delete_session_buffers,
             get_log_path,
             get_panic_notice,

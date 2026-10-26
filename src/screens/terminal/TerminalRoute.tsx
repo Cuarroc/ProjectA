@@ -64,8 +64,10 @@ export default function TerminalRoute() {
     return () => { request.current = Symbol(); };
   }, [hash, enterWorker]);
   const launchSessions = useRef<Set<string> | null>(null);
+  const launchRestart = useRef<{ sessionId: string | null } | null>(null);
   const [launchPending, setLaunchPending] = useState(false);
   const trackLaunch = () => {
+    launchRestart.current = null;
     launchSessions.current = new Set(sessions.map((session) => session.sessionId));
     setLaunchPending(true);
     return () => setLaunchPending(false);
@@ -79,12 +81,16 @@ export default function TerminalRoute() {
     }
     launchSessions.current = null;
     // An explicit restart owns its newer restore route and must finish unchanged.
+    if (launchRestart.current) {
+      if (launchRestart.current.sessionId) select(launchRestart.current.sessionId);
+      return;
+    }
     if (restarting) return;
     // Insertion precedes exit subscription settlement; fence the old worker lookup now.
     request.current = Symbol(); setOpening(false); setError(null); setRestore(null);
     window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
     setHash(window.location.hash);
-  }, [sessions, launchPending, restarting]);
+  }, [sessions, launchPending, restarting, select]);
   const fonts = loadFontSettings();
   const active = sessions.find((session) => session.sessionId === activeSessionId) ?? sessions[0];
   return (
@@ -121,7 +127,7 @@ export default function TerminalRoute() {
             window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
             setHash(window.location.hash);
           }}>{de["terminal.closeTab"]}</Button> : null}
-          {!restore && active && !active.exited && !opening && !restarting && !error ? <TerminalLauncher onLaunch={trackLaunch} /> : null}
+          {(restore || (active && !active.exited)) && !opening && !restarting && !error ? <TerminalLauncher onLaunch={trackLaunch} /> : null}
         </div>
         {sessions.map((session) => (
           <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId}
@@ -134,9 +140,14 @@ export default function TerminalRoute() {
         action={{ label: de["leitstand.tab.classic"], onClick: () => { window.location.hash = "#/leitstand/klassisch"; } }} /><TerminalLauncher onLaunch={trackLaunch} /></div>}
       {restore ? <TabPanel idBase="terminal" id={`restore:${restore.id}`} active><SessionRestorePanel key={restore.id} worker={restore} busy={restarting} onRespawn={() => {
         const token = request.current;
+        const owner = { sessionId: null as string | null };
+        if (launchSessions.current) launchRestart.current = owner;
         setRestarting(true); setError(null);
         void Promise.all([respawnWorker(restore.id), loadProfiles()]).then(([worker, profiles]) => {
-          if (request.current === token) enterWorker(worker, profiles);
+          if (request.current === token) {
+            if (worker.status === "running") owner.sessionId = worker.sessionId;
+            enterWorker(worker, profiles);
+          }
         }).catch((cause) => { if (request.current === token) setError(describeError(cause)); })
           .finally(() => { if (request.current === token) setRestarting(false); });
       }} /></TabPanel> : null}

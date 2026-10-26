@@ -467,6 +467,18 @@ const READ_RESPONSES: Record<string, unknown> = {
   get_agent_env_isolation: "allowlist",
   get_budgets: [],
   get_development_plan: STUB_PLAN,
+  // Synthetic browser data only; this is not native evidence.
+  get_development_records: {
+    apiVersion: 1,
+    executionEnabled: false,
+    sourceTimestamp: 0,
+    approvalAuthority: {
+      state: "unavailable",
+      detail: "Synthetic browser fixture without native evidence",
+      reviewerPrincipal: "launch-route-receipt",
+    },
+    runs: [],
+  },
   get_digest: null,
   get_digest_enabled: true,
   get_emergency_stop: false,
