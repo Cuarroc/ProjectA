@@ -26,10 +26,16 @@ describe("MaintenancePanel", () => {
     expect(ipc.getMaintenance).toHaveBeenCalledOnce();
   });
 
-  it("styles the start control as a ghost button", async () => {
+  it("keeps the start control disabled until the state is read, then focusable", async () => {
+    let read!: (value: boolean) => void;
+    ipc.getMaintenance.mockReturnValue(new Promise<boolean>((resolve) => { read = resolve; }));
     render(<MaintenancePanel />);
-    const start = await screen.findByRole("button", { name: "Wartungsmodus starten" });
-    expect(start.className.split(/\s+/)).toContain("button-ghost");
+    const start = screen.getByRole("button", { name: "Wartungsmodus starten" });
+    expect(start).toBeDisabled();
+    read(false);
+    await waitFor(() => expect(start).toBeEnabled());
+    start.focus();
+    expect(start).toHaveFocus();
   });
 
   it("enters maintenance only after confirmation and shows the badge", async () => {
