@@ -31,7 +31,7 @@ function ProjectProof({ projectId }: { projectId: string }) {
         ? <HonestState kind="offline" title={T.failed} />
         : cards.length === 0 ? <HonestState kind="empty" title={T.empty} /> : null}
     </div>
-    {cards && cards.length > 0 && <Select aria-label={T.worker} value={selected} onChange={(event) => setSelected(event.target.value)}>
+    {cards && cards.length > 0 && <Select name="beweise-worker" aria-label={T.worker} value={selected} onChange={(event) => setSelected(event.target.value)}>
       <option value="">{T.worker}</option>
       {cards.map(({ worker }) => <option key={worker.id} value={worker.id}>{worker.task}</option>)}
     </Select>}
