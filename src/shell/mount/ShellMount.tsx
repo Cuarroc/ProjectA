@@ -68,8 +68,10 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const openClassicSettings = useCallback(() => void (window.location.hash = `#${SETTINGS_CLASSIC_PATH}`), []);
 
   useFeatureFlag("weitere_bereiche"); // re-render so a hidden area follows the flag
-  // A hidden area keeps its URL and shows the Shell notice: no fresh or legacy view opens, the legacy app stays mounted on the Leitstand.
+  // A hidden area keeps its URL and shows the Shell notice: no fresh or legacy view opens, the legacy app stays mounted.
   const hidden = isHidden(path);
+  const shown = useRef(hidden ? DEFAULT_PATH : path);
+  if (!hidden) shown.current = path; // the legacy app keeps its last visible route, so it does not write another hash
   const steuerung = isNewSteuerung(path) && !hidden;
   const start = isStart(path);
   const betrieb = isBetrieb(path);
@@ -96,7 +98,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {gallery ? <Suspense fallback={null}><Gallery /></Suspense> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
-                {children({ routePath: hidden ? DEFAULT_PATH : path, onGoalRoute })}
+                {children({ routePath: shown.current, onGoalRoute })}
               </div>
             </>,
             host,

@@ -93,3 +93,11 @@ it("leaves visible and unknown and explicitly switched-off routes as they are", 
   expect(title()).toBe("Team · Personas");
   expect(screen.getByText(NOTICE)).toBeVisible();
 });
+
+it("keeps a hidden deep link after the legacy app has left another goal", async () => {
+  await mountAt("#/einstellungen");
+  await goTo("#/beweise/diff");
+  expect(window.location.hash).toBe("#/beweise/diff");
+  expect(title()).toBe("Beweise · Diff");
+  expect(screen.getByText(NOTICE)).toBeVisible();
+});
