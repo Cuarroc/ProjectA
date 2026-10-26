@@ -1,4 +1,12 @@
+import "../../design/controls/controls.css";
+import "../../design/forms/forms.css";
+import "../../design/glass.css";
+import "../../design/inputs/inputs.css";
+import { Button } from "../../design/controls/Button";
+import { Field } from "../../design/forms/Field";
+import { Input } from "../../design/inputs/Input";
 import type { AgentProfile } from "../../types";
+import { T } from "./profilebudget/texts";
 
 /**
  * State, validation and saving stay in `SettingsView`; this block only renders
@@ -20,33 +28,36 @@ export default function ProfileBudgetFields({
   onSave,
 }: ProfileBudgetFieldsProps) {
   return (
-    <div className="profile-budget">
-      <label htmlFor={`budget-5h-${profile.id}`}>5 h</label>
-      <input
-        id={`budget-5h-${profile.id}`}
-        className="field profile-budget-input"
-        inputMode="numeric"
-        placeholder="—"
-        value={budget.five}
-        onChange={(event) => onChange(profile.id, { five: event.target.value })}
-      />
-      <label htmlFor={`budget-7d-${profile.id}`}>7 T.</label>
-      <input
-        id={`budget-7d-${profile.id}`}
-        className="field profile-budget-input"
-        inputMode="numeric"
-        placeholder="—"
-        value={budget.seven}
-        onChange={(event) => onChange(profile.id, { seven: event.target.value })}
-      />
-      <button
-        type="button"
-        className="button-primary"
-        disabled={busy}
-        onClick={() => onSave(profile)}
-      >
-        {busy ? "…" : "Budget"}
-      </button>
+    <div className="profile-budget" role="group" aria-label={T.group(profile.name)}>
+      <Field label={T.five}>
+        {(control) => (
+          <Input
+            {...control}
+            compact
+            className="profile-budget-input"
+            inputMode="numeric"
+            placeholder={T.empty}
+            value={budget.five}
+            onChange={(event) => onChange(profile.id, { five: event.target.value })}
+          />
+        )}
+      </Field>
+      <Field label={T.seven}>
+        {(control) => (
+          <Input
+            {...control}
+            compact
+            className="profile-budget-input"
+            inputMode="numeric"
+            placeholder={T.empty}
+            value={budget.seven}
+            onChange={(event) => onChange(profile.id, { seven: event.target.value })}
+          />
+        )}
+      </Field>
+      <Button variant="primary" size="sm" loading={busy} disabled={busy} onClick={() => onSave(profile)}>
+        {T.save}
+      </Button>
     </div>
   );
 }
