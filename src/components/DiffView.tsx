@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
-import { commentLineOf, fileLabel, useWorkerDiff } from "../lib/diff";
+import { commentLineOf, useWorkerDiff } from "../lib/diff";
 import { classifyDiff, reviewClassInfo } from "../lib/reviewClass";
 import {
   addDiffComment,
@@ -15,6 +15,8 @@ import {
   type ReviewDecision,
 } from "../lib/ipc";
 import type { DiffComment, DiffFile, DiffLine, SetupTrustView, WorkerReadiness } from "../types";
+
+import { DiffFileList } from "./diff/DiffFileList";
 
 interface DiffViewProps {
   workerId: string;
@@ -35,11 +37,6 @@ function statSummary(stat: string): string | null {
     .map((line) => line.trim())
     .filter((line) => line !== "");
   return lines.length === 0 ? null : lines[lines.length - 1];
-}
-
-function fileClassInfo(file: DiffFile) {
-  const cls = classifyDiff(file.oldPath ? [file.path, file.oldPath] : [file.path]);
-  return reviewClassInfo(cls ?? "unknown");
 }
 
 function lineKey(file: string, line: number): string {
@@ -153,6 +150,14 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
     refresh();
     void loadReadiness();
   }, [loadReadiness, refresh]);
+
+  const fileCommentCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const comment of comments) {
+      counts.set(comment.file, (counts.get(comment.file) ?? 0) + 1);
+    }
+    return counts;
+  }, [comments]);
 
   // Comments by the line they are pinned to, for the in-gutter markers.
   const byLine = useMemo(() => {
@@ -687,41 +692,12 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
         </div>
       ) : (
         <div className="diff-body">
-          <aside className="diff-files">
-            {files.map((file) => {
-              const active = selected?.path === file.path;
-              const notes = comments.filter((comment) => comment.file === file.path).length;
-              return (
-                <button
-                  key={file.path}
-                  type="button"
-                  className={`diff-file${active ? " diff-file-active" : ""}`}
-                  title={fileLabel(file.path, file.oldPath)}
-                  aria-label={`Datei ${fileLabel(file.path, file.oldPath)}`}
-                  aria-current={active ? "true" : undefined}
-                  onClick={() => setSelectedPath(file.path)}
-                >
-                  <span className="diff-file-path">{fileLabel(file.path, file.oldPath)}</span>
-                  <span className="diff-file-counts">
-                    <span
-                      className="diff-file-class"
-                      title={`Prüfstufe ${fileClassInfo(file).label}: ${fileClassInfo(file).explanation}`}
-                    >
-                      {fileClassInfo(file).label}
-                    </span>
-                    <span className="diff-add-count">+{file.additions}</span>
-                    <span className="diff-del-count">-{file.deletions}</span>
-                    {file.binary ? <span className="diff-file-binary">bin</span> : null}
-                    {notes > 0 ? (
-                      <span className="diff-file-notes" title={`${notes} Kommentar(e)`}>
-                        {notes}
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              );
-            })}
-          </aside>
+          <DiffFileList
+            files={files}
+            selectedPath={selected?.path ?? null}
+            commentCounts={fileCommentCounts}
+            onSelect={setSelectedPath}
+          />
 
           <div className="diff-pane" onKeyDown={onPaneKeyDown}>
             {selected === null || selected.hunks.length === 0 ? (
