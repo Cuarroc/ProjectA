@@ -7,7 +7,7 @@ import { DevNote } from "../../../design/data/DevNote";
 import { Table, type Column } from "../../../design/data/Table";
 import { Banner } from "../../../design/layout/Banner";
 import { hasProviderKey } from "../../../lib/ipc";
-import { providerKindLabel, useProviderOverview, vaultErrorText } from "../../../lib/providers";
+import { providerKindLabel, providerQuotaLabel, useProviderOverview, vaultErrorText } from "../../../lib/providers";
 import type { Provider } from "../../../types";
 import { T } from "./texts";
 import "./tresor.css";
@@ -66,6 +66,8 @@ function VaultRead({
         p.kind === "api_key" ? <KeyAccess providerId={p.id} vaultBroken={vaultError !== null} />
           : <span className="tr-access">{p.kind === "subscription" ? T.subscription : T.local}</span>,
     },
+    { key: "connection", header: T.colConnection, cell: (p) => p.connected ? T.connected : T.disconnected },
+    { key: "quota", header: T.colQuota, cell: (p) => providerQuotaLabel(p.quotaState) },
   ];
 
   if (loading) return <p className="tr-note">{T.loading}</p>;
@@ -84,7 +86,7 @@ function VaultRead({
   );
 }
 
-/** Tresor and MCP servers, read-only: shows whether a key is on file, never the key, and changes nothing. Not mounted yet. */
+/** Read-only core connection, quota and stored-key presence; never the key itself. */
 export function TresorPanel() {
   const [read, setRead] = useState(0);
   // Idle until this generation's reader reports a request. A ref, not only
