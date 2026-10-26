@@ -1,3 +1,13 @@
+    #[test]
+    fn development_records_reader_is_registered_as_read_only() {
+        let source = include_str!("main.rs").replace("\r\n", "\n");
+        let registration = source.split("tauri::generate_handler![").nth(1).unwrap();
+        let registration = registration.split("])").next().unwrap();
+        assert!(registration.lines().any(|line| line.trim() == "get_development_records,"));
+        assert!(source.contains("#[tauri::command]\nasync fn get_development_records("));
+        assert!(source.contains("store.development_records_snapshot(project_id).await"));
+    }
+
     #[tokio::test]
     async fn stalled_download_times_out_with_an_error() {
         let stalled = std::future::pending::<Result<Vec<u8>, String>>();
