@@ -56,7 +56,7 @@ function Placeholder({ path }: { path: string }) {
       ) : null}
       <h1 id="g-shell-title">{title}</h1>
       <p className="g-shell-note">{hidden ? t("shell.hidden") : found ? t("shell.notConnected") : t("shell.unknownAddress")}</p>
-      {hidden ? <a href="#/einstellungen">{t("shell.hiddenSettings")}</a> : null}
+      {hidden ? <a className="g-btn g-btn--ghost g-btn--sm" href="#/einstellungen">{t("shell.hiddenSettings")}</a> : null}
     </section>
   );
 }
