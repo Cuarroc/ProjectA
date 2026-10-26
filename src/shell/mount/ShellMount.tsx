@@ -9,6 +9,7 @@ import StartRoute from "../../screens/start/StartRoute";
 import TerminalRoute from "../../screens/terminal/TerminalRoute";
 import VerlaufRoute from "../../screens/leitstand/verlauf/VerlaufRoute";
 import BetriebRoute from "../../screens/betrieb/BetriebRoute";
+import BeweiseRoute from "../../screens/beweise/BeweiseRoute";
 import LeitstandRoute, { CLASSIC_PATH, LeitstandTabs } from "../../screens/leitstand/LeitstandRoute";
 import { EinstellungenScreen } from "../../screens/einstellungen/EinstellungenScreen";
 import { SETTINGS_CLASSIC_PATH, hasLegacyPanel, hashForGoal, isBetrieb, isGallery, isNewEinstellungen, isNewLeitstand, isNewSteuerung, isStart, isTerminal, isVerlauf, resolveAlias } from "./routing";
@@ -75,12 +76,13 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const steuerung = isNewSteuerung(path) && !hidden;
   const start = isStart(path);
   const betrieb = isBetrieb(path);
+  const beweise = path === "/beweise";
 
   const freshSettings = isNewEinstellungen(path);
   const terminal = isTerminal(path);
   const verlauf = isVerlauf(path);
   const gallery = isGallery(path);
-  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || terminal || verlauf || gallery;
+  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || beweise || terminal || verlauf || gallery;
   const legacy = hasLegacyPanel(path) && !fresh && !hidden;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
@@ -94,6 +96,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {steuerung ? <SteuerungRoute path={path} /> : null}
               {start ? <StartRoute /> : null}
               {betrieb ? <BetriebRoute /> : null}
+              {beweise ? <BeweiseRoute /> : null}
               {freshSettings ? <EinstellungenScreen path={path} onNavigate={(target) => { window.location.hash = `#${target}`; }} onOpenClassic={openClassicSettings} /> : null}
               {gallery ? <Suspense fallback={null}><Gallery /></Suspense> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>

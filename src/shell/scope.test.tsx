@@ -7,7 +7,7 @@ import { Shell } from "./Shell";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
 
-const SCOPE = ["Fabrik", "Betrieb", "Einstellungen"];
+const SCOPE = ["Fabrik", "Beweise", "Betrieb", "Einstellungen"];
 /** The palette also offers Ersteinrichtung, which has no sidebar entry but stays reachable via /start. */
 const PALETTE_AREAS = [...SCOPE, "Ersteinrichtung"];
 const mount = () => act(async () => void render(<Shell />));
@@ -30,7 +30,7 @@ describe("shell scope (V2-SCOPE-1)", () => {
     expect(hits.every((label) => PALETTE_AREAS.some((area) => label.startsWith(area)))).toBe(true);
     expect(resolveRoute("/steuerung/autonomie")?.route.id).toBe("steuerung");
     expect(resolveRoute("/beweise")?.tab?.path).toBe("/beweise");
-    expect([isHidden("/beweise/diff/"), isHidden("/leitstand"), isHidden("/start"), isHidden("/nirgends")]).toEqual([true, false, false, false]);
+    expect([isHidden("/beweise/diff/"), isHidden("/leitstand"), isHidden("/start"), isHidden("/nirgends")]).toEqual([false, false, false, false]);
     expect(resolveRoute("/start")?.route.id).toBe("start");
     expect(resolveRoute("/nirgends")).toBeNull();
   });
@@ -38,7 +38,7 @@ describe("shell scope (V2-SCOPE-1)", () => {
   it("with the scope flag off the sidebar shows Fabrik, Betrieb and Einstellungen", async () => {
     await mount();
     const links = within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getAllByRole("link");
-    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Fabrik", "#/leitstand"], ["Betrieb", "#/betrieb"], ["Einstellungen", "#/einstellungen"]]);
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Fabrik", "#/leitstand"], ["Beweise", "#/beweise"], ["Betrieb", "#/betrieb"], ["Einstellungen", "#/einstellungen"]]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
   });
 
