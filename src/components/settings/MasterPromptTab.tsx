@@ -1,3 +1,14 @@
+import { useId } from "react";
+
+import "../../design/controls/controls.css";
+import "../../design/forms/forms.css";
+import "../../design/inputs/inputs.css";
+import { Button } from "../../design/controls/Button";
+import { Field } from "../../design/forms/Field";
+import { SwitchField } from "../../design/forms/SwitchField";
+import { Textarea } from "../../design/inputs/Input";
+import { masterPromptTexts as t } from "./masterprompt/texts";
+
 /**
  * State and handlers stay in `SettingsView`; this tab only renders the
  * "Masterprompt" panel.
@@ -17,45 +28,36 @@ export default function MasterPromptTab({
   handleToggleMaster,
   handleSaveMasterPrompt,
 }: MasterPromptTabProps) {
+  const previewId = useId();
   return (
     <>
-      <label className="settings-check">
-        <input
-          type="checkbox"
-          name="master-enabled"
-          checked={masterEnabled}
-          onChange={(event) => handleToggleMaster(event.target.checked)}
-        />
-        <span>Masterprompt für alle Agenten verwenden</span>
-      </label>
+      <SwitchField name="master-enabled" label={t.enable} checked={masterEnabled} onCheckedChange={handleToggleMaster} />
 
       <div className="settings-field">
-        <label className="field-label" htmlFor="settings-masterprompt">
-          Globaler Masterprompt
-        </label>
-        <textarea
-          id="settings-masterprompt"
-          className="field field-textarea"
-          rows={10}
-          placeholder="Gemeinsame Regeln und Kontext für alle Agenten…"
-          value={masterPrompt}
-          onChange={(event) => setMasterPrompt(event.target.value)}
-        />
+        <Field label={t.label}>
+          {(control) => (
+            <Textarea
+              {...control}
+              rows={10}
+              placeholder={t.placeholder}
+              value={masterPrompt}
+              onChange={(event) => setMasterPrompt(event.target.value)}
+            />
+          )}
+        </Field>
         <div>
-          <button type="button" className="button-primary" onClick={handleSaveMasterPrompt}>
-            Speichern
-          </button>
+          <Button variant="primary" onClick={handleSaveMasterPrompt}>
+            {t.save}
+          </Button>
         </div>
       </div>
 
-      <div className="settings-field">
-        <span className="field-label">Vorschau</span>
+      <section className="settings-field" aria-labelledby={previewId}>
+        <span className="field-label" id={previewId}>{t.preview}</span>
         <pre className="masterprompt-preview">
-          {masterPrompt.trim() === ""
-            ? "(kein Masterprompt gesetzt)"
-            : `${masterPrompt}\n\n---\n\n<Aufgabe des Agenten>`}
+          {masterPrompt.trim() === "" ? t.previewEmpty : `${masterPrompt}\n\n---\n\n${t.previewTask}`}
         </pre>
-      </div>
+      </section>
     </>
   );
 }
