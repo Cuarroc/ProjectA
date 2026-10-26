@@ -959,6 +959,56 @@ it("acknowledges launch failures on reopen and clears them before a new attempt"
   }
 });
 
+it("disarms a settled launch without insertion before an unrelated public insertion", async () => {
+  workerData(); window.location.hash = "#/leitstand/terminal?worker=one";
+  const profile = { id: "unrelated", name: "Unrelated shell", command: "shell", args: [], env: {}, enabled: true, fallback: null };
+  const tasks: Array<Promise<void>> = [];
+  function PublicInsertion() {
+    const { openAdHoc } = sessionProvider.useSessions();
+    return <button onClick={() => { tasks.push(openAdHoc(profile)); }}>Open unrelated session</button>;
+  }
+  render(<sessionProvider.SessionProvider><PublicInsertion /><TerminalRoute /></sessionProvider.SessionProvider>);
+  await screen.findByRole("tab", { name: "Task one" });
+  const base = mocks.invoke.getMockImplementation()!;
+  const rejects: Array<() => void> = [], lookups: Array<() => void> = [];
+  mocks.invoke.mockImplementation((command: string, args: { profileId?: string }) => {
+    if (command === "spawn_pty") return args.profileId === "unrelated" ? Promise.resolve({ sessionId: "unrelated-pty" })
+      : new Promise((_resolve, reject) => { rejects.push(() => reject(new Error("rejected before insertion"))); });
+    if (command === "list_workers") return new Promise((resolve) => { lookups.push(() => resolve(workers)); });
+    return base(command, args);
+  });
+  let failure: unknown;
+  try {
+    const launch = screen.getByRole("button", { name: "Neue Sitzung" });
+    fireEvent.click(launch); fireEvent.click(await screen.findByRole("button", { name: "Shell" }));
+    expect(launch).toHaveAttribute("aria-busy", "true");
+    await act(async () => { rejects[0](); });
+    expect(await screen.findByRole("alert")).toHaveTextContent("rejected before insertion");
+    await waitFor(() => expect(launch).not.toHaveAttribute("aria-busy", "true"));
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task one"]);
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    fireEvent.click(launch); // Public acknowledgement of the retained request error.
+    expect(screen.queryByRole("alert")).toBeNull();
+    go("#/leitstand/terminal?worker=two");
+    expect(lookups).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Open unrelated session" }));
+    await act(async () => { await Promise.all(tasks); });
+    expect(await screen.findByRole("tab", { name: "Unrelated shell" })).toHaveAttribute("aria-selected", "true");
+    expect(window.location.hash).toBe("#/leitstand/terminal?worker=two");
+    expect(screen.queryByRole("tab", { name: "Task two" })).toBeNull();
+    await act(async () => { lookups[0](); });
+    expect(await screen.findByRole("tab", { name: "Task two" })).toHaveAttribute("aria-selected", "true");
+    expect(window.location.hash).toBe("#/leitstand/terminal?worker=two");
+    expect(mocks.invoke.mock.calls.filter(([name]) => name === "spawn_pty")).toEqual([
+      ["spawn_pty", { profileId: "shell", cols: 80, rows: 24 }],
+      ["spawn_pty", { profileId: "unrelated", cols: 80, rows: 24 }],
+    ]);
+  } catch (error) { failure = error; throw error; } finally {
+    await finishLaunchTest(failure, () => { for (const settle of [...rejects, ...lookups]) settle(); mocks.invoke.mockImplementation(base); });
+    await Promise.all(tasks);
+  }
+});
+
 it("appends an explicit live launch without replacing existing worker tabs", async () => {
   workerData(); window.location.hash = "#/leitstand/terminal?worker=one"; render(<App />);
   await screen.findByRole("tab", { name: "Task one" });
