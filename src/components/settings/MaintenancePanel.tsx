@@ -1,17 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
+import "../../design/tokens.css";
+import "../../design/controls/controls.css";
+import "../../design/layout/layout.css";
+import { Button } from "../../design/controls/Button";
+import { Sheet } from "../../design/layout/Sheet";
 import {
   describeError,
   enterMaintenance,
   getMaintenance,
   leaveMaintenance,
 } from "../../lib/ipc";
+import { T } from "./maintenance/texts";
 
 /** Wartungsmodus controls for the backup drill. Rust owns the displayed state. */
 export default function MaintenancePanel() {
   const [active, setActive] = useState<boolean | null>(null);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
+  const id = useId();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,57 +52,35 @@ export default function MaintenancePanel() {
   return (
     <div className="settings-field">
       <span className="field-label">
-        Wartungsmodus
-        {active ? <span className="settings-hint" role="status"> Aktiv</span> : null}
+        {T.label}
+        {active ? <span className="settings-hint" role="status"> {T.active}</span> : null}
       </span>
-      <p className="settings-hint">
-        Hält neue Arbeit an und sperrt Schreibzugriffe, damit ein Backup sicher ist.
-      </p>
+      <p className="settings-hint">{T.hint}</p>
       <div className="settings-port-row">
         {active === true ? (
-          <button
-            type="button"
-            className="button-ghost"
-            disabled={busy}
-            onClick={() => void change(false)}
-          >
-            Wartungsmodus beenden
-          </button>
-        ) : asking ? (
-          <>
-            <button
-              type="button"
-              className="button-danger"
-              disabled={busy}
-              onClick={() => void change(true)}
-            >
-              Ja, Wartungsmodus starten
-            </button>
-            <button
-              type="button"
-              className="button-ghost"
-              disabled={busy}
-              onClick={() => setAsking(false)}
-            >
-              Abbrechen
-            </button>
-          </>
+          <Button variant="ghost" disabled={busy} onClick={() => void change(false)}>{T.leave}</Button>
         ) : (
-          <button
-            type="button"
-            className="button-ghost"
-            disabled={busy || active === null}
-            onClick={() => setAsking(true)}
-          >
-            Wartungsmodus starten
-          </button>
+          <Button variant="ghost" disabled={busy || active === null} onClick={() => setAsking(true)}>{T.start}</Button>
         )}
       </div>
-      {asking ? (
-        <p className="settings-hint">
-          Läuft noch ein Worker, wird der Start abgelehnt. Wirklich starten?
-        </p>
-      ) : null}
+      <Sheet
+        open={asking}
+        onClose={() => { if (!busy) setAsking(false); }}
+        role="alertdialog"
+        size="sm"
+        dismissOnScrim={false}
+        aria-labelledby={`${id}-t`}
+        aria-describedby={`${id}-d`}
+      >
+        <div className="g-confirm">
+          <h2 id={`${id}-t`}>{T.title}</h2>
+          <p id={`${id}-d`}>{T.body}</p>
+          <div className="g-confirm__actions">
+            <Button disabled={busy} onClick={() => setAsking(false)}>{T.cancel}</Button>
+            <Button variant="danger" disabled={busy} onClick={() => void change(true)}>{T.confirm}</Button>
+          </div>
+        </div>
+      </Sheet>
       {error ? <span className="settings-error" role="alert">{error}</span> : null}
     </div>
   );
