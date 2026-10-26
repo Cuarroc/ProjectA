@@ -331,6 +331,7 @@ describe("BetriebPanel", () => {
     expect(await within(section("Warteschlange")).findByText("Warteschlange nicht lesbar")).toBeInTheDocument();
     expect(screen.queryByText("Warteschlange leer")).toBeNull();
     expect(screen.queryByRole("textbox", { name: F.task })).toBeNull();
+    expect(await within(section("Startprüfung")).findAllByText("Der Kern liefert gerade keinen Wert")).toHaveLength(2);
   });
 
   it("shows a missing RAM fact as an honest state without any number", async () => {
@@ -340,6 +341,36 @@ describe("BetriebPanel", () => {
     expect(await within(check).findByText("Arbeitsspeicher noch nicht verbunden")).toBeInTheDocument();
     expect(within(check).getByText("Freie Worker-Slots noch nicht verbunden")).toBeInTheDocument();
     expect(check.textContent).not.toMatch(/\d/);
+  });
+
+  it("shows process CPU and free disk from the existing snapshot", async () => {
+    backend([], snapshot({ cpuPermille: 125, diskFreeBytes: 1610612736 }));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const check = section("Startprüfung");
+    expect(await within(check).findByText("12,5 %")).toBeInTheDocument();
+    expect(within(check).getByText("CPU der App, Durchschnitt seit Start")).toBeInTheDocument();
+    expect(within(check).getByText("1,5 GiB")).toBeInTheDocument();
+    expect(within(check).getByText("Freier Platz auf dem Datenträger der App-Daten")).toBeInTheDocument();
+    expect(callsOf("get_resource_snapshot")).toHaveLength(1);
+  });
+
+  it("keeps CPU and disk facts when RAM is missing and each fact stands alone", async () => {
+    backend([], snapshot({ ramTotalBytes: null, cpuPermille: 125, diskFreeBytes: 1610612736 }));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const check = section("Startprüfung");
+    expect(await within(check).findByText("Arbeitsspeicher noch nicht verbunden")).toBeInTheDocument();
+    expect(within(check).getByText("12,5 %")).toBeInTheDocument();
+    const disk = within(check).getByText("Freier Platz auf dem Datenträger der App-Daten");
+    expect(disk.nextElementSibling).toHaveTextContent("1,5 GiB");
+  });
+
+  it.each([[-5, 0, "CPU der App, Durchschnitt seit Start", "0 GiB"], [0, -5, "Freier Platz auf dem Datenträger der App-Daten", "0 %"]])("never turns an invalid CPU or disk reading into zero", async (cpuPermille, diskFreeBytes, unknownLabel, zero) => {
+    backend([], snapshot({ cpuPermille, diskFreeBytes }));
+    render(<BetriebPanel projectId="p1" profiles={profiles} />);
+    const check = section("Startprüfung");
+    const cpu = await within(check).findByText(unknownLabel);
+    expect(cpu.nextElementSibling).toHaveTextContent("Der Kern liefert gerade keinen Wert");
+    expect(within(check).getByText(zero)).toBeInTheDocument();
   });
 
   it("shows the RAM the frontend does get", async () => {

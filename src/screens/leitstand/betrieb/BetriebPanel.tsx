@@ -30,6 +30,9 @@ const STATUS: Record<QueueEntryStatus, { form: StateForm; label?: string }> = {
 };
 
 const gb = (bytes: number) => T.gigabytes((bytes / 1024 ** 3).toLocaleString("de-DE", { maximumFractionDigits: 1 }));
+const de = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+// A missing, non-finite or negative reading is unknown, never 0; a real 0 stays 0.
+const known = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
 const POLL_MS = 10_000;
 
 /** Betrieb: queue actions, start check and watchdog; dispatch remains with the backend. */
@@ -90,6 +93,12 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   const ram = resources?.ramProcessBytes != null && resources.ramTotalBytes != null
     ? { used: resources.ramProcessBytes, total: resources.ramTotalBytes }
     : null;
+  const cpu = resources?.cpuPermille;
+  const free = resources?.diskFreeBytes;
+  const facts = [
+    { label: T.cpuSinceStart, value: known(cpu) ? T.percent(de(cpu / 10)) : T.factUnknown },
+    { label: T.diskFree, value: known(free) ? T.gibibytes(de(free / 1024 ** 3)) : T.factUnknown },
+  ];
 
   return (
     <div className="bt-panel">
@@ -116,6 +125,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
         ) : (
           <HonestState kind="offline" title={T.ramOffline} hint={T.ramHint} />
         )}
+        {resources !== undefined && <KeyValue box items={facts} />}
       </section>
       <section className="g-glass bt-card" aria-label={T.watchdog}>
         <h2 className="bt-h">{T.watchdog}</h2>
