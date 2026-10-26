@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setFeatureFlagEnabled } from "../flags/featureFlags";
-import { AREAS, resolveRoute } from "./routes";
+import { AREAS, isHidden, resolveRoute } from "./routes";
 import { Shell } from "./Shell";
 
 vi.mock("../lib/ipc", () => ({ getEmergencyStop: vi.fn().mockResolvedValue(false), setEmergencyStop: vi.fn(), getQuotaState: vi.fn().mockResolvedValue([]), getProviderOverview: vi.fn().mockResolvedValue([]), describeError: String }));
@@ -22,14 +22,15 @@ beforeEach(() => { localStorage.clear(); window.location.hash = ""; setFeatureFl
 afterEach(cleanup);
 
 describe("shell scope (V2-SCOPE-1)", () => {
-  it("with D1 on and the scope flag off the sidebar and palette omit non-shell areas and resolveRoute lands on /leitstand", async () => {
+  it("with D1 on and the scope flag off the sidebar and palette omit non-shell areas and resolveRoute keeps the hidden route", async () => {
     await mount();
     expect(sidebar()).toEqual(SCOPE);
     const hits = palette();
     expect(hits.length).toBeGreaterThan(0);
     expect(hits.every((label) => PALETTE_AREAS.some((area) => label.startsWith(area)))).toBe(true);
-    expect(resolveRoute("/steuerung/autonomie")?.route.id).toBe("leitstand");
-    expect(resolveRoute("/beweise")?.tab?.path).toBe("/leitstand");
+    expect(resolveRoute("/steuerung/autonomie")?.route.id).toBe("steuerung");
+    expect(resolveRoute("/beweise")?.tab?.path).toBe("/beweise");
+    expect([isHidden("/beweise/diff/"), isHidden("/leitstand"), isHidden("/start"), isHidden("/nirgends")]).toEqual([true, false, false, false]);
     expect(resolveRoute("/start")?.route.id).toBe("start");
     expect(resolveRoute("/nirgends")).toBeNull();
   });
@@ -41,10 +42,14 @@ describe("shell scope (V2-SCOPE-1)", () => {
     expect(links[0]).toHaveAttribute("aria-current", "page");
   });
 
-  it("with the scope flag off a hidden hash is replaced by /leitstand while /start stays", async () => {
+  it("with the scope flag off a hidden hash keeps its URL with a notice and settings link while /start stays", async () => {
     window.location.hash = "#/team/personas";
     await mount();
-    expect(window.location.hash).toBe("#/leitstand");
+    expect(window.location.hash).toBe("#/team/personas");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Team · Personas");
+    expect(screen.getByText("Dieser Bereich ist noch nicht verbunden und ausgeblendet.")).toBeVisible();
+    expect(screen.getByRole("link", { name: /Weitere Bereiche/ })).toHaveAttribute("href", "#/einstellungen");
+    expect(screen.queryByRole("link", { name: "Betrieb", current: "page" })).toBeNull();
     await go("#/start");
     expect(window.location.hash).toBe("#/start");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Ersteinrichtung");
