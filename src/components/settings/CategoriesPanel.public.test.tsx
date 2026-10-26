@@ -40,6 +40,17 @@ describe("CategoriesPanel public surface", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Lernen konnte nicht gespeichert werden.");
   });
 
+  it("keeps the visible switch words short while the accessible names stay unique", () => {
+    setup();
+    for (const [name, word] of [
+      ["Aktiv für Worker", "Aktiv"],
+      ["Lernen für Worker", "Lernen"],
+    ]) {
+      const text = screen.getByRole("switch", { name }).closest("label")!.querySelector(".g-swf__text");
+      expect(text).toHaveTextContent(new RegExp(`^${word}$`));
+    }
+  });
+
   it("shows no alert without an error", () => {
     setup();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

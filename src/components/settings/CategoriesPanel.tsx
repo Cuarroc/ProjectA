@@ -78,7 +78,8 @@ export default function CategoriesPanel({
                   <SwitchField
                     className="category-toggle"
                     name={`category-active-${category.id}`}
-                    label={T.active(name)}
+                    label={T.activeWord}
+                    aria-label={T.active(name)}
                     checked={category.active}
                     onCheckedChange={(active) => handleCategoryChange(category.id, { active })}
                   />
@@ -89,7 +90,8 @@ export default function CategoriesPanel({
                   <SwitchField
                     className="category-toggle category-learning"
                     name={`category-learning-${category.id}`}
-                    label={T.learning(name)}
+                    label={T.learningWord}
+                    aria-label={T.learning(name)}
                     checked={learning[category.id] ?? true}
                     onCheckedChange={(enabled) => handleToggleLearning(category.id, enabled)}
                   />

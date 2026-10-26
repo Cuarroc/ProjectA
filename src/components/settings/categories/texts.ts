@@ -12,7 +12,9 @@ export const T = {
   historical: "Historisch",
   historicalName: "Queen historisch",
   profilePlaceholder: "Default Profile …",
-  // The name repeats the category so every switch and select is unique on the page.
+  // Short visible switch words keep the description column wide; the aria-labels below repeat the category so every switch and select is unique on the page.
+  activeWord: "Aktiv",
+  learningWord: "Lernen",
   active: (name: string) => `Aktiv für ${name}`,
   learning: (name: string) => `Lernen für ${name}`,
   profile: (name: string) => `Default Profile für ${name}`,
