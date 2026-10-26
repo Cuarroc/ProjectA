@@ -80,7 +80,7 @@ it("keeps a hidden deep link and shows its honest settings recovery", async () =
   expect(title()).toBe("Wissen");
 });
 
-it("leaves visible, unknown and explicitly switched-off routes as they are", async () => {
+it("leaves visible and unknown and explicitly switched-off routes as they are", async () => {
   await mountAt("#/nirgends");
   expect(window.location.hash).toBe("#/nirgends");
   expect(screen.getByText("Diese Adresse gibt es nicht.")).toBeVisible();

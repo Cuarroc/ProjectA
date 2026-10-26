@@ -89,10 +89,8 @@ export function isHidden(path: string): boolean {
   return found !== null && !inScope(found.route);
 }
 
-/** Like `lookup`, but a hidden area resolves to the Leitstand; null = unknown. */
-export function resolveRoute(path: string): ResolvedRoute | null {
-  return lookup(isHidden(path) ? DEFAULT_PATH : path);
-}
+/** The known route behind a path, hidden or not (a hidden one keeps its URL and shows a notice); null = unknown. */
+export const resolveRoute = lookup;
 
 /** `#/beweise/diff` to `/beweise/diff`. A query and a trailing slash are dropped; `#/` and an empty hash open the default route. */
 export function pathFromHash(hash: string): string {
