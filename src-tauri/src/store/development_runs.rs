@@ -1518,6 +1518,11 @@ fn db(label: &'static str) -> impl FnOnce(sqlx::Error) -> String {
 mod contention_tests;
 
 #[cfg(test)]
+pub(crate) async fn bridge_fixture() -> (crate::testutil::TempDir, Store, String) {
+    super::continuous::tests::store().await
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::development_policy::DevelopmentPolicy;

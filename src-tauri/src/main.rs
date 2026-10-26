@@ -1810,6 +1810,28 @@ fn parse_stats_range(range: Option<&str>) -> Result<stats::StatsRange, String> {
     }
 }
 
+#[tauri::command]
+async fn get_development_records(
+    store: State<'_, Store>,
+    project_id: String,
+) -> Result<Value, String> {
+    read_development_records(&store, &project_id).await
+}
+
+pub(crate) async fn read_development_records(
+    store: &Store,
+    project_id: &str,
+) -> Result<Value, String> {
+    if project_id.trim().is_empty() {
+        return Err("projectId is required".into());
+    }
+    store
+        .get_project(project_id)
+        .await?
+        .ok_or_else(|| format!("{}project: {project_id}", workers::ERR_UNKNOWN))?;
+    store.development_records_snapshot(project_id).await
+}
+
 /// F5 baseline: CPU/RAM/disk plus the OmniRoute token totals. No ceilings.
 #[tauri::command]
 async fn get_resource_snapshot(
@@ -3931,6 +3953,7 @@ fn main() {
             get_activity,
             get_omniroute_usage,
             get_resource_snapshot,
+            get_development_records,
             delete_session_buffers,
             get_log_path,
             get_panic_notice,
