@@ -12,6 +12,8 @@ test("live chooser stays inside viewport and clear of wrapped tabs", async () =>
     await server.listen();
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ reducedMotion: "reduce", colorScheme: "light", viewport: { width: 1100, height: 720 } });
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.addInitScript(() => {
       window.__PROJECTA_E2E_RICH__ = true;
       localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", "1");
@@ -22,7 +24,7 @@ test("live chooser stays inside viewport and clear of wrapped tabs", async () =>
     const panel = page.locator(".g-terminal-chooser");
     const tabs = page.getByRole("tablist", { name: "Terminal-Sitzungen" }).getByRole("tab");
     await expect(launch).toBeVisible();
-    await page.evaluate(() => {
+    const observeCalls = () => page.evaluate(() => {
       window.placementCalls = [];
       const original = window.__TAURI_INTERNALS__.invoke;
       window.__TAURI_INTERNALS__.invoke = (command, args, ...rest) => {
@@ -30,6 +32,7 @@ test("live chooser stays inside viewport and clear of wrapped tabs", async () =>
         return original(command, args, ...rest);
       };
     });
+    await observeCalls();
     for (let i = 0; i < 6; i++) {
       await launch.click();
       await page.getByRole("button", { name: "Claude", exact: true }).click();
@@ -46,7 +49,9 @@ test("live chooser stays inside viewport and clear of wrapped tabs", async () =>
       const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
       return {
         viewport: [innerWidth, innerHeight], route: location.hash,
-        theme: "system/light", variant: "glas", motion: "reduce", panel: rect(".g-terminal-chooser"),
+        theme: document.documentElement.dataset.theme ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "system/dark" : "system/light"),
+        variant: document.documentElement.dataset.glassVariant ?? "glas",
+        reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches, panel: rect(".g-terminal-chooser"),
         strip: rect(".g-terminal-actions"), viewer: rect('.g-terminal > [role="tabpanel"]:not([hidden])'),
         trigger: rect('.g-terminal-actions [aria-expanded]'),
         controls: [...document.querySelectorAll('.g-terminal [role="tab"], .g-terminal-actions > button')]
@@ -77,7 +82,7 @@ test("live chooser stays inside viewport and clear of wrapped tabs", async () =>
         await expect(panel).toBeVisible();
         if (action === "cancel") await panel.getByRole("button", { name: "Abbrechen" }).click();
         if (action === "escape") { await panel.getByRole("button", { name: "Claude", exact: true }).focus(); await page.keyboard.press("Escape"); }
-        if (action === "outside") await page.locator(".g-terminal .xterm").click();
+        if (action === "outside") await page.mouse.click(before.viewer.right - 8, before.viewer.bottom - 8);
         await expect(panel).toHaveCount(0);
         await settle();
         const after = await measure();
@@ -117,6 +122,32 @@ test("live chooser stays inside viewport and clear of wrapped tabs", async () =>
     await expect(tabs).toHaveCount(5);
     assert.deepEqual(await page.evaluate(() => window.placementCalls.filter(({ command }) => command === "kill_pty")),
       [{ command: "kill_pty", args: { sessionId: "ses-adhoc-2" } }]);
+    // Fresh document: worker attachment does not consume the first-spawn failure fixture.
+    await page.setViewportSize({ width: 1100, height: 720 });
+    await page.goto(`${server.resolvedUrls.local[0]}?launchFailure=1#/leitstand/terminal?worker=w1`);
+    await expect(tabs).toHaveCount(1);
+    await expect(launch).toBeVisible();
+    await observeCalls();
+    await settle();
+    const beforeError = await measure();
+    await launch.click();
+    await panel.getByRole("button", { name: "Claude", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("Explicit launch request rejected (browser fixture)");
+    await expect(launch).not.toHaveAttribute("aria-busy", "true");
+    await settle();
+    const openError = await measure();
+    assert.deepEqual(openError.viewer, beforeError.viewer);
+    assert.deepEqual(openError.resize, beforeError.resize);
+    await panel.getByRole("button", { name: "Abbrechen" }).click();
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByRole("alert")).toBeVisible();
+    await settle();
+    const closedError = await measure();
+    assert.equal(closedError.resize.length - openError.resize.length, 1);
+    console.log(JSON.stringify({ alertRow: { beforeError, openError, closedError } }));
+    await launch.click();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    assert.deepEqual(pageErrors, []);
   } finally {
     try { await browser?.close(); } finally { await server.close(); }
   }
