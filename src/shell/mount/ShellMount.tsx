@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 
 import type { AppGoal } from "../../lib/goals";
 import { Shell } from "../Shell";
-import { pathFromHash } from "../routes";
+import { useFeatureFlag } from "../../flags/useFeatureFlag";
+import { DEFAULT_PATH, isHidden, pathFromHash } from "../routes";
 import StartRoute from "../../screens/start/StartRoute";
 import TerminalRoute from "../../screens/terminal/TerminalRoute";
 import VerlaufRoute from "../../screens/leitstand/verlauf/VerlaufRoute";
@@ -66,7 +67,12 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   }, []);
   const openClassicSettings = useCallback(() => void (window.location.hash = `#${SETTINGS_CLASSIC_PATH}`), []);
 
-  const steuerung = isNewSteuerung(path);
+  useFeatureFlag("weitere_bereiche"); // re-render so a hidden area follows the flag
+  // A hidden area keeps its URL and shows the Shell notice: no fresh or legacy view opens, the legacy app stays mounted.
+  const hidden = isHidden(path);
+  const shown = useRef(hidden ? DEFAULT_PATH : path);
+  if (!hidden) shown.current = path; // the legacy app keeps its last visible route, so it does not write another hash
+  const steuerung = isNewSteuerung(path) && !hidden;
   const start = isStart(path);
   const betrieb = isBetrieb(path);
 
@@ -75,7 +81,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const verlauf = isVerlauf(path);
   const gallery = isGallery(path);
   const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || terminal || verlauf || gallery;
-  const legacy = hasLegacyPanel(path) && !fresh;
+  const legacy = hasLegacyPanel(path) && !fresh && !hidden;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
       <Shell />
@@ -92,7 +98,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {gallery ? <Suspense fallback={null}><Gallery /></Suspense> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
                 {path === CLASSIC_PATH ? <LeitstandTabs path={path} /> : null}
-                {children({ routePath: path, onGoalRoute })}
+                {children({ routePath: shown.current, onGoalRoute })}
               </div>
             </>,
             host,

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEFAULT_PATH, ROUTES, SCOPE_ROUTE_IDS } from "../src/shell/routes";
+import { ROUTES, SCOPE_ROUTE_IDS } from "../src/shell/routes";
 import { GOAL_ROUTE, SETTINGS_CLASSIC_PATH } from "../src/shell/mount/routing";
 import { createRunLog } from "../src/testing/e2e/runLog";
 
@@ -56,7 +56,7 @@ test("core Glass routes render without console errors and leave a run log", asyn
   await testInfo.attach("shell-steps", { path: `${log.directory}/steps.json`, contentType: "application/json" });
 });
 
-test("hidden areas redirect to the Leitstand until weitere Bereiche is on", async ({ page }) => {
+test("hidden areas retain their URL with an honest note and settings recovery", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", "1");
   });
@@ -65,7 +65,11 @@ test("hidden areas redirect to the Leitstand until weitere Bereiche is on", asyn
   for (const route of hidden) {
     await page.goto(`/#${route.path}`, { waitUntil: "networkidle" });
     await expect(page.locator(".g-shell")).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.location.hash), { message: route.path }).toBe(`#${DEFAULT_PATH}`);
+    await expect.poll(() => page.evaluate(() => window.location.hash), { message: route.path }).toBe(`#${route.path}`);
+    await expect(page.getByText("Dieser Bereich ist noch nicht verbunden und ausgeblendet.", { exact: true })).toBeVisible();
+    const recovery = page.getByRole("link", { name: "Weitere Bereiche in den Einstellungen einschalten", exact: true });
+    await expect(recovery).toBeVisible();
+    await expect(recovery).toHaveAttribute("href", "#/einstellungen");
   }
 });
 

@@ -13,7 +13,7 @@ import { applyStoredGlassVariant } from "../design/variants/useGlassVariant";
 import { AppearanceControl } from "./AppearanceControl";
 import { HeaderTools, StopBand } from "./header";
 import { ProjectPicker } from "./header/ProjectPicker";
-import { AREAS, DEFAULT_PATH, isHidden, pathFromHash, resolveRoute, visibleRoutes, type ShellRoute } from "./routes";
+import { AREAS, isHidden, pathFromHash, resolveRoute, visibleRoutes, type ShellRoute } from "./routes";
 import { applyStoredGlassTheme } from "./theme";
 import "./shell.css";
 
@@ -43,10 +43,11 @@ function Sidebar({ active }: { active: ShellRoute | null }) {
 function Placeholder({ path }: { path: string }) {
   const t = useT();
   const found = resolveRoute(path);
+  const hidden = isHidden(path);
   const title = found ? [found.route.label, found.tab?.label].filter(Boolean).join(t("shell.titleSep")) : t("shell.unknownPage");
   return (
     <section className="g-shell-panel g-glass" aria-labelledby="g-shell-title">
-      {found?.route.tabs.length ? (
+      {found?.route.tabs.length && !hidden ? (
         <nav className="g-shell-tabs" aria-label={t("tab.aria")}>
           {found.route.tabs.map((tab) => (
             <a key={tab.path} href={`#${tab.path}`} aria-current={tab === found.tab ? "page" : undefined}>{tab.label}</a>
@@ -54,7 +55,8 @@ function Placeholder({ path }: { path: string }) {
         </nav>
       ) : null}
       <h1 id="g-shell-title">{title}</h1>
-      <p className="g-shell-note">{found ? t("shell.notConnected") : t("shell.unknownAddress")}</p>
+      <p className="g-shell-note">{hidden ? t("shell.hidden") : found ? t("shell.notConnected") : t("shell.unknownAddress")}</p>
+      {hidden ? <a className="g-btn g-btn--ghost g-btn--sm" href="#/einstellungen">{t("shell.hiddenSettings")}</a> : null}
     </section>
   );
 }
@@ -68,10 +70,8 @@ export function Shell() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  const [more] = useFeatureFlag("weitere_bereiche");
-  // A hidden area (typed hash, old goal switch) lands on the Leitstand instead of showing its screen.
-  useEffect(() => { if (isHidden(path)) window.location.replace(`#${DEFAULT_PATH}`); }, [path, more]);
-  const active = resolveRoute(path)?.route ?? null;
+  useFeatureFlag("weitere_bereiche"); // re-render so a hidden area follows the flag
+  const active = isHidden(path) ? null : resolveRoute(path)?.route ?? null;
 
   return (
     <div className="g-shell">
