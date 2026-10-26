@@ -1353,12 +1353,12 @@ mod capacity_tests;
 mod control_tests;
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use crate::store::Store;
     use crate::testutil::TempDir;
 
-    pub(super) async fn store() -> (TempDir, Store, String) {
+    pub(crate) async fn store() -> (TempDir, Store, String) {
         let dir = TempDir::new("continuous-store");
         let store = Store::open(&dir.path().join("projecta.db")).await.unwrap();
         std::fs::write(

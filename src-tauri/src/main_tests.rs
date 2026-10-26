@@ -9,6 +9,74 @@
     }
 
     #[tokio::test]
+    async fn development_records_reader_preserves_candidate_invalidation_and_project_scope() {
+        use crate::store::development_runs::{EvidenceInput, EvidenceMeasurement, ReviewInput, ReviewDisposition};
+        use crate::store::team_assignments::AssignmentRequest;
+        use serde_json::json;
+        let (_dir, store, project) = crate::store::development_runs::bridge_fixture().await;
+        let other = store.create_project("Empty", "/empty").await.unwrap();
+        let goal = store.create_continuous_goal(&project, "fixture", None, None, true).await.unwrap();
+        let mut runs = Vec::new();
+        for (owner, role) in [("implementer", "implementer"), ("reviewer", "reviewer")] {
+            let task = store.create_continuous_task(&goal.id, role, None, vec![format!("{owner}.rs")], vec![]).await.unwrap();
+            store.assign_continuous_task(&task.id, AssignmentRequest {
+                team_id: "development".into(), role: role.into(), assignee: owner.into(), expected_revision: 0,
+            }).await.unwrap();
+            let claim = store.claim_continuous_task(&task.id, owner, false).await.unwrap();
+            let run = store.record_development_run_intent(&task.id, owner, claim.fence).await.unwrap();
+            runs.push((run.id, claim.fence));
+        }
+        let (run, fence) = &runs[0];
+        let a = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let b = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        store.mark_development_run_launched(run, "implementer", *fence, Some("fixture-worker"), None).await.unwrap();
+        store.bind_development_run_candidate(run, "implementer", *fence, a, "git", 1).await.unwrap();
+        let evidence = store.record_development_evidence(run, "implementer", *fence, EvidenceInput {
+            idempotency_key: "bridge-evidence".into(), source: "test-gate".into(), observed_at: 2,
+            candidate_commit: a.into(), measurement: EvidenceMeasurement::Measured { value: json!(0) },
+            payload: json!({"kind":"gate-result","schemaVersion":1,"lane":"prepush","gate":"fmt","exitCode":0}),
+        }).await.unwrap();
+        store.record_development_review(&runs[1].0, "reviewer", runs[1].1, ReviewInput {
+            idempotency_key: "bridge-review".into(), evidence_id: evidence.id, candidate_commit: a.into(),
+            disposition: ReviewDisposition::Approved, source: "fixture-review".into(), observed_at: 3,
+        }).await.unwrap();
+        store.bind_development_run_candidate(run, "implementer", *fence, b, "git", 4).await.unwrap();
+        let before = store.development_records_snapshot(&project).await.unwrap();
+        let actual = super::read_development_records(&store, &project).await.unwrap();
+        assert_eq!(actual["apiVersion"], 1);
+        assert_eq!(actual["executionEnabled"], false);
+        assert!(actual["sourceTimestamp"].as_i64().unwrap() > 0);
+        assert_eq!(actual["approvalAuthority"]["state"], "unavailable");
+        assert_eq!(actual["runs"].as_array().unwrap().len(), 2);
+        let row = actual["runs"].as_array().unwrap().iter().find(|r| r["run"]["id"] == *run).unwrap();
+        assert_eq!(row["run"]["workerId"], "fixture-worker");
+        assert_eq!(row["candidate"]["candidateCommit"], b);
+        assert_eq!(row["evidence"][0]["candidateCommit"], a);
+        assert_eq!(row["evidence"][0]["source"], "test-gate");
+        assert_eq!(row["evidence"][0]["measurement"], json!({"state":"measured","value":0}));
+        assert_eq!(row["evidence"][0]["trustedTestSource"], false);
+        assert_eq!(row["evidence"][0]["observedAt"], 2);
+        assert_eq!(row["evidence"][0]["invalidatedAt"], 4);
+        assert_eq!(row["evidence"][0]["invalidatedByCommit"], b);
+        assert_eq!(row["reviews"][0]["status"], "invalidated");
+        assert_eq!(row["reviews"][0]["approvalEligible"], false);
+        assert_eq!(row["reviews"][0]["reviewerAttestation"], "unverified: test evidence source is agent supplied");
+        assert_eq!(row["reviews"][0]["invalidatedAt"], 4);
+        assert_eq!(row["reviews"][0]["invalidatedByCommit"], b);
+        for observed in [&actual, &store.development_records_snapshot(&project).await.unwrap()] {
+            assert_eq!(observed["runs"], before["runs"]);
+            assert_eq!(observed["approvalAuthority"], before["approvalAuthority"]);
+            assert_eq!(observed["executionEnabled"], false);
+        }
+        assert_eq!(super::read_development_records(&store, &other.id).await.unwrap()["runs"], json!([]));
+        assert_eq!(super::read_development_records(&store, "missing").await.unwrap_err(), "unknown project: missing");
+        assert_eq!(super::read_development_records(&store, " ").await.unwrap_err(), "projectId is required");
+        store.close_test_pool().await;
+        assert_eq!(super::read_development_records(&store, &project).await.unwrap_err(),
+            store.get_project(&project).await.unwrap_err());
+    }
+
+    #[tokio::test]
     async fn stalled_download_times_out_with_an_error() {
         let stalled = std::future::pending::<Result<Vec<u8>, String>>();
         let outcome = tokio::time::timeout(
