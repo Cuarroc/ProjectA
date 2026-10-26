@@ -1296,16 +1296,19 @@ async function launchFromRestore(outcome: "success" | "spawn rejection" | "subsc
       expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Task one", "Chosen shell"]);
       expect(screen.getByRole("tab", { name: "Chosen shell" })).toHaveAttribute("aria-selected", "true");
       expect(window.location.hash).toBe("#/leitstand/terminal");
-      go("#/leitstand/terminal?worker=two"); await screen.findByLabelText("Gespeicherter Entwurf"); assertSaved();
-      await act(async () => { view.rerender(tree("remount")); });
-      const pending = await screen.findByRole("button", { name: "Neue Sitzung" });
-      expect(pending).toHaveAttribute("aria-busy", "true"); fireEvent.click(pending);
-      expect(pending).toHaveAttribute("aria-expanded", "false");
-      fireEvent.click(screen.getByRole("tab", { name: "Chosen shell" }));
+      if (outcome === "success") {
+        go("#/leitstand/terminal?worker=two"); await screen.findByLabelText("Gespeicherter Entwurf"); assertSaved();
+        await act(async () => { view.rerender(tree("remount")); });
+        const pending = await screen.findByRole("button", { name: "Neue Sitzung" });
+        expect(pending).toHaveAttribute("aria-busy", "true"); fireEvent.click(pending);
+        expect(pending).toHaveAttribute("aria-expanded", "false");
+        fireEvent.click(screen.getByRole("tab", { name: "Chosen shell" }));
+      }
       await act(async () => { subscriptions[0](); });
       expect(screen.getByRole("tab", { name: "Chosen shell" })).toHaveAttribute("aria-selected", "true");
     }
     if (outcome !== "success") {
+      expect(screen.getAllByRole("alert")).toHaveLength(outcome === "spawn rejection" ? 2 : 1);
       expect(screen.getAllByText(/Sitzungsanfrage fehlgeschlagen/)).toHaveLength(1);
       expect(screen.getByText(/Sitzungsanfrage fehlgeschlagen/)).toHaveTextContent(`Sitzungsanfrage fehlgeschlagen. restore ${outcome === "spawn rejection" ? "spawn" : "subscription"} rejected`);
       const cancel = screen.queryByRole("button", { name: "Abbrechen" }); if (cancel) fireEvent.click(cancel);

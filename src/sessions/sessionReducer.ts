@@ -106,9 +106,8 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     // Ported from App.tsx openWorkerTab, state part (S01d-1): append when new,
     // focus, leave the restore view. An ad-hoc spawn leaves the restore view.
     case "openWorker":
-      return { ...focus(add(state, action.session), action.session.sessionId), restoreWorkerId: null };
     case "openAdHoc":
-      return focus(add(state, action.session), action.session.sessionId);
+      return { ...focus(add(state, action.session), action.session.sessionId), restoreWorkerId: null };
     case "select":
       return focus(state, action.sessionId);
     case "drop":
