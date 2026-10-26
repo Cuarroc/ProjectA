@@ -33,7 +33,7 @@ afterEach(cleanup);
 it("opens the Betrieb panel at /betrieb with the Betrieb area current", async () => {
   const { container } = render(<App />);
   expect(await screen.findByRole("region", { name: "Warteschlange" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(sidebar().getAllByRole("link").map((a) => a.textContent)).toEqual(["Fabrik", "Betrieb", "Einstellungen"]);
+  expect(sidebar().getAllByRole("link").map((a) => a.textContent)).toEqual(["Fabrik", "Beweise", "Betrieb", "Einstellungen"]);
   expect(sidebar().getByRole("link", { name: "Betrieb" })).toHaveAttribute("aria-current", "page");
   expect(container.querySelector(".g-shell-content .g-lr h1")).toHaveTextContent("Betrieb");
   expect(container.querySelector(".g-mount")).toHaveAttribute("data-fresh", "on");

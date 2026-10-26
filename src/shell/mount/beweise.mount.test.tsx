@@ -37,6 +37,8 @@ it("shows Beweise by default and never invents gate or review evidence", async (
   const { container } = mount();
   expect(within(screen.getByRole("navigation", { name: "Hauptnavigation" })).getByRole("link", { name: "Beweise" })).toBeVisible();
   expect(screen.getByRole("heading", { name: "Beweise" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Seiten und Befehle suchen" }));
+  fireEvent.click(screen.getByRole("option", { name: "Beweise · Haupt" }));
   await screen.findByRole("option", { name: "Inspect sample" });
   choose("w1");
   expect(await screen.findByRole("link", { name: "Pull Request öffnen" })).toHaveAttribute("href", "https://github.com/example/sample/pull/7");
@@ -45,6 +47,7 @@ it("shows Beweise by default and never invents gate or review evidence", async (
     const evidence = screen.getByRole("region", { name });
     expect(within(evidence).getByText("Der Kern liefert gerade keinen Wert")).toBeVisible();
     expect(evidence.querySelector(".g-st--ok, .g-proof")).toBeNull();
+    expect(within(evidence).queryByText(/erfüllt|bestanden/)).toBeNull();
   }
   expect(screen.queryByText(/0\s*\/\s*0|0 Gates|0 Reviews/)).toBeNull();
   expect(screen.getByText("Dieser Check ersetzt keine Gates, kein Fremd-Review und keine Prüfung der Queue.")).toBeVisible();
@@ -52,7 +55,7 @@ it("shows Beweise by default and never invents gate or review evidence", async (
   expect(container.querySelector(".g-mount")).toHaveAttribute("data-fresh", "on");
 });
 
-it("distinguishes no project, a failed read, loading and an empty board", async () => {
+it("distinguishes no project from failed loading and empty board states", async () => {
   writeActiveProjectId(null);
   mount();
   expect(await screen.findByText("Kein Projekt gewählt")).toBeVisible();
@@ -108,7 +111,7 @@ it("clears worker selection and rejects late readiness and project round-trip re
   expect(mocks.invoke).toHaveBeenLastCalledWith("get_worker_readiness", { workerId: "w2" });
 });
 
-it("preserves the legacy session, diff fallback and hidden-settings recovery", async () => {
+it("preserves the legacy session and diff fallback and hidden-settings recovery", async () => {
   const { container } = mount();
   const session = screen.getByDisplayValue("draft");
   fireEvent.change(session, { target: { value: "kept" } });
