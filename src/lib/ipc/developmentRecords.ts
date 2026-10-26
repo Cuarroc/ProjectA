@@ -17,6 +17,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Approval validator literals come from Rust approval_authority() in src-tauri/src/store/development_runs.rs.
 function isDevelopmentRecordsV1(value: unknown): value is DevelopmentRecordsV1 {
   if (!isObject(value) || !isObject(value.approvalAuthority)) return false;
   return value.apiVersion === 1 && value.executionEnabled === false &&
