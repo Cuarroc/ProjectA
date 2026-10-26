@@ -40,6 +40,7 @@ it("shows Beweise by default and never invents gate or review evidence", async (
   fireEvent.click(screen.getByRole("button", { name: "Seiten und Befehle suchen" }));
   fireEvent.click(screen.getByRole("option", { name: "Beweise · Haupt" }));
   await screen.findByRole("option", { name: "Inspect sample" });
+  expect(screen.getByRole("combobox", { name: "Worker auswählen" })).toHaveAttribute("name", "beweise-worker");
   choose("w1");
   expect(await screen.findByRole("link", { name: "Pull Request öffnen" })).toHaveAttribute("href", "https://github.com/example/sample/pull/7");
   await screen.findByText("Bereitschaftscheck bestanden");
