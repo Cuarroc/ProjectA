@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
+import { Button } from "../design/controls/Button";
+import { Field } from "../design/forms/Field";
 import { formatMessageTime, roleLabel, type OrchestratorChat } from "../lib/orchestratorChat";
+import { commandChatTexts as texts } from "./commandchat/texts";
+import "../design/glass.css";
+import "../design/controls/controls.css";
+import "../design/forms/forms.css";
+import "../design/inputs/inputs.css";
 
 interface CommandChatProps {
   chat: OrchestratorChat;
@@ -21,7 +28,7 @@ interface CommandChatProps {
 function EmptyChat() {
   return (
     <div className="command-chat-empty">
-      <p>Noch keine Nachrichten. Schick dem Orchestrator eine Aufgabe.</p>
+      <p>{texts.empty}</p>
     </div>
   );
 }
@@ -99,7 +106,7 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
   const canSend = !disabled && !chat.sending && text.trim() !== "";
 
   return (
-    <div className="command-chat">
+    <div className="command-chat g-chrome" style={{ background: "var(--g-chrome-bg)" }}>
       {historyOpen ? (
         <div className="command-chat-history">
           {chat.messages.length === 0 ? (
@@ -124,51 +131,63 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
           )}
         </div>
       ) : null}
-      {chat.error ? <p className="command-chat-error">{chat.error}</p> : null}
+      {chat.error ? (
+        <p className="command-chat-error" role="alert" style={{ color: "var(--g-bad)" }}>{chat.error}</p>
+      ) : null}
       {disabled ? (
-        <p className="command-chat-hint">Kein Projekt aktiv — wähle links ein Projekt.</p>
+        <p className="command-chat-hint">{texts.noProject}</p>
       ) : null}
       <div className="command-chat-bar">
-        <button
+        <Button
           type="button"
-          className="command-chat-toggle"
+          variant="ghost"
+          size="sm"
           onClick={() => setHistoryOpen((open) => !open)}
           disabled={disabled}
           aria-expanded={historyOpen}
-          title="Verlauf des Orchestrators"
+          title={texts.historyTitle}
         >
-          <span className="command-chat-chevron">{historyOpen ? "▾" : "▸"}</span>
-          Verlauf
-        </button>
-        <textarea
-          ref={inputRef}
-          name="command-chat-input"
-          className="command-chat-input"
-          aria-label="Aufgabe an den Orchestrator"
-          rows={2}
-          value={text}
-          placeholder="Aufgabe an den Orchestrator … (Enter sendet, Shift+Enter neue Zeile)"
-          disabled={disabled || chat.sending}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <button
+          <span className="command-chat-chevron" aria-hidden="true">{historyOpen ? "▾" : "▸"}</span>
+          {texts.history}
+        </Button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Field label={texts.input}>
+            {(control) => (
+              <textarea
+                {...control}
+                ref={inputRef}
+                name="command-chat-input"
+                className="g-inp g-inp--area"
+                aria-label={texts.input}
+                rows={2}
+                value={text}
+                placeholder={texts.placeholder}
+                disabled={disabled || chat.sending}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            )}
+          </Field>
+        </div>
+        <Button
           type="button"
-          className="command-chat-expand"
+          variant="ghost"
+          size="sm"
           onClick={onOpenConversation}
-          title="Im Dialog öffnen"
-          aria-label="Im Dialog öffnen"
+          title={texts.openConversation}
+          aria-label={texts.openConversation}
         >
           ⤢
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="command-chat-send"
+          variant="primary"
+          loading={chat.sending}
           disabled={!canSend}
           onClick={() => void handleSend()}
         >
-          {chat.sending ? "Sendet …" : "Senden"}
-        </button>
+          {texts.send}
+        </Button>
       </div>
     </div>
   );
