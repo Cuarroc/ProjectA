@@ -1,0 +1,117 @@
+/* global window, document, localStorage, location */
+import process from "node:process";
+import console from "node:console";
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { chromium, expect } from "@playwright/test";
+import { createServer } from "vite";
+
+test("opens two distinct shared session panes without spawning or mirroring on split", async () => {
+  process.env.VITE_TAURI_MOCKS = "true";
+  const server = await createServer({ server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false } });
+  let browser;
+  try {
+    await server.listen();
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ reducedMotion: "reduce", viewport: { width: 1100, height: 720 } });
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.addInitScript(() => {
+      window.__PROJECTA_E2E_RICH__ = true;
+      localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", "1");
+      localStorage.setItem("projecta.activeProjectId", "p1");
+    });
+    await page.goto(`${server.resolvedUrls.local[0]}#/leitstand/terminal`);
+    const launch = page.getByRole("button", { name: "Neue Sitzung", exact: true });
+    await expect(launch).toBeVisible();
+    await page.evaluate(() => {
+      window.splitCalls = [];
+      const original = window.__TAURI_INTERNALS__.invoke;
+      window.__TAURI_INTERNALS__.invoke = (command, args, ...rest) => {
+        window.splitCalls.push({ command, args });
+        return original(command, args, ...rest);
+      };
+    });
+    const calls = command => page.evaluate(cmd => window.splitCalls.filter(c => c.command === cmd), command);
+    const panes = page.locator('.g-terminal [role="tabpanel"]:visible');
+    const split = () => page.getByRole("button", { name: "Terminal teilen", exact: true });
+    for (let i = 1; i <= 2; i++) {
+      await launch.click();
+      await page.getByRole("button", { name: "Claude", exact: true }).click();
+      await expect(page.locator(`#terminal-tab-ses-adhoc-${i}`)).toHaveAttribute("aria-selected", "true");
+      await expect(page.locator(".g-terminal .xterm")).toHaveCount(1);
+    }
+    assert.equal((await calls("spawn_pty")).length, 2);
+    await expect(split()).toBeEnabled();
+    await split().click();
+    const unsplit = () => page.getByRole("button", { name: "Split schließen", exact: true });
+    await expect(unsplit()).toHaveAttribute("aria-pressed", "true");
+    await expect(panes).toHaveCount(2);
+    await expect(page.locator(".xterm")).toHaveCount(2);
+    assert.deepEqual(await panes.evaluateAll(els => els.map(el => el.id)),
+      ["terminal-panel-ses-adhoc-2", "terminal-panel-ses-adhoc-1"]);
+    await expect.poll(async () => (await calls("get_scrollback")).length).toBe(4);
+    const nodes = await panes.locator(".xterm").elementHandles();
+    for (const [side, id, key] of [[0, "ses-adhoc-2", "L"], [1, "ses-adhoc-1", "R"], [0, "ses-adhoc-2", "K"]]) {
+      await panes.nth(side).locator(".xterm-screen").click();
+      await expect(page.locator(`#terminal-tab-${id}`)).toHaveAttribute("aria-selected", "true");
+      await page.keyboard.type(key);
+      await expect.poll(() => calls("write_pty")).toContainEqual({ command: "write_pty", args: { sessionId: id, data: key } });
+      for (let i = 0; i < 2; i++) assert.ok(await nodes[i].evaluate((el, index) =>
+        el === document.querySelectorAll(".g-terminal .xterm")[index], i));
+    }
+    assert.deepEqual((await calls("write_pty")).map(c => c.args), [
+      { sessionId: "ses-adhoc-2", data: "L" }, { sessionId: "ses-adhoc-1", data: "R" }, { sessionId: "ses-adhoc-2", data: "K" },
+    ]);
+    for (const [id, marker] of [["ses-adhoc-2", "LEFTONLY"], ["ses-adhoc-1", "RIGHTONLY"]]) {
+      await page.evaluate(({ id, marker }) => window.__TAURI_INTERNALS__.invoke("plugin:event|emit",
+        { event: `pty:output:${id}`, payload: `\r\n${marker}\r\n` }), { id, marker });
+    }
+    for (const [side, marker, other] of [[0, "LEFTONLY", "RIGHTONLY"], [1, "RIGHTONLY", "LEFTONLY"]]) {
+      await panes.nth(side).locator(".xterm-helper-textarea").focus();
+      await page.keyboard.press("Control+Shift+f");
+      const input = panes.nth(side).getByRole("search").locator("input");
+      await input.fill(marker);
+      await expect(panes.nth(side).getByLabel("Treffer", { exact: true })).toHaveText("1/1");
+      await input.fill(other);
+      await expect(panes.nth(side).getByLabel("Treffer", { exact: true })).toHaveText("0/0");
+      await input.press("Escape");
+    }
+    for (const theme of ["light", "dark"]) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      await page.evaluate(() => document.fonts.ready);
+      const rects = await panes.evaluateAll(els => els.map(el => el.getBoundingClientRect().toJSON()));
+      assert.ok(rects.every(r => r.width > 0 && r.height > 0));
+      assert.ok(rects[0].right <= rects[1].left && rects[0].top === rects[1].top);
+      console.log(JSON.stringify({ theme, rects, resize: await calls("resize_pty") }));
+      if (process.env.SPLIT_CAPTURE) {
+        await mkdir(process.env.SPLIT_CAPTURE, { recursive: true });
+        await page.screenshot({ path: `${process.env.SPLIT_CAPTURE}/${theme}.png` });
+      }
+    }
+    await unsplit().click();
+    await expect(panes).toHaveCount(1);
+    await expect(split()).toHaveAttribute("aria-pressed", "false");
+    await split().click();
+    await expect(panes).toHaveCount(2);
+    await page.evaluate(() => { location.hash = "#/leitstand"; });
+    await expect(page.locator(".g-terminal")).toHaveCount(0);
+    await page.evaluate(() => { location.hash = "#/leitstand/terminal"; });
+    await expect(panes).toHaveCount(2);
+    assert.equal((await calls("spawn_pty")).length, 2);
+    assert.deepEqual(await calls("kill_pty"), []);
+    await page.locator("#terminal-panel-ses-adhoc-1 .xterm-helper-textarea").focus();
+    await page.getByRole("button", { name: "Tab schließen", exact: true }).click();
+    await expect(panes).toHaveCount(1);
+    await expect(page.locator(".xterm")).toHaveCount(1);
+    await expect(page.locator("#terminal-tab-ses-adhoc-2")).toBeFocused();
+    await expect(split()).toBeDisabled();
+    assert.deepEqual(await calls("kill_pty"), [{ command: "kill_pty", args: { sessionId: "ses-adhoc-1" } }]);
+    assert.equal((await calls("spawn_pty")).length, 2);
+    assert.deepEqual(errors, []);
+  } finally {
+    try { await browser?.close(); } finally { await server.close(); }
+  }
+});
