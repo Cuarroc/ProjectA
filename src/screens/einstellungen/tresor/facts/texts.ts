@@ -9,4 +9,6 @@ export const T = {
   unmeasured: "Nicht gemessen",
   unknown: "unbekannt",
   stale: "veraltet",
+  percentSuffix: " %",
+  staleSeparator: " · ",
 } as const;
