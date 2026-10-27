@@ -13,6 +13,7 @@ test("opens two distinct shared session panes without spawning or mirroring on s
   let browser;
   try {
     await server.listen();
+    const { ptyOutput } = await server.ssrLoadModule("/src/lib/eventNames.ts");
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ reducedMotion: "reduce", viewport: { width: 1100, height: 720 } });
     const errors = [];
@@ -65,8 +66,8 @@ test("opens two distinct shared session panes without spawning or mirroring on s
       { sessionId: "ses-adhoc-2", data: "L" }, { sessionId: "ses-adhoc-1", data: "R" }, { sessionId: "ses-adhoc-2", data: "K" },
     ]);
     for (const [id, marker] of [["ses-adhoc-2", "LEFTONLY"], ["ses-adhoc-1", "RIGHTONLY"]]) {
-      await page.evaluate(({ id, marker }) => window.__TAURI_INTERNALS__.invoke("plugin:event|emit",
-        { event: `pty:output:${id}`, payload: `\r\n${marker}\r\n` }), { id, marker });
+      await page.evaluate(({ event, marker }) => window.__TAURI_INTERNALS__.invoke("plugin:event|emit",
+        { event, payload: `\r\n${marker}\r\n` }), { event: ptyOutput(id), marker });
     }
     for (const [side, marker, other] of [[0, "LEFTONLY", "RIGHTONLY"], [1, "RIGHTONLY", "LEFTONLY"]]) {
       await panes.nth(side).locator(".xterm-helper-textarea").focus();
