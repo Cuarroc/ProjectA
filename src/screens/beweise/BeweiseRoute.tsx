@@ -6,6 +6,7 @@ import { readActiveProjectId, subscribeActiveProject } from "../../lib/activePro
 import { getBoardState } from "../../lib/ipc";
 import type { BoardCard } from "../../types";
 import { BeweisKette } from "./BeweisKette";
+import { RecordedProof } from "./RecordedProof";
 import { T } from "./route/texts";
 
 /** Each project visit owns its reads, including a return to a previous project. */
@@ -39,6 +40,7 @@ function ProjectProof({ projectId }: { projectId: string }) {
       {card.prUrl ? <a href={card.prUrl} target="_blank" rel="noreferrer">{T.pr}</a> : <p>{T.noPr}</p>}
       <p>{T.scope}</p>
       <BeweisKette key={`${projectId}:${card.worker.id}`} workerId={card.worker.id} />
+      <RecordedProof key={`recorded:${projectId}:${card.worker.id}`} projectId={projectId} workerId={card.worker.id} />
     </>}
   </>;
 }

@@ -65,7 +65,7 @@ it("renders only safe recorded worker observations with literal measurements and
   expect(items("Reviews")[0]).toHaveTextContent("Ungeprüft");
   expect(items("Reviews")[0]).toHaveTextContent("Freigabe nicht verfügbar");
   expect(items("Reviews")[0]).toHaveTextContent("Ungeprüfte Quelle");
-  expect(region().textContent).not.toMatch(/CANARY_|cccccccccccc|approved|verified|payload|policy|exitCode|bestanden|erfüllt|Fehler erfasst/);
+  expect(region().outerHTML).not.toMatch(/CANARY_|cccccccccccc|approved|verified|payload|policy|exitCode|bestanden|erfüllt|Fehler erfasst/);
   expect(region().querySelector(".g-st--ok, .g-proof")).toBeNull();
   expect(screen.getByRole("link", { name: "Pull Request öffnen" })).toHaveAttribute("href", "https://github.com/example/sample/pull/7");
   expect(await screen.findByText("Bereitschaftscheck bestanden")).toBeVisible();
@@ -79,6 +79,7 @@ it("renders only safe recorded worker observations with literal measurements and
     [{ candidate: { ...candidate, runId: "other" } }, "Nicht zugeordnet", "Nicht zugeordnet", "0"],
     [{ evidence: [{ ...evidence, runId: "other", observedAt: -1, measurement: { state: "unavailable", value: 0 } }] }, "Nicht zugeordnet", "Nicht zugeordnet", "Nicht verfügbar"],
     [{ evidence: [{ ...evidence, measurement: { state: "measured", value: "CANARY_NUMBER" } }] }, "Dem Kandidaten zugeordnet", "Dem Kandidaten zugeordnet", "Nicht verfügbar"],
+    [{ evidence: [{ ...evidence, measurement: { state: "measured", value: Infinity } }] }, "Dem Kandidaten zugeordnet", "Dem Kandidaten zugeordnet", "Nicht verfügbar"],
     [{ reviews: [{ ...review, evidenceId: "missing" }] }, "Dem Kandidaten zugeordnet", "Nicht zugeordnet", "0"],
     [{ evidence: [evidence, evidence] }, "Dem Kandidaten zugeordnet", "Nicht zugeordnet", "0"],
     [{ reviews: [{ ...review, invalidatedAt: 0, reviewerAttestation: "unavailable" }] }, "Dem Kandidaten zugeordnet", "Veraltet", "0"],
@@ -89,8 +90,14 @@ it("renders only safe recorded worker observations with literal measurements and
     expect(items("Belege")[0]).toHaveTextContent(`Messwert${measurement}`);
     expect(items("Reviews")[0]).toHaveTextContent(reviewLink);
     expect(items("Reviews")[0]).toHaveTextContent("Freigabe nicht verfügbar");
-    expect(region().textContent).not.toMatch(/CANARY_|approved|verified|bestanden|erfüllt/);
+    if (evidenceLink === "Nicht zugeordnet" && Object.hasOwn(patch, "candidate")) {
+      const shownCandidate = within(within(region()).getByRole("region", { name: "Kandidat" }));
+      expect(shownCandidate.getAllByText("Nicht verfügbar")).toHaveLength(3);
+      expect(shownCandidate.queryByText("aaaaaaaaaaaa")).toBeNull();
+    }
+    expect(region().outerHTML).not.toMatch(/CANARY_|approved|verified|bestanden|erfüllt/);
   }
+  expect(within(items("Reviews")[0]).getByText("Nicht verfügbar")).toBeVisible();
 });
 
 it("keeps loading empty project absent worker and failed replacement reads visibly distinct", async () => {
@@ -120,14 +127,16 @@ it("clears successful observations and ignores delayed reload worker project and
   const mounted = render(<BeweiseRoute />); await select(); loading(); await finish([record()]);
   reload(); loading(); const oldReload = reads.length - 1;
   reload(); loading(); const newReload = reads.length - 1;
-  await finish([record()], oldReload); loading();
   await finish([], newReload);
+  await finish([record()], oldReload);
   expect(within(region()).getByText("Keine aufgezeichneten Beobachtungen in diesem Projekt")).toBeVisible();
   reload(); await finish([record()]);
   await choose("w2"); loading(); const oldWorker = reads.length - 1;
   await choose("w1"); loading();
-  await finish([record({ run: { id: "r1", workerId: "w2", status: "failed" } })], oldWorker); loading();
   await finish([record()]);
+  await finish([record({ run: { id: "r1", workerId: "w2", status: "failed" } })], oldWorker);
+  expect(within(region()).getByText("Beendet")).toBeVisible();
+  expect(within(region()).queryByText("Fehler erfasst")).toBeNull();
   reload(); const oldProject = reads.length - 1;
   await act(async () => writeActiveProjectId("p2"));
   expect(screen.queryByRole("region", { name: "Aufgezeichnete Beobachtungen" })).toBeNull();
@@ -139,9 +148,12 @@ it("clears successful observations and ignores delayed reload worker project and
   await finish([record()], returnedP1);
   await act(async () => writeActiveProjectId("p2"));
   await select(); loading(); expect(reads.at(-1)!.projectId).toBe("p2");
+  await finish([record({ candidate: { ...candidate, candidateCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } })]);
+  expect(within(region()).getByText("bbbbbbbbbbbb")).toBeVisible();
+  reload(); loading();
   await act(async () => reads.at(-1)!.reject(new Error("CANARY_P2_READ")));
   expect(within(region()).getByText("Beobachtungen konnten nicht gelesen werden")).toBeVisible();
-  expect(region().textContent).not.toMatch(/aaaaaaaaaaaa|CANARY_|Beendet/);
+  expect(region().textContent).not.toMatch(/aaaaaaaaaaaa|bbbbbbbbbbbb|CANARY_|Beendet/);
   reload(); const abandoned = reads.length - 1; mounted.unmount();
   render(<BeweiseRoute />); await select(); loading();
   await finish([record()], abandoned); loading(); await finish([]);
