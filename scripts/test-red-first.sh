@@ -330,7 +330,22 @@ test('exact named pass', () => { assert.equal(2 + 2, 4); record('passed'); });
 test('exact named failure', () => { assert.equal(2 + 2, 5); });
 after(() => record('completed'));
 NODEEOF
-  git add scripts/lib/open-handle.test.mjs
+  cat > scripts/lib/bare-pass.test.mjs <<'NODEEOF'
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { appendFileSync, readFileSync } from 'node:fs';
+const record = (stage) => {
+  const stat = readFileSync('/proc/self/stat', 'utf8').split(') ')[1].split(' ');
+  appendFileSync(process.env.RF_PROBE_RECORD,
+    JSON.stringify({ pid: process.pid, start: stat[19], group: Number(stat[2]), stage }) + '\n');
+};
+setInterval(() => {}, 1000);
+test('bare-path assertion', () => { assert.equal(2 + 2, 4); record('passed'); });
+after(() => record('completed'));
+NODEEOF
+  sed 's/assert.equal(2 + 2, 4)/assert.equal(2 + 2, 5)/' \
+    scripts/lib/bare-pass.test.mjs > scripts/lib/bare-fail.test.mjs
+  git add scripts/lib/open-handle.test.mjs scripts/lib/bare-*.test.mjs
   git commit -q -m "test: completed named Node runs with open handles"
   named_head="$(git rev-parse HEAD)"
   # This foreground supervisor always joins the gate and checks PID/starttime/
@@ -347,10 +362,13 @@ def identity(pid):
     except FileNotFoundError:
         return None
 
-for name, expected in [('exact named pass', 0), ('missing name', 1), ('exact named failure', 1)]:
+cases = [(name, 'scripts/lib/open-handle.test.mjs::' + name, code) for name, code in
+         [('exact named pass', 0), ('missing name', 1), ('exact named failure', 1)]]
+cases += [('bare pass', 'scripts/lib/bare-pass.test.mjs', 0),
+          ('bare failure', 'scripts/lib/bare-fail.test.mjs', 1)]
+for name, spec, expected in cases:
     record = Path(probe, name + '.jsonl')
     output = Path(probe, name + '.log')
-    spec = 'scripts/lib/open-handle.test.mjs::' + name
     env = dict(os.environ, BASE_SHA=base, HEAD_SHA=head,
                PR_BODY='Test-First: ' + spec, RF_PROBE_RECORD=str(record))
     owned, expired, leaked = {}, False, False
@@ -398,7 +416,7 @@ for name, expected in [('exact named pass', 0), ('missing name', 1), ('exact nam
         current = identity(pid)
         assert not current or current[:2] != original or current[2] == 'Z', 'owned child leaked'
     assert any(item['stage'] == 'completed' for item in records), 'fixture did not complete'
-    if name == 'exact named pass':
+    if expected == 0:
         assert any(item['stage'] == 'passed' for item in records), 'named assertion did not pass'
     print(f'owned process cleanup verified: {name}', flush=True)
     assert not leaked, f'{name}: gate exited with a live owned child'
@@ -407,7 +425,8 @@ for name, expected in [('exact named pass', 0), ('missing name', 1), ('exact nam
     assert child.returncode == expected, (name, child.returncode, text)
     assert f'{spec} ist an der Merge-Base rot/fehlend (erwartet).' in text, text
     if expected == 0:
-        assert '✔ exact named pass (' in text and f'{spec} ist am Kopf gruen.' in text, text
+        passed = 'bare-path assertion' if name == 'bare pass' else 'exact named pass'
+        assert f'✔ {passed} (' in text and f'{spec} ist am Kopf gruen.' in text, text
     else:
         assert f'{spec} ist am Kopf nicht gruen.' in text, text
         assert f'{spec} ist am Kopf gruen.' not in text, text
@@ -418,6 +437,7 @@ for name, expected in [('exact named pass', 0), ('missing name', 1), ('exact nam
     print(f'classification verified: {name}', flush=True)
 PYEOF
   printf '%s\n' 'ok   completed named Node runs exit with strict classification'
+  printf '%s\n' 'ok   completed bare-path Node runs exit with strict classification'
 
 )
 pass "CI-Beweis verlangt Base rot, Kopf gruen, echte Rust-Treffer und erreichbare SHAs"
