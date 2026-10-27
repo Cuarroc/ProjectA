@@ -163,8 +163,13 @@ Options:
           await page.evaluate(() => document.fonts.ready);
           await capture(route);
           if (route === '/einstellungen') for (const id of await page.locator('.es [role="tab"]').evaluateAll(tabs => tabs.slice(1).map(t => t.id))) {
-            await page.locator(`[id="${id}"]`).click();
+            const tab = page.locator(`[id="${id}"]`);
+            await tab.click();
             await page.waitForLoadState('networkidle');
+            await page.locator(`[id="${id}"][aria-selected="true"]`).waitFor();
+            const panelId = await tab.getAttribute('aria-controls');
+            if (!panelId) throw new Error(`settings tab has no associated panel: ${id}`);
+            await page.locator(`[role="tabpanel"][id="${panelId}"]`).waitFor({ state: 'visible' });
             await capture(`${route}@${id}`);
           }
         }
