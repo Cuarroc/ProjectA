@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "re
 
 import { formatMessageTime, roleLabel, type OrchestratorChat } from "../lib/orchestratorChat";
 import { useSharpening } from "../lib/useSharpening";
+import { Button } from "../design/controls/Button";
+import { sharpenTexts } from "./conversation/sharpen/texts";
 import type { WorkerMessage } from "../types";
 
 interface ConversationViewProps {
@@ -172,18 +174,23 @@ export default function ConversationView({
         {/* The questions are ordinary preflight rows in the Attention view —
             this composer only says that they are there and waits for the
             answers to come back as the final prompt. */}
+        {sharpening.active ? (
+          <p className="convo-sharpen-note" role="status">
+            {sharpenTexts.phase[sharpening.phase]}
+          </p>
+        ) : null}
         {sharpening.phase === "waiting" ? (
           <p className="convo-sharpen-note" aria-live="polite">
             {sharpening.open.length === 1
-              ? "Eine Rückfrage wartet. "
-              : `${sharpening.open.length} Rückfragen warten. `}
-            <button type="button" className="convo-sharpen-link" onClick={onOpenQuestions}>
-              → Rückfragen öffnen
-            </button>
+              ? sharpenTexts.oneQuestion
+              : sharpenTexts.questions(sharpening.open.length)}
+            <Button variant="tint" size="sm" onClick={onOpenQuestions}>
+              {sharpenTexts.openQuestions}
+            </Button>
             {" · "}
-            <button type="button" className="convo-sharpen-link" onClick={sharpening.cancel}>
-              Schärfung abbrechen
-            </button>
+            <Button variant="ghost" size="sm" onClick={sharpening.cancel}>
+              {sharpenTexts.cancel}
+            </Button>
           </p>
         ) : null}
         <div className="convo-composer-row">
@@ -212,25 +219,16 @@ export default function ConversationView({
             >
               {chat.sending ? "Sendet …" : "Senden"}
             </button>
-            <button
-              type="button"
-              className="convo-sharpen"
+            <Button
+              variant="tint"
+              size="sm"
+              loading={sharpening.running}
               disabled={chat.disabled || busy || text.trim() === ""}
               onClick={handleSharpen}
-              title={
-                "Den Entwurf vom Prompt-Master schärfen lassen — sendet nicht. Bei einer " +
-                "vagen Aufgabe kommen erst Rückfragen zurück, die in der Ansicht „Achtung“ landen."
-              }
+              title={sharpenTexts.title}
             >
-              {
-                {
-                  idle: "Schärfen",
-                  thinking: "Schärft …",
-                  waiting: "Wartet auf dich …",
-                  finishing: "Baut Prompt …",
-                }[sharpening.phase]
-              }
-            </button>
+              {sharpenTexts.action}
+            </Button>
           </div>
         </div>
         <p className="convo-hint">
