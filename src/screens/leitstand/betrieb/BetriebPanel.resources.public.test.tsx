@@ -78,3 +78,23 @@ it("keeps a rejected resource read unknown while preserving queue and RAM error 
   expect(screen.getByText("Warteschlange leer")).toBeVisible();
   expect(mocks.invoke.mock.calls.filter(([command]) => command === "get_resource_snapshot")).toHaveLength(1);
 });
+
+it("groups AppData with CPU and free disk in the same description list", async () => {
+  backend({ cpuPermille: 0, diskFreeBytes: 0, diskAppBytes: 0, diskAppPartial: true });
+  render(<BetriebPanel projectId="p1" profiles={[]} />);
+  await act(async () => {});
+  const check = within(screen.getByRole("region", { name: "Startprüfung" }));
+  const cpu = check.getByText("CPU der App, Durchschnitt seit Start");
+  const facts = cpu.closest("dl");
+  expect(facts).not.toBeNull();
+  const group = within(facts!);
+  expect(group.getAllByRole("term").map((term) => term.textContent)).toEqual([
+    "CPU der App, Durchschnitt seit Start",
+    "Freier Platz auf dem Datenträger der App-Daten",
+    "App-Daten-Verzeichnis",
+  ]);
+  expect(group.getAllByRole("definition").map((definition) => definition.textContent)).toEqual([
+    "0 %", "0 GiB", "mindestens 0 GiB",
+  ]);
+  expect(mocks.invoke.mock.calls.filter(([command]) => command === "get_resource_snapshot")).toHaveLength(1);
+});
