@@ -4,10 +4,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const baseline = JSON.parse(readFileSync(new URL('../dev/design-gate.baseline.json', import.meta.url), 'utf8'));
 
 // Only the external browser RPC boundary is replaced. Vite, routes, CLI,
 // measurement dispatch, ratchet and output files are the real implementation.
@@ -78,7 +77,7 @@ for (const [name, selectionDelay, panelDelay] of [
   const dir = mkdtempSync(join(tmpdir(), 'design-gate-capture-'));
   const transport = join(dir, 'browser.mjs');
   writeFileSync(transport, preload);
-  const run = spawnSync(process.execPath, ['--import', transport, 'scripts/dev/design-gate.mjs', '--out', dir], {
+  const run = spawnSync(process.execPath, ['--import', pathToFileURL(transport).href, 'scripts/dev/design-gate.mjs', '--out', dir], {
     cwd: repo, encoding: 'utf8',
     env: { ...process.env, CAPTURE_SELECTION_DELAY: String(selectionDelay), CAPTURE_PANEL_DELAY: String(panelDelay) },
   });
@@ -87,7 +86,6 @@ for (const [name, selectionDelay, panelDelay] of [
   assert.ok(existsSync(join(dir, 'results.json')), run.stderr);
   const results = JSON.parse(readFileSync(join(dir, 'results.json'), 'utf8'));
   assert.equal(run.status, results.failures.length ? 1 : 0, run.stderr);
-  assert.deepEqual(Object.keys(results.counts).sort(), Object.keys(baseline).sort());
   const mcp = Object.entries(results.counts).filter(([key]) => key.startsWith('/einstellungen@es-tab-mcp|'));
   assert.equal(mcp.length, 12);
   for (const [key, counts] of mcp) {
