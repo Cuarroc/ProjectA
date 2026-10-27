@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { HonestState } from "../design/data/HonestState";
 import { listWorkerMessages } from "../lib/ipc";
 import type { WorkerMessage } from "../types";
+import { historyTexts } from "./history/texts";
 
 interface HistoryViewProps {
   workerId: string;
@@ -15,24 +17,6 @@ type HistoryState =
   | { status: "loading"; messages: WorkerMessage[] }
   | { status: "ok"; messages: WorkerMessage[] }
   | { status: "failed"; messages: WorkerMessage[] };
-
-/** A quiet empty state that looks intentional, not broken. */
-function EmptyHistory() {
-  return (
-    <div className="history-empty">
-      <p>Hier erscheinen Nachrichten des Agenten: Aufgaben, Updates und Lebenszyklus-Ereignisse.</p>
-    </div>
-  );
-}
-
-/** Shown when loading failed and nothing is loaded yet; polling retries by itself. */
-function HistoryLoadHint() {
-  return (
-    <div className="history-empty" role="status">
-      <p>Verlauf konnte nicht geladen werden. Er wird automatisch erneut versucht.</p>
-    </div>
-  );
-}
 
 /**
  * Worker message history. Oldest messages come first; we poll for updates and
@@ -101,9 +85,15 @@ export default function HistoryView({ workerId }: HistoryViewProps) {
   return (
     <div className="history-view">
       {state.status === "failed" ? (
-        <HistoryLoadHint />
-      ) : state.messages.length === 0 && state.status !== "loading" ? (
-        <EmptyHistory />
+        <div role="status">
+          <HonestState kind="offline" title={historyTexts.offlineTitle} hint={historyTexts.offlineHint} />
+        </div>
+      ) : state.status === "loading" ? (
+        <div role="status" aria-label={historyTexts.loading}>
+          <HonestState kind="empty" title={historyTexts.loading} />
+        </div>
+      ) : state.messages.length === 0 ? (
+        <HonestState kind="empty" title={historyTexts.emptyTitle} hint={historyTexts.emptyHint} />
       ) : (
         <div className="history-list" ref={scrollRef} onScroll={handleScroll}>
           {state.messages.map((message) => (
