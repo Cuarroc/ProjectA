@@ -72,6 +72,24 @@ it("creates a project from the Glass picker and shares the new selection", async
   expect(vi.mocked(invoke).mock.calls.some(([c]) => /^(create_worker|create_orchestrator|spawn_pty)$/.test(c))).toBe(false);
 });
 
+it("keeps the repository path valid after a backend creation error", async () => {
+  await mount();
+  const ipc = vi.mocked(invoke).getMockImplementation()!;
+  vi.mocked(invoke).mockImplementation((command, args, options) => command === "create_project"
+    ? Promise.reject(new Error("Project name already exists")) : ipc(command, args, options));
+  const dialog = await open();
+  fill();
+  const path = dialog.getByLabelText("Repository-Pfad");
+  fireEvent.click(dialog.getByRole("button", { name: "Anlegen" }));
+  expect(await within(path.closest("form")!).findByRole("alert")).toHaveTextContent("Project name already exists");
+  expect(path).not.toHaveAttribute("aria-invalid", "true");
+  expect(path).toHaveAccessibleDescription("Name und Pfad eines vorhandenen Git-Ordners sind erforderlich.");
+  expect(path).toHaveValue("  /repos/glass-garden  ");
+  expect(dialog.getByLabelText("Projektname")).toHaveValue("  Glass Garden  ");
+  expect(calls()).toHaveLength(1);
+  expect(localStorage.getItem("projecta.activeProjectId")).toBeNull();
+});
+
 async function dismissesCreation(existing: boolean) {
   if (existing) projects = [{ ...created, id: "existing", name: "Existing" }];
   await mount();
