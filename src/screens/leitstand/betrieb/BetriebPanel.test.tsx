@@ -331,7 +331,7 @@ describe("BetriebPanel", () => {
     expect(await within(section("Warteschlange")).findByText("Warteschlange nicht lesbar")).toBeInTheDocument();
     expect(screen.queryByText("Warteschlange leer")).toBeNull();
     expect(screen.queryByRole("textbox", { name: F.task })).toBeNull();
-    expect(await within(section("Startprüfung")).findAllByText("Der Kern liefert gerade keinen Wert")).toHaveLength(2);
+    expect(await within(section("Startprüfung")).findAllByText("Der Kern liefert gerade keinen Wert")).toHaveLength(3);
   });
 
   it("shows a missing RAM fact as an honest state without any number", async () => {
