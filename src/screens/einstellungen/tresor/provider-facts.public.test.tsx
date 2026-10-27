@@ -35,8 +35,9 @@ it("shows observed provider facts without converting missing usage to zero", asy
     if (command === "has_provider_key") return true;
     throw new Error(`Unexpected command: ${command}`);
   });
-  const view = render(<TresorPanel />);
-  await screen.findAllByText("Schlüssel hinterlegt");
+  let view!: ReturnType<typeof render>;
+  await act(async () => { view = render(<TresorPanel />); });
+  expect(screen.getAllByText("Schlüssel hinterlegt")).toHaveLength(2);
   const row = (name: string) => screen.getByRole("row", { name: new RegExp(name) });
   const fact = (name: string, label: string, value: string | RegExp) => {
     const term = within(row(name)).getByText(label, { selector: "dt" });
@@ -74,13 +75,13 @@ it("shows observed provider facts without converting missing usage to zero", asy
     "Anbieter", "Art", "Zugang", "Verbindung (Kern)", "Kontingent",
   ]);
   overview = new Error("PRIVATE-FACTS-ERROR");
-  fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
-  expect(await screen.findByText("Tresor nicht lesbar")).toBeVisible();
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Neu lesen" })); });
+  expect(screen.getByText("Tresor nicht lesbar")).toBeVisible();
   expect(screen.queryByText("Recorded detail")).toBeNull();
   expect(document.body).not.toHaveTextContent("PRIVATE-FACTS-ERROR");
   overview = [{ id: "zero", name: "Recorded zero", kind: "api_key", usage: null }];
-  fireEvent.click(screen.getByRole("button", { name: "Neu lesen" }));
-  await screen.findByText("Schlüssel hinterlegt");
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Neu lesen" })); });
+  expect(screen.getByText("Schlüssel hinterlegt")).toBeVisible();
   fact("Recorded zero", "Verbrauch", "Nicht gemessen");
   expect(screen.queryByText("Recorded detail")).toBeNull();
   let resolveLate!: (value: unknown) => void;
