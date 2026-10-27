@@ -1,0 +1,3 @@
+.g-project-create { display: grid; gap: var(--g-space-7); padding: var(--g-space-8); }
+.g-project-create h2 { margin: 0; font: var(--g-t-title); }
+.g-project-create__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--g-space-4); }

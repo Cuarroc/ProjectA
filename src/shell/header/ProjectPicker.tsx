@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { HonestState } from "../../design/data/HonestState";
+import { Button } from "../../design/controls/Button";
 import { Popover } from "../../design/layout/Popover";
 import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "../../lib/activeProject";
 import { useT } from "../../i18n/useT";
 import { listProjects } from "../../lib/ipc/projects";
 import type { Project } from "../../types";
-import { PICK_TEXT } from "../texts";
+import { CREATE_TEXT, PICK_TEXT } from "../texts";
+import { ProjectCreateSheet } from "./ProjectCreateSheet";
 import "./header.css";
 
 type Load = { state: "loading" } | { state: "error" } | { state: "ready"; projects: Project[] };
@@ -15,6 +17,7 @@ type Load = { state: "loading" } | { state: "error" } | { state: "ready"; projec
 export function ProjectPicker() {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [activeId, setActiveId] = useState(readActiveProjectId);
   const [index, setIndex] = useState(0);
@@ -53,6 +56,7 @@ export function ProjectPicker() {
 
   const name = projects.find((p) => p.id === activeId)?.name ?? PICK_TEXT.choose;
   return (
+    <>
     <Popover
       open={open} onOpenChange={setOpen} className="g-hdr-pick" panelClassName="g-hdr-pick__panel"
       trigger={(p) => (
@@ -81,6 +85,13 @@ export function ProjectPicker() {
           {load.state === "ready" && <HonestState kind="empty" title={PICK_TEXT.empty} />}
         </div>
       )}
+      {load.state === "ready" && <Button onClick={() => { close(); setCreating(true); }}>{CREATE_TEXT.action}</Button>}
     </Popover>
+    {creating && <ProjectCreateSheet onClose={() => setCreating(false)} onCreated={(project) => {
+      refresh();
+      writeActiveProjectId(project.id);
+      setCreating(false);
+    }} />}
+    </>
   );
 }
