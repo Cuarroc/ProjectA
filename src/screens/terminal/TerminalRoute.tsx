@@ -11,6 +11,7 @@ import { useSessions } from "../../sessions/SessionProvider";
 import { describeError, listAgentProfiles, listWorkers, respawnWorker } from "../../lib/ipc";
 import { shortTask } from "../../lib/text";
 import type { AgentProfile, Worker } from "../../types";
+import { splitTexts } from "./split/texts";
 import "../../design/layout/layout.css";
 import "./terminal.css";
 
@@ -19,7 +20,8 @@ const loadProfiles = () => listAgentProfiles().catch((): AgentProfile[] => []);
 
 /** A route owns viewers only; sessions and their PTYs outlive navigation. */
 export default function TerminalRoute() {
-  const { sessions, activeSessionId, select, close, openWorker, showRestore } = useSessions();
+  const { sessions, activeSessionId, splitOpen, splitSessionId, splitPrimary,
+    toggleSplit, select, close, openWorker, showRestore } = useSessions();
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState(window.location.hash);
   const [restore, setRestore] = useState<Worker | null>(null);
@@ -93,6 +95,9 @@ export default function TerminalRoute() {
   }, [sessions, launchPending, restarting, select]);
   const fonts = loadFontSettings();
   const active = sessions.find((session) => session.sessionId === activeSessionId) ?? sessions[0];
+  const other = sessions.find((session) => session.sessionId === splitSessionId);
+  const panes = !restore && !opening && splitOpen && active && other && active.sessionId !== other.sessionId
+    ? (splitPrimary ? [active, other] : [other, active]) : [];
   return (
     <section ref={section} className="g-terminal" aria-label={de["terminal.title"]}
       onPointerDownCapture={() => { focusAfterClose.current = false; }}
@@ -119,6 +124,10 @@ export default function TerminalRoute() {
               window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
               setHash(window.location.hash);
             }} />
+          <Button size="sm" aria-pressed={splitOpen} onClick={toggleSplit}
+            disabled={!!restore || opening || sessions.length < 2}>
+            {splitOpen ? splitTexts.close : splitTexts.open}
+          </Button>
           {!restore && active ? <Button size="sm" onClick={() => {
             // A close supersedes route lookup/restart results, just like manual selection.
             request.current = Symbol(); setOpening(false); setRestarting(false); setError(null);
@@ -129,7 +138,22 @@ export default function TerminalRoute() {
           }}>{de["terminal.closeTab"]}</Button> : null}
           {(restore || (active && !active.exited)) && !opening && !restarting && !error ? <TerminalLauncher onLaunch={trackLaunch} /> : null}
         </div>
-        {sessions.map((session) => (
+        {panes.length === 2 ? <>
+          <div className="g-terminal-split">
+            {panes.map((pane, side) => (
+              <div key={side} className="g-terminal-pane"
+                onPointerDown={() => select(pane.sessionId)} onFocusCapture={() => select(pane.sessionId)}>
+                <TabPanel idBase="terminal" id={pane.sessionId} active>
+                  <TerminalView sessionId={pane.sessionId} onError={setError}
+                    font={fonts.terminalFont} fontSize={fonts.terminalFontSize} />
+                </TabPanel>
+              </div>
+            ))}
+          </div>
+          {sessions.filter((session) => !panes.includes(session)).map((session) => (
+            <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId} active={false} />
+          ))}
+        </> : sessions.map((session) => (
           <TabPanel key={session.sessionId} idBase="terminal" id={session.sessionId}
             active={!restore && session.sessionId === active?.sessionId}>
             {!restore && session.sessionId === active?.sessionId ? <TerminalView sessionId={session.sessionId} onError={setError}

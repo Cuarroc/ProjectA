@@ -22,7 +22,7 @@ test("opens two distinct shared session panes without spawning or mirroring on s
       localStorage.setItem("projecta.settings.featureFlag.d1_neue_oberflaeche", "1");
       localStorage.setItem("projecta.activeProjectId", "p1");
     });
-    await page.goto(`${server.resolvedUrls.local[0]}#/leitstand/terminal`);
+    await page.goto(`${server.resolvedUrls.local[0]}?restore=1#/leitstand/terminal`);
     const launch = page.getByRole("button", { name: "Neue Sitzung", exact: true });
     await expect(launch).toBeVisible();
     await page.evaluate(() => {
@@ -73,8 +73,10 @@ test("opens two distinct shared session panes without spawning or mirroring on s
       await page.keyboard.press("Control+Shift+f");
       const input = panes.nth(side).getByRole("search").locator("input");
       await input.fill(marker);
+      await input.press("Enter");
       await expect(panes.nth(side).getByLabel("Treffer", { exact: true })).toHaveText("1/1");
       await input.fill(other);
+      await input.press("Enter");
       await expect(panes.nth(side).getByLabel("Treffer", { exact: true })).toHaveText("0/0");
       await input.press("Escape");
     }
@@ -100,6 +102,25 @@ test("opens two distinct shared session panes without spawning or mirroring on s
     await expect(page.locator(".g-terminal")).toHaveCount(0);
     await page.evaluate(() => { location.hash = "#/leitstand/terminal"; });
     await expect(panes).toHaveCount(2);
+    await page.evaluate(() => {
+      const original = window.__TAURI_INTERNALS__.invoke;
+      window.__TAURI_INTERNALS__.invoke = (command, args, ...rest) => {
+        if (command !== "list_workers") return original(command, args, ...rest);
+        window.__TAURI_INTERNALS__.invoke = original;
+        return new Promise(resolve => { window.finishSplitLookup = () => resolve(original(command, args, ...rest)); });
+      };
+      location.hash = "#/leitstand/terminal?worker=restore-demo";
+    });
+    await expect(unsplit()).toBeDisabled();
+    await expect(page.locator(".xterm")).toHaveCount(1);
+    await page.evaluate(() => window.finishSplitLookup());
+    await expect(page.locator("#terminal-panel-restore\\:restore-demo")).toBeVisible();
+    await expect(page.locator(".xterm")).toHaveCount(0);
+    await expect(unsplit()).toBeDisabled();
+    await expect(unsplit()).toHaveAttribute("aria-pressed", "true");
+    await page.locator("#terminal-tab-ses-adhoc-2").click();
+    await expect(panes).toHaveCount(2);
+    await expect(unsplit()).toBeEnabled();
     assert.equal((await calls("spawn_pty")).length, 2);
     assert.deepEqual(await calls("kill_pty"), []);
     await page.locator("#terminal-panel-ses-adhoc-1 .xterm-helper-textarea").focus();
