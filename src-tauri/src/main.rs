@@ -70,6 +70,7 @@ mod delivery_recovery;
 mod development_plan;
 mod development_plan_access;
 mod development_policy;
+mod development_records_view;
 mod diagnosis;
 mod diagnosis_cmds;
 mod diff;

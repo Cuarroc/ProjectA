@@ -63,11 +63,15 @@
         assert!(row["reviews"][0]["reviewerAttestation"].as_str().unwrap().starts_with("unverified"));
         assert_eq!(row["reviews"][0]["invalidatedAt"], 4);
         assert_eq!(row["reviews"][0]["invalidatedByCommit"], b);
-        for observed in [&actual, &store.development_records_snapshot(&project).await.unwrap()] {
-            assert_eq!(observed["runs"], before["runs"]);
-            assert_eq!(observed["approvalAuthority"], before["approvalAuthority"]);
-            assert_eq!(observed["executionEnabled"], false);
-        }
+        assert_eq!(row["run"].as_object().unwrap().len(), 4);
+        assert_eq!(row.as_object().unwrap().len(), 4);
+        assert_eq!(row["evidence"][0].as_object().unwrap().len(), 9);
+        assert_eq!(row["reviews"][0].as_object().unwrap().len(), 12);
+        assert_eq!(actual["approvalAuthority"], before["approvalAuthority"]);
+        let after = store.development_records_snapshot(&project).await.unwrap();
+        assert_eq!(after["runs"], before["runs"]);
+        assert_eq!(after["approvalAuthority"], before["approvalAuthority"]);
+        assert_eq!(after["executionEnabled"], before["executionEnabled"]);
         assert_eq!(super::read_development_records(&store, &other.id).await.unwrap()["runs"], json!([]));
         assert_eq!(super::read_development_records(&store, "missing").await.unwrap_err(), "unknown project: missing");
         assert_eq!(super::read_development_records(&store, " ").await.unwrap_err(), "projectId is required");
