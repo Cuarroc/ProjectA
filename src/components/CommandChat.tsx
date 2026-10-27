@@ -4,7 +4,6 @@ import { Button } from "../design/controls/Button";
 import { Field } from "../design/forms/Field";
 import { formatMessageTime, roleLabel, type OrchestratorChat } from "../lib/orchestratorChat";
 import { commandChatTexts as texts } from "./commandchat/texts";
-import "../design/glass.css";
 import "../design/controls/controls.css";
 import "../design/forms/forms.css";
 import "../design/inputs/inputs.css";
@@ -106,7 +105,7 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
   const canSend = !disabled && !chat.sending && text.trim() !== "";
 
   return (
-    <div className="command-chat g-chrome" style={{ background: "var(--g-chrome-bg)" }}>
+    <>
       {historyOpen ? (
         <div className="command-chat-history">
           {chat.messages.length === 0 ? (
@@ -189,6 +188,6 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
           {texts.send}
         </Button>
       </div>
-    </div>
+    </>
   );
 }
