@@ -106,6 +106,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
   const facts = [
     { label: T.cpuSinceStart, value: known(cpu) ? T.percent(de(cpu / 10)) : T.factUnknown },
     { label: T.diskFree, value: known(free) ? T.gibibytes(de(free / 1024 ** 3)) : T.factUnknown },
+    { label: R.appData, value: appData },
   ];
 
   return (
@@ -134,7 +135,6 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
           <HonestState kind="offline" title={T.ramOffline} hint={T.ramHint} />
         )}
         {resources !== undefined && <KeyValue box items={facts} />}
-        {resources !== undefined && <KeyValue items={[{ label: R.appData, value: appData }]} />}
       </section>
       <section className="g-glass bt-card" aria-label={T.watchdog}>
         <h2 className="bt-h">{T.watchdog}</h2>
