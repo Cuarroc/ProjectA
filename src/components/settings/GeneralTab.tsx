@@ -19,6 +19,7 @@ import {
 } from "../../lib/settings";
 import type { Project } from "../../types";
 import PreviewToggle from "../../shell/mount/PreviewToggle";
+import DigestFields from "./digest/DigestFields";
 
 /**
  * State and handlers stay in `SettingsView` (they share effects with the other
@@ -236,23 +237,11 @@ export default function GeneralTab({
         </details>
       </div>
 
-      <label className="settings-check">
-        <input
-          type="checkbox"
-          name="digest-enabled"
-          checked={digestEnabled}
-          onChange={(event) => handleToggleDigest(event.target.checked)}
-        />
-        <span>Tages-Digest schreiben</span>
-      </label>
-      <p className="settings-hint">
-        Schreibt einmal pro Stunde für den Tag, der bereits vorbei ist, eine
-        Markdown-Seite nach <code>&lt;repo&gt;/.pa/memory/digests/</code> — Board-Stand,
-        Tagesverlauf, Worker-Aktivität, Quota und Budget. Kein Agent, keine Tokens:
-        alles kommt aus Daten, die ProjectA ohnehin hat. <code>.pa/</code> ist
-        gitignored, die Seiten sind Lesestoff für den Vault.
-      </p>
-        {digestError ? <span className="settings-error">{digestError}</span> : null}
+      <DigestFields
+        digestEnabled={digestEnabled}
+        handleToggleDigest={handleToggleDigest}
+        digestError={digestError}
+      />
 
       <fieldset className="settings-field">
         <legend className="field-label">Umgebung der Agenten</legend>
