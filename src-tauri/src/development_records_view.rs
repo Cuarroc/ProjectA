@@ -1,6 +1,120 @@
-#[cfg(test)]
-fn project(raw: serde_json::Value) -> Result<serde_json::Value, String> {
-    Ok(raw)
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::{json, Number, Value};
+
+pub(crate) fn project(raw: Value) -> Result<Value, String> {
+    let snapshot: Snapshot = serde_json::from_value(raw)
+        .map_err(|_| "invalid development records snapshot".to_string())?;
+    Ok(
+        json!({"apiVersion":1,"executionEnabled":false,"sourceTimestamp":snapshot.source_timestamp,
+        "approvalAuthority":crate::store::development_runs::approval_authority(),"runs":snapshot.runs}),
+    )
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Snapshot {
+    source_timestamp: i64,
+    runs: Vec<Record>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct Record {
+    run: Run,
+    candidate: Option<Candidate>,
+    evidence: Vec<Evidence>,
+    reviews: Vec<Review>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Run {
+    id: String,
+    task_id: String,
+    worker_id: Option<String>,
+    status: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Candidate {
+    run_id: String,
+    candidate_commit: String,
+    #[serde(deserialize_with = "source")]
+    source: String,
+    observed_at: i64,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Evidence {
+    id: String,
+    run_id: String,
+    candidate_commit: String,
+    #[serde(deserialize_with = "source")]
+    source: String,
+    observed_at: i64,
+    trusted_test_source: bool,
+    invalidated_at: Option<i64>,
+    invalidated_by_commit: Option<String>,
+    #[serde(deserialize_with = "measurement")]
+    measurement: Measurement,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Review {
+    id: String,
+    run_id: String,
+    evidence_id: String,
+    candidate_commit: String,
+    #[serde(deserialize_with = "source")]
+    source: String,
+    observed_at: i64,
+    disposition: String,
+    status: String,
+    #[serde(skip_deserializing)]
+    approval_eligible: bool,
+    #[serde(deserialize_with = "attestation")]
+    reviewer_attestation: String,
+    invalidated_at: Option<i64>,
+    invalidated_by_commit: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase", tag = "state")]
+enum Measurement {
+    Measured { value: Number },
+    Unavailable { reason: &'static str },
+}
+
+fn measurement<'de, D: Deserializer<'de>>(d: D) -> Result<Measurement, D::Error> {
+    use crate::store::development_runs::EvidenceMeasurement;
+    Ok(match EvidenceMeasurement::deserialize(d)? {
+        EvidenceMeasurement::Measured {
+            value: Value::Number(value),
+        } => Measurement::Measured { value },
+        _ => Measurement::Unavailable {
+            reason: "No numeric measurement available",
+        },
+    })
+}
+
+fn source<'de, D: Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    Ok(match String::deserialize(d)?.as_str() {
+        "git" => "git",
+        "test-gate" => "test-gate",
+        _ => "unverified",
+    }
+    .into())
+}
+
+fn attestation<'de, D: Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    Ok(if String::deserialize(d)?.starts_with("unavailable") {
+        "unavailable"
+    } else {
+        "unverified"
+    }
+    .into())
 }
 
 #[cfg(test)]
