@@ -24,3 +24,12 @@ export const PICK_TEXT = {
   empty: "Noch kein Projekt – lege eins in den Einstellungen an",
   failed: "Projekte konnten nicht geladen werden.",
 };
+export const CREATE_TEXT = {
+  action: "Neues Projekt anlegen",
+  title: "Projekt anlegen",
+  name: "Projektname",
+  path: "Repository-Pfad",
+  hint: "Name und Pfad eines vorhandenen Git-Ordners sind erforderlich.",
+  cancel: "Abbrechen",
+  submit: "Anlegen",
+};
