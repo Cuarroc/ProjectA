@@ -1,5 +1,9 @@
+import "../../design/forms/forms.css";
+import "../../design/glass.css";
+import { SwitchField } from "../../design/forms/SwitchField";
 import type { AgentProfile } from "../../types";
 import ProfileBudgetFields, { type ProfileBudgetFieldsProps } from "./ProfileBudgetFields";
+import { T } from "./profiles/texts";
 
 /**
  * Renders the profile roster with its enable switch and budget fields. State,
@@ -30,22 +34,13 @@ export default function ProfilesPanel({
 }: ProfilesPanelProps) {
   return (
     <div className="settings-field profile-field">
-      <span className="field-label">Profile</span>
-      <p className="settings-hint">
-        Ein deaktiviertes Profil bleibt gespeichert, wird aber keinem neuen
-        Agenten mehr zugeteilt.
-      </p>
-      <p className="settings-hint">
-        Budget: ab welchem Prozentsatz des 5-Stunden- bzw. 7-Tage-Fensters
-        dieses Profil pausiert wird. Erreicht ein Fenster seine Schwelle,
-        überspringt der Dispatcher das Profil und laufende Agenten werden
-        gestoppt — die Worktrees bleiben liegen, ein Respawn holt sie
-        zurück. Leeres Feld heißt „keine Schwelle“.
-      </p>
-      {profileError ? <span className="settings-error">{profileError}</span> : null}
-      {budgetError ? <span className="settings-error">{budgetError}</span> : null}
+      <span className="field-label">{T.title}</span>
+      <p className="settings-hint">{T.hint}</p>
+      <p className="settings-hint">{T.budgetHint}</p>
+      {profileError ? <span role="alert" className="settings-error">{profileError}</span> : null}
+      {budgetError ? <span role="alert" className="settings-error">{budgetError}</span> : null}
       {profileList.length === 0 ? (
-        <span className="settings-hint">Keine Profile vorhanden.</span>
+        <span className="settings-hint">{T.empty}</span>
       ) : (
         <ul className="profile-list">
           {profileList.map((profile) => (
@@ -57,16 +52,15 @@ export default function ProfilesPanel({
                 <span className="profile-name">{profile.name}</span>
                 <span className="profile-id">{profile.id}</span>
               </div>
-              <label className="settings-check profile-toggle">
-                <input
-                  type="checkbox"
-                  name={`profile-enabled-${profile.id}`}
-                  checked={profile.enabled}
-                  disabled={profileBusyId === profile.id}
-                  onChange={(event) => handleToggleProfile(profile, event.target.checked)}
-                />
-                <span>Aktiv</span>
-              </label>
+              <SwitchField
+                className="profile-toggle"
+                id={`profile-enabled-${profile.id}`}
+                name={`profile-enabled-${profile.id}`}
+                label={T.active(profile.name)}
+                checked={profile.enabled}
+                disabled={profileBusyId === profile.id}
+                onCheckedChange={(enabled) => handleToggleProfile(profile, enabled)}
+              />
               <ProfileBudgetFields
                 profile={profile}
                 budget={budgetOf(profile.id)}
