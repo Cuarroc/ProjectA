@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Button } from "../../design/controls/Button";
 import "../../design/controls/controls.css";
 import { fileLabel } from "../../lib/diff";
@@ -13,9 +14,10 @@ interface DiffFileListProps {
 }
 
 export function DiffFileList({ files, selectedPath, commentCounts, onSelect }: DiffFileListProps) {
+  const descriptionId = useId();
   return (
     <div className="diff-files" role="group" aria-label={fileTexts.group}>
-      {files.map((file) => {
+      {files.map((file, index) => {
         const active = selectedPath === file.path;
         const notes = commentCounts.get(file.path) ?? 0;
         const label = fileLabel(file.path, file.oldPath);
@@ -27,9 +29,13 @@ export function DiffFileList({ files, selectedPath, commentCounts, onSelect }: D
             className={`diff-file${active ? " diff-file-active" : ""}`}
             title={label}
             aria-label={fileTexts.file(label)}
+            aria-describedby={`${descriptionId}-${index}`}
             aria-current={active ? "true" : undefined}
             onClick={() => onSelect(file.path)}
           >
+            <span className="sr-only" id={`${descriptionId}-${index}`}>
+              {fileTexts.counts(file.additions, file.deletions, notes)}
+            </span>
             <span className="diff-file-content">
               <span className="diff-file-path">{label}</span>
               <span className="diff-file-counts">
