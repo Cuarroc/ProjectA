@@ -542,7 +542,7 @@ run_spec() {
       if [ -n "$name" ]; then
         (cd "$tree" && node_name_run "$name" "$path")
       else
-        (cd "$tree" && node --test "$path")
+        (cd "$tree" && node --test --test-force-exit "$path")
       fi
       ;;
     *.sh)
