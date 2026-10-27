@@ -43,6 +43,9 @@ it("names changed files and retains rename selection counts and comment markers"
   const renamed = within(group).getByRole("button", { name: "Datei src-tauri/src/store.rs → src/renamed.ts" });
   const binary = within(group).getByRole("button", { name: "Datei docs/old.md → src-tauri/src/main.rs" });
   expect(within(group).getAllByRole("button")).toHaveLength(2);
+  expect(renamed).toHaveAccessibleName("Datei src-tauri/src/store.rs → src/renamed.ts");
+  expect(renamed).toHaveAccessibleDescription("7 hinzugefügt, 3 gelöscht, 2 Kommentar(e)");
+  expect(binary).toHaveAccessibleDescription("2 hinzugefügt, 5 gelöscht, 1 Kommentar(e)");
   expect(renamed).toHaveAttribute("aria-current", "true");
   expect(renamed).toHaveAttribute("type", "button");
   expect(renamed).toHaveTextContent("src-tauri/src/store.rs → src/renamed.ts");
@@ -72,6 +75,7 @@ it("names changed files and retains rename selection counts and comment markers"
   currentFiles = [files[0]];
   fireEvent.click(screen.getByRole("button", { name: "Diff und Readiness neu laden" }));
   await waitFor(() => expect(within(group).getAllByRole("button")).toHaveLength(1));
+  expect(renamed).toHaveAccessibleDescription("7 hinzugefügt, 3 gelöscht, 2 Kommentar(e)");
   expect(renamed).toHaveAttribute("aria-current", "true");
   expect(screen.getByRole("textbox", { name: "Kommentar zu Zeile 1" })).toHaveValue("Unsent draft");
   expect(screen.getByText("Keep this review note")).toBeInTheDocument();
@@ -80,4 +84,31 @@ it("names changed files and retains rename selection counts and comment markers"
   expect(invoke).toHaveBeenCalledWith("get_worker_diff", { workerId: "files-worker" });
   expect(invoke).toHaveBeenCalledWith("list_diff_comments", { workerId: "files-worker" });
   expect(invoke.mock.calls.every(([cmd]) => ["get_worker_diff", "list_diff_comments", "get_worker_readiness", "get_setup_trust_view"].includes(cmd))).toBe(true);
+});
+
+it("keeps file metadata associated across simultaneous views including zero comments", async () => {
+  invoke.mockImplementation(async (command: string, args: { workerId: string }) => {
+    if (command === "get_worker_diff") return { base_branch: "main", stat: "", files: [{
+      path: "src/shared.ts", old_path: null, binary: false, hunks: [],
+      additions: args.workerId === "zero-worker" ? 0 : 11,
+      deletions: args.workerId === "zero-worker" ? 0 : 4,
+    }] };
+    if (command === "list_diff_comments") return args.workerId === "zero-worker" ? [] : [{
+      id: "other-note", worker_id: "other-worker", file: "src/shared.ts", line: 1,
+      body: "Other view note", sent_to_agent: true, created_at: 1, disposition: "done",
+    }];
+    if (command === "get_worker_readiness") return { lifecycle: "exited", readiness: "blocked", blockers: [] };
+    if (command === "get_setup_trust_view") return null;
+    throw new Error(`Unexpected command: ${command}`);
+  });
+  const zeroView = render(<DiffView workerId="zero-worker" branch="review/zero" />);
+  const otherView = render(<DiffView workerId="other-worker" branch="review/other" />);
+  const zeroRow = await within(zeroView.container).findByRole("button", { name: "Datei src/shared.ts" });
+  const otherRow = await within(otherView.container).findByRole("button", { name: "Datei src/shared.ts" });
+  await waitFor(() => expect(otherRow).toHaveAccessibleDescription("11 hinzugefügt, 4 gelöscht, 1 Kommentar(e)"));
+  expect(zeroRow).toHaveAccessibleDescription("0 hinzugefügt, 0 gelöscht, 0 Kommentar(e)");
+  expect(within(zeroRow).queryByTitle(/Kommentar\(e\)/)).not.toBeInTheDocument();
+  zeroView.unmount();
+  expect(otherRow).toHaveAccessibleName("Datei src/shared.ts");
+  expect(otherRow).toHaveAccessibleDescription("11 hinzugefügt, 4 gelöscht, 1 Kommentar(e)");
 });
