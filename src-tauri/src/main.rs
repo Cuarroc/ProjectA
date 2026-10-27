@@ -70,6 +70,7 @@ mod delivery_recovery;
 mod development_plan;
 mod development_plan_access;
 mod development_policy;
+mod development_records_view;
 mod diagnosis;
 mod diagnosis_cmds;
 mod diff;
@@ -1829,7 +1830,7 @@ pub(crate) async fn read_development_records(
         .get_project(project_id)
         .await?
         .ok_or_else(|| format!("{}project: {project_id}", workers::ERR_UNKNOWN))?;
-    store.development_records_snapshot(project_id).await
+    development_records_view::project(store.development_records_snapshot(project_id).await?)
 }
 
 /// F5 baseline: CPU/RAM/disk plus the OmniRoute token totals. No ceilings.
