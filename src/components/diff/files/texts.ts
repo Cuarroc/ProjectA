@@ -4,4 +4,6 @@ export const fileTexts = {
   review: (label: string, explanation: string) => `Prüfstufe ${label}: ${explanation}`,
   binary: "bin",
   comments: (count: number) => `${count} Kommentar(e)`,
+  counts: (additions: number, deletions: number, comments: number) =>
+    `${additions} hinzugefügt, ${deletions} gelöscht, ${comments} Kommentar(e)`,
 };
