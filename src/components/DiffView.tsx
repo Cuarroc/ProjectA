@@ -17,6 +17,7 @@ import {
 import type { DiffComment, DiffFile, DiffLine, SetupTrustView, WorkerReadiness } from "../types";
 
 import { DiffFileList } from "./diff/DiffFileList";
+import { DiffLineContent, DiffLines } from "./diff/DiffLines";
 
 interface DiffViewProps {
   workerId: string;
@@ -699,40 +700,29 @@ export default function DiffView({ workerId, branch }: DiffViewProps) {
             onSelect={setSelectedPath}
           />
 
-          <div className="diff-pane" onKeyDown={onPaneKeyDown}>
-            {selected === null || selected.hunks.length === 0 ? (
-              <p className="diff-pane-empty">
-                {selected?.binary
-                  ? "Binärdatei — dafür gibt es keinen Textdiff."
-                  : "Keine darstellbaren Hunks in dieser Datei."}
-              </p>
-            ) : (
-              selected.hunks.map((hunk, hunkIndex) => (
-                <div key={`${hunkIndex}-${hunk.header}`} className="diff-hunk">
-                  <div className="diff-hunk-header">{hunk.header}</div>
-                  {hunk.lines.map((line, lineIndex) => (
-                    <DiffLineRow
-                      key={lineIndex}
-                      file={selected.path}
-                      line={line}
-                      comments={byLine}
-                      composing={composing}
-                      draft={draft}
-                      busy={busy}
-                      error={actionError}
-                      stop={activeStop}
-                      onStop={setStopLine}
-                      onRegister={registerLine}
-                      onOpen={openBox}
-                      onDraft={setDraft}
-                      onSubmit={submitComment}
-                      onCancel={closeBox}
-                    />
-                  ))}
-                </div>
-              ))
+          <DiffLines
+            selected={selected}
+            onKeyDown={onPaneKeyDown}
+            renderLine={(file, line, index) => (
+              <DiffLineRow
+                key={index}
+                file={file}
+                line={line}
+                comments={byLine}
+                composing={composing}
+                draft={draft}
+                busy={busy}
+                error={actionError}
+                stop={activeStop}
+                onStop={setStopLine}
+                onRegister={registerLine}
+                onOpen={openBox}
+                onDraft={setDraft}
+                onSubmit={submitComment}
+                onCancel={closeBox}
+              />
             )}
-          </div>
+          />
         </div>
       )}
 
@@ -823,8 +813,6 @@ interface DiffLineRowProps {
   onCancel: () => void;
 }
 
-const SIGN: Record<DiffLine["kind"], string> = { add: "+", del: "-", context: " " };
-
 /**
  * One diff line, plus the comment box when it is the line being commented on.
  * Deleted lines are not commentable: they are not in the file any more, so the
@@ -875,15 +863,7 @@ function DiffLineRow({
               }
         }
       >
-        <span className="diff-gutter">{line.oldLine ?? ""}</span>
-        <span className="diff-gutter">{line.newLine ?? ""}</span>
-        <span className="diff-marker">
-          {pinned && pinned.length > 0 ? (
-            <span className="diff-line-note" title={`${pinned.length} Kommentar(e)`} />
-          ) : null}
-        </span>
-        <span className="diff-sign">{SIGN[line.kind]}</span>
-        <span className="diff-text">{line.content}</span>
+        <DiffLineContent line={line} commentCount={pinned?.length ?? 0} />
       </div>
 
       {open && target !== null ? (
