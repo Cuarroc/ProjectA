@@ -16,9 +16,10 @@ trap cleanup EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "OK: $*"; }
 
-mkdir -p "$PROBE/repo/.githooks" "$PROBE/repo/scripts/lib"
+mkdir -p "$PROBE/repo/.githooks" "$PROBE/repo/scripts/lib" "$PROBE/repo/scripts/ci"
 cp "$HERE/.githooks/commit-msg" "$PROBE/repo/.githooks/commit-msg"
 cp "$HERE/scripts/lib/test-first.sh" "$PROBE/repo/scripts/lib/test-first.sh"
+cp "$HERE/scripts/ci/red-first.sh" "$PROBE/repo/scripts/ci/red-first.sh"
 chmod +x "$PROBE/repo/.githooks/commit-msg"
 
 cd "$PROBE/repo"
@@ -154,11 +155,11 @@ EOF
   base="$(git rev-parse HEAD)"
 
   echo "export const behavior = 'new';" > src/behavior.ts
-  printf '#!/usr/bin/env bash\nexit 0\n' > scripts/test-behavior.sh
+  printf '#!/usr/bin/env bash\necho "ok   behavior_is_new"\n' > scripts/test-behavior.sh
   perl -0pi -e 's/\{ "old" \}/\{ "new" \}/' src-tauri/src/main.rs
   git add .
   git commit -q -m "feat: Verhalten repariert" \
-    -m "Test-First: scripts/test-behavior.sh" \
+    -m "Test-First: scripts/test-behavior.sh::behavior_is_new" \
     -m "Test-First: src-tauri/src/main.rs::behavior_is_new" \
     -m "Test-First: tests::behavior_is_new"
   head="$(git rev-parse HEAD)"
@@ -312,6 +313,111 @@ CJSEOF
   cjs_head="$(git rev-parse HEAD)"
   BASE_SHA="$mjs_head" HEAD_SHA="$cjs_head" PR_BODY="" \
     bash scripts/ci/red-first.sh >"$PROBE/cjs-support.out" 2>&1
+
+  # Exercise the public gate with completed Node tests and a leftover handle.
+  cat > scripts/lib/open-handle.test.mjs <<'NODEEOF'
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { appendFileSync, readFileSync } from 'node:fs';
+const record = (stage) => {
+  const stat = readFileSync('/proc/self/stat', 'utf8').split(') ')[1].split(' ');
+  appendFileSync(process.env.RF_PROBE_RECORD,
+    JSON.stringify({ pid: process.pid, start: stat[19], group: Number(stat[2]), stage }) + '\n');
+};
+record('started');
+setInterval(() => {}, 1000);
+test('exact named pass', () => { assert.equal(2 + 2, 4); record('passed'); });
+test('exact named failure', () => { assert.equal(2 + 2, 5); });
+after(() => record('completed'));
+NODEEOF
+  git add scripts/lib/open-handle.test.mjs
+  git commit -q -m "test: completed named Node runs with open handles"
+  named_head="$(git rev-parse HEAD)"
+  # This foreground supervisor always joins the gate and checks PID/starttime/
+  # process-group ownership. Its deadline fails the selftest, never proves RED.
+  python3 - "$PROBE" "$cjs_head" "$named_head" <<'PYEOF'
+import json, os, signal, subprocess, sys, time
+from pathlib import Path
+
+probe, base, head = sys.argv[1:]
+def identity(pid):
+    try:
+        fields = Path(f'/proc/{pid}/stat').read_text().rsplit(') ', 1)[1].split()
+        return fields[19], int(fields[2]), fields[0]
+    except FileNotFoundError:
+        return None
+
+for name, expected in [('exact named pass', 0), ('missing name', 1), ('exact named failure', 1)]:
+    record = Path(probe, name + '.jsonl')
+    output = Path(probe, name + '.log')
+    spec = 'scripts/lib/open-handle.test.mjs::' + name
+    env = dict(os.environ, BASE_SHA=base, HEAD_SHA=head,
+               PR_BODY='Test-First: ' + spec, RF_PROBE_RECORD=str(record))
+    owned, expired, leaked = {}, False, False
+    with output.open('w') as log:
+        child = subprocess.Popen(['bash', 'scripts/ci/red-first.sh'], env=env,
+                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        deadline = time.monotonic() + 15
+        try:
+            while child.poll() is None:
+                for path in Path('/proc').iterdir():
+                    if path.name.isdigit():
+                        current = identity(int(path.name))
+                        if current and current[1] == child.pid:
+                            owned[int(path.name)] = current[:2]
+                if time.monotonic() >= deadline:
+                    expired = True
+                    break
+                time.sleep(0.02)
+        finally:
+            leaked = not expired and any(
+                (current := identity(pid)) and current[:2] == original and current[2] != 'Z'
+                for pid, original in owned.items())
+            # Signal only processes observed in this probe's newly owned group.
+            for sig in (signal.SIGTERM, signal.SIGKILL):
+                for pid, original in owned.items():
+                    current = identity(pid)
+                    if current and current[:2] == original and current[2] != 'Z':
+                        try:
+                            if sig == signal.SIGTERM and Path(f'/proc/{pid}/comm').read_text().strip() != 'node':
+                                continue
+                            os.kill(pid, sig)
+                        except (ProcessLookupError, FileNotFoundError):
+                            pass
+                try:
+                    child.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    continue
+                time.sleep(0.05)
+            child.wait(timeout=2)
+    records = [json.loads(line) for line in record.read_text().splitlines()]
+    for item in records:
+        assert item['group'] == child.pid, 'fixture escaped its owned process group'
+        owned[item['pid']] = (item['start'], item['group'])
+    for pid, original in owned.items():
+        current = identity(pid)
+        assert not current or current[:2] != original or current[2] == 'Z', 'owned child leaked'
+    assert any(item['stage'] == 'completed' for item in records), 'fixture did not complete'
+    if name == 'exact named pass':
+        assert any(item['stage'] == 'passed' for item in records), 'named assertion did not pass'
+    print(f'owned process cleanup verified: {name}', flush=True)
+    assert not leaked, f'{name}: gate exited with a live owned child'
+    assert not expired, f'{name}: tests completed but Node did not exit; deadline is not RED evidence'
+    text = output.read_text()
+    assert child.returncode == expected, (name, child.returncode, text)
+    assert f'{spec} ist an der Merge-Base rot/fehlend (erwartet).' in text, text
+    if expected == 0:
+        assert '✔ exact named pass (' in text and f'{spec} ist am Kopf gruen.' in text, text
+    else:
+        assert f'{spec} ist am Kopf nicht gruen.' in text, text
+        assert f'{spec} ist am Kopf gruen.' not in text, text
+        if name == 'missing name':
+            assert '✔ scripts/lib/open-handle.test.mjs (' in text, text
+        else:
+            assert 'AssertionError' in text, text
+    print(f'classification verified: {name}', flush=True)
+PYEOF
+  printf '%s\n' 'ok   completed named Node runs exit with strict classification'
 
 )
 pass "CI-Beweis verlangt Base rot, Kopf gruen, echte Rust-Treffer und erreichbare SHAs"
