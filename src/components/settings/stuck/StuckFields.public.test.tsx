@@ -83,9 +83,12 @@ describe("GeneralTab stuck threshold (public)", () => {
     expect(save).toBeEnabled();
     expect(save).toHaveAttribute("type", "button");
     for (const [index, raw] of ["", "0", "17", "bad input"].entries()) {
+      rerender(<GeneralTab {...p} stuckInput="unchanged" />);
       fireEvent.change(input, { target: { value: raw } });
       expect(p.setStuckInput).toHaveBeenNthCalledWith(index + 1, raw);
-      expect(input).toHaveValue("17");
+      expect(input).toHaveValue("unchanged");
+      rerender(<GeneralTab {...p} stuckInput={raw} />);
+      expect(input).toHaveValue(raw);
     }
     expect(p.setStuckInput).toHaveBeenCalledTimes(4);
     expect(p.handleSaveStuck).not.toHaveBeenCalled();
