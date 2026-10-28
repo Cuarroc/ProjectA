@@ -59,7 +59,7 @@ Small package≤300RAW including tests/glue/own row;forced review delta≤400 on
 | Independent check | 0 author self-acceptances; required non-author families bound to the exact candidate | V36-C05/C10: review family, head and disposition; affected proof renewed on change |
 | Honest states | Every claimed acceptance/start/delivery/check has an observed source and time; unknown stays unknown | V36-C05/C06: native receipt-to-view mapping, not model output |
 
-All seven apply to the actual new-product flow (V36-C13 and V36-P16b), including Files before that flow is accepted. Mock/browser checks prove only their own boundary. No real effect, protected run, app launch or user acceptance is authorized by this contract.
+All seven apply to the actual new-product flow (V36-C13, source PF16b), including Files before that flow is accepted. Mock/browser checks prove only their own boundary. No real effect, protected run, app launch or user acceptance is authorized by this contract.
 
 ## Technical bindings required by MS-0
 
