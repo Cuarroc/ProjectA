@@ -116,12 +116,14 @@ it("keeps refused creation visible without publishing a fake project", async () 
 
 it("does not steal a newer explicit selection even after it returns to empty", async () => {
   const finish = deferCreation();
-  render(<LeitstandRoute />);
+  render(<><button>New selection</button><LeitstandRoute /></>);
   const form = await open();
   fill();
   fireEvent.click(form.getByRole("button", { name: "Anlegen" }));
   act(() => { writeActiveProjectId("other"); writeActiveProjectId(null); });
+  screen.getByRole("button", { name: "New selection" }).focus();
   await finish();
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "New selection" }));
   expect(readActiveProjectId()).toBeNull();
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(screen.getByRole("button", { name: "Projekt anlegen" })).toBeInTheDocument();
@@ -172,4 +174,42 @@ it("keeps the returned project name when the initial project list arrives late",
   await act(async () => { finishRead([]); });
   fireEvent.click(screen.getByRole("button", { name: "Alle Projekte" }));
   expect(await screen.findByText("Projekt: Garden")).toBeInTheDocument();
+});
+
+async function expectUnreadNames(state: "failed" | "pending") {
+  let finishRead!: (value: typeof projects) => void;
+  const wire = vi.mocked(invoke).getMockImplementation()!;
+  vi.mocked(invoke).mockImplementation((command, args, options) => {
+    if (command === "list_projects") return state === "failed" ? Promise.reject(new Error("List unavailable"))
+      : new Promise((resolve) => { finishRead = resolve as typeof finishRead; });
+    if (command === "list_questions") return Promise.resolve([{ id: "q2", projectId: "other", workerId: null, scope: "preflight", question: "Which project?", optionsJson: "[]", status: "open", answer: null, createdAt: 1, expiresAt: null }]);
+    return wire(command, args, options);
+  });
+  const finish = deferCreation();
+  render(<LeitstandRoute />);
+  const form = await open();
+  fill();
+  fireEvent.click(form.getByRole("button", { name: "Anlegen" }));
+  await finish();
+  fireEvent.click(screen.getByRole("button", { name: "Alle Projekte" }));
+  expect(await screen.findByText(state === "failed"
+    ? "Projekt: other (Projektname nicht lesbar)" : "Projekt: other (Projektname wird gelesen …)")).toBeInTheDocument();
+  expect(screen.queryByText("Projekt: other (Projekt nicht registriert)")).toBeNull();
+  if (state === "pending") {
+    await act(async () => { finishRead([{ ...created, id: "other", name: "Other project" }]); });
+    expect(await screen.findByText("Projekt: Other project")).toBeInTheDocument();
+  }
+}
+it("keeps other project names honest after creation with a failed list", () => expectUnreadNames("failed"));
+it("keeps other project names honest after creation with a pending list", () => expectUnreadNames("pending"));
+
+it("focuses the stable Leitstand heading after current creation closes the sheet", async () => {
+  const finish = deferCreation();
+  render(<LeitstandRoute />);
+  const form = await open();
+  fill();
+  fireEvent.click(form.getByRole("button", { name: "Anlegen" }));
+  await finish();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Fabrik" }));
 });
