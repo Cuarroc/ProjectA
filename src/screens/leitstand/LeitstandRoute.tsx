@@ -9,7 +9,7 @@ import { TabLinks } from "../../design/layout/Tabs";
 import "../../design/layout/layout.css";
 import "../../design/inputs/inputs.css";
 import { useT } from "../../i18n/useT";
-import type { AgentProfile } from "../../types";
+import type { AgentProfile, Project } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
 import { FlowTab } from "./flow/FlowTab";
 import { NeedsYou } from "./needs/NeedsYou";
@@ -45,6 +45,13 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   const [projectId, setProjectId] = useState(readActiveProjectId);
   const [creating, setCreating] = useState<number | null>(null);
   const selectionVersion = useRef(0);
+  const createdProject = useRef<Project | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusVersion = useRef<number | null>(null);
+  useEffect(() => {
+    if (focusVersion.current === selectionVersion.current) heading.current?.focus();
+    focusVersion.current = null;
+  }, [creating, projectId]);
   // The picker and the old app publish a choice through the module's event.
   useEffect(() => {
     setProjectId(readActiveProjectId());
@@ -71,7 +78,11 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
       () => live && setProfilesFailed(true),
     );
     listProjects().then(
-      (list) => live && setProjectNames((names) => new Map([...list.map((project) => [project.id, project.name] as const), ...(names ?? [])])),
+      (list) => {
+        if (!live) return;
+        const created = createdProject.current;
+        setProjectNames(new Map([...list.map((project) => [project.id, project.name] as const), ...(created ? [[created.id, created.name] as const] : [])]));
+      },
       () => live && setProjectNames((names) => names ?? null),
     );
     const timer = window.setInterval(() => setNow(Date.now() / 1000), TICK_MS);
@@ -97,7 +108,7 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   const unread = board.cards.length === 0;
   return (
     <div className="g-lr">
-      <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
+      <div className="g-lr-head"><h1 ref={heading} tabIndex={-1}>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
       <div className="g-lr-body">
         {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} action={{ label: t("leitstand.addProject"), onClick: () => setCreating(selectionVersion.current) }} /></div> : (
           <div className="g-lr-main">
@@ -126,8 +137,10 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
         // A newer choice or unmount invalidates this result, even if the choice returns to empty.
         if (creating !== selectionVersion.current) return;
         setCreating(null);
-        setProjectNames((names) => new Map(names).set(project.id, project.name));
+        createdProject.current = project;
+        setProjectNames((names) => names ? new Map(names).set(project.id, project.name) : names);
         writeActiveProjectId(project.id);
+        focusVersion.current = selectionVersion.current;
       }} />}
     </div>
   );
