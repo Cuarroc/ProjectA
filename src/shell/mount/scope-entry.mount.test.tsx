@@ -73,7 +73,7 @@ it("keeps a hidden deep link and shows its honest settings recovery", async () =
   expect(window.location.hash).toBe("#/gedaechtnis");
   expect(title()).toBe("Wissen");
   expect(screen.queryByText(NOTICE)).toBeNull();
-  expect(screen.getByText(/Noch nicht verbunden/)).toBeVisible();
+  expect(screen.getByRole("region", { name: "Lektionen zur Freigabe" })).toBeVisible();
   cleanup();
   await mountAt("#/gedaechtnis/");
   expect(screen.queryByText(NOTICE)).toBeNull();

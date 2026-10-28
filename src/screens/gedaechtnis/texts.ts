@@ -10,6 +10,7 @@ export const T = {
   reloadFailed: "Die Liste konnte nach der Entscheidung nicht erneut gelesen werden.",
   retry: "Erneut versuchen",
   approve: "Übernehmen",
+  edit: "Lektion bearbeiten",
   reject: "Verwerfen",
   working: "Einen Moment …",
   approved: "Ins Playbook übernommen.",

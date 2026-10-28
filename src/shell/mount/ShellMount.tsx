@@ -2,6 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { createPortal } from "react-dom";
 
 import type { AppGoal } from "../../lib/goals";
+import { readActiveProjectId, subscribeActiveProject } from "../../lib/activeProject";
+import { LektionenFreigabe } from "../../screens/gedaechtnis/LektionenFreigabe";
 import { Shell } from "../Shell";
 import { useFeatureFlag } from "../../flags/useFeatureFlag";
 import { DEFAULT_PATH, isHidden, pathFromHash } from "../routes";
@@ -34,6 +36,13 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const frame = useRef<HTMLDivElement>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [path, setPath] = useState(() => resolveAlias(pathFromHash(window.location.hash)));
+  const [project, setProject] = useState(() => ({ id: readActiveProjectId(), visit: 0 }));
+  useEffect(() => {
+    const update = (id: string | null) => setProject((p) => p.id === id ? p : { id, visit: p.visit + 1 });
+    const unsubscribe = subscribeActiveProject(update);
+    update(readActiveProjectId());
+    return unsubscribe;
+  }, []);
   useLayoutEffect(() => {
     const find = () => frame.current?.querySelector<HTMLElement>(".g-shell-content") ?? null;
     const found = find();
@@ -77,12 +86,13 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
   const start = isStart(path);
   const betrieb = isBetrieb(path);
   const beweise = path === "/beweise";
+  const lessons = /^\/gedaechtnis\/?$/.test(path) && !hidden;
 
   const freshSettings = isNewEinstellungen(path);
   const terminal = isTerminal(path);
   const verlauf = isVerlauf(path);
   const gallery = isGallery(path);
-  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || beweise || terminal || verlauf || gallery;
+  const fresh = isNewLeitstand(path) || steuerung || freshSettings || start || betrieb || beweise || lessons || terminal || verlauf || gallery;
   const legacy = hasLegacyPanel(path) && !fresh && !hidden;
   return (
     <div className="g-mount" ref={frame} data-legacy={legacy ? "on" : "off"} data-fresh={fresh ? "on" : "off"}>
@@ -97,6 +107,7 @@ export default function ShellMount({ children }: { children: (props: LegacyRoute
               {start ? <StartRoute /> : null}
               {betrieb ? <BetriebRoute /> : null}
               {beweise ? <BeweiseRoute /> : null}
+              {lessons ? <LektionenFreigabe key={project.visit} projectId={project.id} /> : null}
               {freshSettings ? <EinstellungenScreen path={path} onNavigate={(target) => { window.location.hash = `#${target}`; }} onOpenClassic={openClassicSettings} /> : null}
               {gallery ? <Suspense fallback={null}><Gallery /></Suspense> : null}
               <div className="g-mount-legacy" hidden={!legacy} data-tabs={path === CLASSIC_PATH ? "on" : undefined}>
