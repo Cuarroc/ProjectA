@@ -16,7 +16,7 @@ interface StuckFieldsProps {
 
 export default function StuckFields({ stuckInput, setStuckInput, savingStuck, handleSaveStuck, stuckError }: StuckFieldsProps) {
   return (
-    <div className="settings-field" role="group" title={T.label}>
+    <div className="settings-field" role="group" aria-label={T.label}>
       <Field
         label={T.label}
         hint={<>{T.hintStart} <em>{T.simultaneous}</em> {T.hintEnd}</>}
