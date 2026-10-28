@@ -124,7 +124,7 @@ export default function TerminalRoute() {
               window.history.replaceState(window.history.state, "", "#/leitstand/terminal");
               setHash(window.location.hash);
             }} />
-          <Button size="sm" aria-pressed={splitOpen} onClick={toggleSplit}
+          <Button size="sm" aria-pressed={panes.length === 2} onClick={toggleSplit}
             disabled={!!restore || opening || sessions.length < 2}>
             {splitOpen ? splitTexts.close : splitTexts.open}
           </Button>
@@ -144,7 +144,8 @@ export default function TerminalRoute() {
               <div key={side} className="g-terminal-pane"
                 onPointerDown={() => select(pane.sessionId)} onFocusCapture={() => select(pane.sessionId)}>
                 <TabPanel idBase="terminal" id={pane.sessionId} active>
-                  <TerminalView sessionId={pane.sessionId} onError={setError}
+                  <TerminalView key={pane.sessionId} sessionId={pane.sessionId} onError={setError}
+                    autoFocus={pane.sessionId === active.sessionId}
                     font={fonts.terminalFont} fontSize={fonts.terminalFontSize} />
                 </TabPanel>
               </div>

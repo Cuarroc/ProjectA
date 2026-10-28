@@ -73,6 +73,7 @@ interface TerminalViewProps {
   /** Defaults to the saved settings; the app passes them so changes apply live. */
   font?: TerminalFontId;
   fontSize?: number;
+  autoFocus?: boolean;
 }
 
 /** sRGB relative luminance (WCAG), used by {@link contrastRatio}. */
@@ -147,12 +148,15 @@ export default function TerminalView({
   onError,
   font = loadTerminalFont(),
   fontSize = loadTerminalFontSize(),
+  autoFocus = true,
 }: TerminalViewProps) {
   const t = useT();
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Keep the latest callback without re-running the (expensive) mount effect.
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  const autoFocusRef = useRef(autoFocus);
+  autoFocusRef.current = autoFocus;
 
   // Set once by the mount effect below; read by the search bar, which lives
   // outside that effect so it can be plain React state.
@@ -407,7 +411,7 @@ export default function TerminalView({
           for (const chunk of buffered.splice(0)) term.write(chunk);
           applyFit();
           repaint();
-          term.focus();
+          if (autoFocusRef.current) term.focus();
         }
       }
     })();

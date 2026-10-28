@@ -118,7 +118,7 @@ test("opens two distinct shared session panes without spawning or mirroring on s
     await expect(page.locator("#terminal-panel-restore\\:restore-demo")).toBeVisible();
     await expect(page.locator(".xterm")).toHaveCount(0);
     await expect(unsplit()).toBeDisabled();
-    await expect(unsplit()).toHaveAttribute("aria-pressed", "true");
+    await expect(unsplit()).toHaveAttribute("aria-pressed", "false");
     await page.locator("#terminal-tab-ses-adhoc-2").click();
     await expect(panes).toHaveCount(2);
     await expect(unsplit()).toBeEnabled();
@@ -130,6 +130,7 @@ test("opens two distinct shared session panes without spawning or mirroring on s
     await expect(page.locator(".xterm")).toHaveCount(1);
     await expect(page.locator("#terminal-tab-ses-adhoc-2")).toBeFocused();
     await expect(split()).toBeDisabled();
+    await expect(split()).toHaveAttribute("aria-pressed", "false");
     assert.deepEqual(await calls("kill_pty"), [{ command: "kill_pty", args: { sessionId: "ses-adhoc-1" } }]);
     assert.equal((await calls("spawn_pty")).length, 2);
     assert.deepEqual(errors, []);
@@ -146,7 +147,7 @@ async function withSplit(verify) {
     await server.listen();
     const { ptyOutput } = await server.ssrLoadModule("/src/lib/eventNames.ts");
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({ viewport: { width: 1100, height: 720 } });
+    const page = await browser.newPage({ reducedMotion: "reduce", viewport: { width: 1100, height: 720 } });
     const errors = [];
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript(() => {
@@ -182,6 +183,17 @@ async function withSplit(verify) {
   }
 }
 
+async function captureSplit(page, stage) {
+  if (!process.env.SPLIT_CAPTURE) return;
+  await mkdir(process.env.SPLIT_CAPTURE, { recursive: true });
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+    console.log(JSON.stringify({ stage, theme, panes: await page.locator('.g-terminal [role="tabpanel"]:visible')
+      .evaluateAll(els => els.map(el => ({ id: el.id, focused: el.contains(document.activeElement) }))) }));
+    await page.screenshot({ path: `${process.env.SPLIT_CAPTURE}/${stage}-${theme}.png`, animations: "disabled" });
+  }
+}
+
 test("preserves the active pane focus and physical order across split toggles", () => withSplit(async ({ page, panes }) => {
   await expect(page.locator("#terminal-tab-ses-adhoc-3")).toHaveAttribute("aria-selected", "true");
   await expect(panes.nth(0).locator(".xterm-helper-textarea")).toBeFocused();
@@ -194,6 +206,7 @@ test("preserves the active pane focus and physical order across split toggles", 
   await expect(panes.nth(0).locator(".xterm-helper-textarea")).toBeFocused();
   assert.deepEqual(await panes.evaluateAll(els => els.map(el => el.id)),
     ["terminal-panel-ses-adhoc-3", "terminal-panel-ses-adhoc-2"]);
+  await captureSplit(page, "focus-reopened");
 }));
 
 test("resets search on session replacement and attaches each pane reader exactly once", () => withSplit(async ({ page, panes, ptyOutput }) => {
@@ -212,7 +225,11 @@ test("resets search on session replacement and attaches each pane reader exactly
   await panes.nth(0).locator(".xterm-helper-textarea").focus();
   await page.keyboard.press("Control+Shift+f");
   await expect(input).toHaveValue("");
+  await expect(panes.nth(0).getByLabel("Treffer", { exact: true })).toHaveText("");
+  await input.fill("REPLACEDONLY");
+  await input.press("Enter");
   await expect(panes.nth(0).getByLabel("Treffer", { exact: true })).toHaveText("0/0");
+  await captureSplit(page, "search-replaced");
   await input.press("Escape");
   const nodes = await panes.locator(".xterm").elementHandles();
   await panes.nth(1).locator(".xterm-helper-textarea").focus();
@@ -220,10 +237,16 @@ test("resets search on session replacement and attaches each pane reader exactly
   await panes.nth(0).locator(".xterm-helper-textarea").focus();
   const delta = await page.evaluate(start => window.splitCalls.slice(start), boundary);
   assert.deepEqual(delta.filter(c => c.command === "get_scrollback").map(c => c.args.sessionId), ["ses-adhoc-1"]);
+  // The real app's development StrictMode cancels its first attach before replay.
   assert.deepEqual(delta.filter(c => c.command === "plugin:event|listen" &&
-    [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-2"), ptyOutput("ses-adhoc-3")].includes(c.args.event)).map(c => c.args.event), [ptyOutput("ses-adhoc-1")]);
+    [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-2"), ptyOutput("ses-adhoc-3")].includes(c.args.event)).map(c => c.args.event), [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-1")]);
   assert.deepEqual(delta.filter(c => c.command === "plugin:event|unlisten" &&
-    [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-2"), ptyOutput("ses-adhoc-3")].includes(c.args.event)).map(c => c.args.event), [ptyOutput("ses-adhoc-3")]);
+    [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-2"), ptyOutput("ses-adhoc-3")].includes(c.args.event)).map(c => c.args.event), [ptyOutput("ses-adhoc-3"), ptyOutput("ses-adhoc-1")]);
+  const wire = await page.evaluate(() => window.splitCalls);
+  const readers = wire.filter(c => c.command === "plugin:event|listen" && !wire.some(stop =>
+    stop.command === "plugin:event|unlisten" && stop.args.eventId === c.args.handler)).map(c => c.args.event);
+  assert.deepEqual(readers.filter(event => [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-2"), ptyOutput("ses-adhoc-3")].includes(event)).sort(),
+    [ptyOutput("ses-adhoc-1"), ptyOutput("ses-adhoc-2")]);
   for (let i = 0; i < 2; i++) assert.ok(await nodes[i].evaluate((el, index) =>
     el === document.querySelectorAll(".g-terminal .xterm")[index], i));
 }));
