@@ -1,5 +1,8 @@
 # V2-IA-1 — Informationsarchitektur (Glass UI v2)
 
+**Ziel-Fortschreibung28.10.2026:** freigegebene v3.6 nennt Haupt, Orchestrator, System, Statistik, Dateien plus Einstellungen unten; Interview im Orchestrator, einziges Postfach Wartet auf dich in Haupt. Das ist ein dokumentiertes Produktziel, KEINE Änderung des bestehenden NAV0-Repoentscheids oder der Routen; Satz3 fehlt und ist Voraussetzung des späteren MS4-Pakets. [Einziger PLAN](../../PLAN.md#ms-0-v36--freigegebener-paketkatalog-28102026). Die nachstehende bisherige Karte/IDs bleiben als Ausgangsbestand erhalten; de.ts und routes.ts unverändert.
+
+
 Stand: bestätigt gegen `docs/design/2026-10-ui-v2/glass/*.dc.html` und
 `plan.md` Abschnitt 3.4. Gemeinsamer Systemblock der Boards (Zeilen 15–229)
 ist in allen 25 Dateien identisch (eine Prüfsumme). Dieses Dokument ist die
