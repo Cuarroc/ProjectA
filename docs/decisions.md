@@ -288,3 +288,9 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 **Warum?** Aktive Regeln und Planung sollen kurz, widerspruchsfrei und anhand eigener Belege prüfbar werden; eine kürzere Dokumentation beweist keine schnellere App.
 
 **Wann zurücknehmen?** Die befristete Modell-/Prüferanweisung endet mit Roots DOC-9-Abnahme des Dokumentationsauftrags; offene Pflichtkriterien bleiben offen. Der Zusatz-App-Stopp wird dadurch nicht aufgehoben: Wiederaufnahme nur nach neuem Nutzerentscheid. Umsetzung, Prüfung, Abnahme, Merge und Nutzbarkeit bleiben getrennte Zustände.
+
+
+## 2026-10-28 — v3.6 als Baugrundlage, STANDARD-Zeilen übernommen (V36-M0-P0)
+
+Elias hat laut Root28.10.~14:57Z Planv3.6 (UnterplanSHA256 f4696eb52f57f43bf6021d19f332391b5874b0356b39de1fb4e957fa33e55720, AuftragSHA256 18c91341ccf8703f044f764054f01646e4c39d02c6b82bf12e97e0b5c6318366) und Satz2 freigegeben: nach allen STANDARD-Zeilen bauen lassen. Der volle Orchestrator und der Kern bleiben in v2.0.0; der erste echte neue Produktablauf ist Reihenfolge, kein kleinerer Umfang. Kanonische Paketliste: [PLAN MS0](PLAN.md#ms-0-v36--freigegebener-paketkatalog-28102026).
+Jetzt MS0 nur Dokumente; Stabschef schreibt/verteilt allein, Root nimmt ab. Zielpostfach Wartet auf dich; nur Plan-/Beschlusstexte hier, de.ts erstMS4. Keine Änderung des bestehenden NAV0-Repoentscheids: Satz3 ist nicht erteilt, das spätere MS4-Paket bleibt gesperrt bis genau dieser Voraussetzung. Keine neuen Installations-/Rechte-/Lösch-/Releasebefugnisse aus der Planfreigabe; konkrete frühere Zusagen behalten ihren Umfang. v2.0.0 braucht frisches eigenes Ja, K5-Patchregel bleibt.

@@ -842,3 +842,7 @@ Parallelauftrag **FABRIK-TAB-1**: Fabrik-Tab im Leitstand; Abhängigkeit im Well
 #### 10.4 Zuordnung gemergter v2-PRs ohne eigene Planzeile (Stand 16.10.2026, erledigt)
 
 [Datierte Merge-Zuordnung vom 16.10.2026: unveränderter Originaltext](../../archive/v2-plan-2026-10/remainder-history.md#104-zuordnung-gemergter-v2-prs-ohne-eigene-planzeile-stand-16102026-erledigt).
+
+
+**Aktive Fortschreibung28.10.2026:** v3.6 und Satz2 sind freigegeben; [Paketfolge im einzigen PLAN](../../PLAN.md#ms-0-v36--freigegebener-paketkatalog-28102026). Der frühere enge Schnitt begrenzt den nun vollständigen Kern/Orchestrator nicht mehr; bestehende Einzelverträge und offene Abnahmen bleiben. PF-Fundament und expliziter v2.1-Rest bleiben getrennt. Jetzt MS0 nur Doku; keine produktive Navigation/Implementierung/Release-Abnahme daraus.
+**Leseregel:** Der folgende datierte Ausgangsentwurf und §10 sind historische Quelle; aktuelle Umfangs-/Reihenfolgewidersprüche entscheidet die freigegebene v3.6 mit dem kanonischen PLAN. Keine pauschale Änderung alter v2.1-Markierungen.
