@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
-import { Button } from "../design/controls/Button";
-import { Field } from "../design/forms/Field";
 import { formatMessageTime, roleLabel, type OrchestratorChat } from "../lib/orchestratorChat";
 import { commandChatTexts as texts } from "./commandchat/texts";
-import "../design/controls/controls.css";
-import "../design/forms/forms.css";
-import "../design/inputs/inputs.css";
 
 interface CommandChatProps {
   chat: OrchestratorChat;
@@ -131,16 +126,15 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
         </div>
       ) : null}
       {chat.error ? (
-        <p className="command-chat-error" role="alert" style={{ color: "var(--g-bad)" }}>{chat.error}</p>
+        <p className="command-chat-error" role="alert">{chat.error}</p>
       ) : null}
       {disabled ? (
         <p className="command-chat-hint">{texts.noProject}</p>
       ) : null}
       <div className="command-chat-bar">
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
+          className="command-chat-toggle"
           onClick={() => setHistoryOpen((open) => !open)}
           disabled={disabled}
           aria-expanded={historyOpen}
@@ -148,45 +142,37 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
         >
           <span className="command-chat-chevron" aria-hidden="true">{historyOpen ? "▾" : "▸"}</span>
           {texts.history}
-        </Button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Field label={texts.input}>
-            {(control) => (
-              <textarea
-                {...control}
-                ref={inputRef}
-                name="command-chat-input"
-                className="g-inp g-inp--area"
-                aria-label={texts.input}
-                rows={2}
-                value={text}
-                placeholder={texts.placeholder}
-                disabled={disabled || chat.sending}
-                onChange={(event) => setText(event.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-            )}
-          </Field>
-        </div>
-        <Button
+        </button>
+        <textarea
+          ref={inputRef}
+          name="command-chat-input"
+          className="command-chat-input"
+          aria-label={texts.input}
+          rows={2}
+          value={text}
+          placeholder={texts.placeholder}
+          disabled={disabled || chat.sending}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
+          className="command-chat-expand"
           onClick={onOpenConversation}
           title={texts.openConversation}
           aria-label={texts.openConversation}
         >
           ⤢
-        </Button>
-        <Button
+        </button>
+        <button
           type="button"
-          variant="primary"
-          loading={chat.sending}
+          className="command-chat-send"
+          aria-label={texts.send}
           disabled={!canSend}
           onClick={() => void handleSend()}
         >
-          {texts.send}
-        </Button>
+          {chat.sending ? texts.sending : texts.send}
+        </button>
       </div>
     </div>
   );

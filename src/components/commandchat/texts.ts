@@ -7,4 +7,5 @@ export const commandChatTexts = {
   placeholder: "Aufgabe an den Orchestrator … (Enter sendet, Shift+Enter neue Zeile)",
   openConversation: "Im Dialog öffnen",
   send: "Senden",
+  sending: "Sendet …",
 } as const;
