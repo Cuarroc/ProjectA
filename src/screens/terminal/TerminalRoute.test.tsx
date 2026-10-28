@@ -435,7 +435,7 @@ describe("terminal route", () => {
     }
   });
 
-  it("selects Glass tabs while mounting only the focused session", async () => {
+  it("selects Glass tabs while preserving both shared split sessions", async () => {
     const view = render(<App />);
     await openShellTab();
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
@@ -450,8 +450,8 @@ describe("terminal route", () => {
     fireEvent.click(tabs[0]);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(active(ptyOutput("session-a"))).toHaveLength(1));
-    expect(active(ptyOutput("session-b"))).toHaveLength(0);
-    expect(view.container.querySelectorAll(".xterm")).toHaveLength(1);
+    expect(active(ptyOutput("session-b"))).toHaveLength(1);
+    expect(view.container.querySelectorAll(".xterm")).toHaveLength(2);
   });
 
   it("shows an honest empty state without starting a session", async () => {

@@ -9,6 +9,7 @@ import { Banner } from "../../../design/layout/Banner";
 import { hasProviderKey } from "../../../lib/ipc";
 import { providerKindLabel, providerQuotaLabel, useProviderOverview, vaultErrorText } from "../../../lib/providers";
 import type { Provider } from "../../../types";
+import { ProviderFacts } from "./ProviderFacts";
 import { T } from "./texts";
 import "./tresor.css";
 
@@ -57,7 +58,7 @@ function VaultRead({
     if (!loading) onLoadingRef.current(generation, false);
   }, [generation, loading]);
   const columns: Column<Provider>[] = [
-    { key: "name", header: T.colProvider, cell: (p) => p.name },
+    { key: "name", header: T.colProvider, cell: (p) => <div>{p.name}<ProviderFacts provider={p} /></div> },
     { key: "kind", header: T.colKind, cell: (p) => providerKindLabel(p.kind) },
     {
       key: "access",

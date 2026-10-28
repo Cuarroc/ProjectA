@@ -299,7 +299,7 @@ regex_escape() {
 node_name_run() {
   # `path.mjs::name`: node --test selects only by regex, so the name is escaped
   # and anchored. The spec reporter prints the pass line classify_run looks for.
-  node --test --test-reporter=spec --test-name-pattern="^$(regex_escape "$1")\$" "$2"
+  node --test --test-reporter=spec --test-name-pattern="^$(regex_escape "$1")\$" --test-force-exit "$2"
 }
 
 # R741-A1: absence only via --list JSON without config grep/grepInvert (not source regex).
@@ -542,7 +542,7 @@ run_spec() {
       if [ -n "$name" ]; then
         (cd "$tree" && node_name_run "$name" "$path")
       else
-        (cd "$tree" && node --test "$path")
+        (cd "$tree" && node --test --test-force-exit "$path")
       fi
       ;;
     *.sh)
