@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import process from 'node:process';
+import console from 'node:console';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -25,11 +27,11 @@ test('keeps command history above the prompt on its existing bordered surface', 
         await page.getByRole('textbox', { name: 'Aufgabe an den Orchestrator' }).waitFor();
         await page.getByRole('button', { name: 'Verlauf', exact: true }).click();
         await page.locator('.command-chat-history').waitFor({ state: 'visible' });
-        await page.evaluate(() => document.fonts.ready);
+        await page.evaluate(() => globalThis.document.fonts.ready);
         const layout = await page.getByRole('textbox', { name: 'Aufgabe an den Orchestrator' }).evaluate(input => {
           const bar = input.closest('.command-chat-bar');
           const host = bar.parentElement;
-          const style = getComputedStyle(host);
+          const style = globalThis.getComputedStyle(host);
           const history = host.querySelector('.command-chat-history').getBoundingClientRect();
           const prompt = bar.getBoundingClientRect();
           return { display: style.display, direction: style.flexDirection, border: style.borderTopWidth,
