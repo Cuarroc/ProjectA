@@ -675,6 +675,7 @@ export interface ResourceSnapshot {
   ramProcessBytes: number | null;
   ramTotalBytes: number | null;
   diskAppBytes: number | null;
+  diskAppPartial?: boolean | null;
   diskFreeBytes: number | null;
   tokensIn: number;
   tokensOut: number;
@@ -719,6 +720,7 @@ export async function getResourceSnapshot(): Promise<ResourceSnapshot> {
     ramProcessBytes: optionalCount(raw?.ramProcessBytes),
     ramTotalBytes: optionalCount(raw?.ramTotalBytes),
     diskAppBytes: optionalCount(raw?.diskAppBytes),
+    diskAppPartial: typeof raw?.diskAppPartial === "boolean" ? raw.diskAppPartial : null,
     diskFreeBytes: optionalCount(raw?.diskFreeBytes),
     tokensIn: typeof raw?.tokensIn === "number" ? raw.tokensIn : 0,
     tokensOut: typeof raw?.tokensOut === "number" ? raw.tokensOut : 0,

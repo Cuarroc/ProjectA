@@ -9,6 +9,7 @@ import { userError } from "../../../errors/texts";
 import { describeError, getResourceSnapshot, getWatchdogReport, listQueue, type ResourceSnapshot, type WatchdogFinding } from "../../../lib/ipc";
 import type { AgentProfile, QueueEntry, QueueEntryStatus } from "../../../types";
 import { T } from "./texts";
+import { T as R } from "./resources/texts";
 import { QueueCard } from "./QueueCard";
 import { EinreihenForm } from "./einreihen/EinreihenForm";
 import "./betrieb.css";
@@ -95,6 +96,13 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
     : null;
   const cpu = resources?.cpuPermille;
   const free = resources?.diskFreeBytes;
+  const appBytes = resources?.diskAppBytes;
+  let appData: string = T.factUnknown;
+  if (known(appBytes)) {
+    const size = T.gibibytes(de(appBytes / 1024 ** 3));
+    appData = resources?.diskAppPartial === true ? R.atLeast(size)
+      : resources?.diskAppPartial === false ? size : R.completenessUnknown(size);
+  }
   const facts = [
     { label: T.cpuSinceStart, value: known(cpu) ? T.percent(de(cpu / 10)) : T.factUnknown },
     { label: T.diskFree, value: known(free) ? T.gibibytes(de(free / 1024 ** 3)) : T.factUnknown },
@@ -126,6 +134,7 @@ export function BetriebPanel({ projectId, profiles }: BetriebPanelProps) {
           <HonestState kind="offline" title={T.ramOffline} hint={T.ramHint} />
         )}
         {resources !== undefined && <KeyValue box items={facts} />}
+        {resources !== undefined && <KeyValue items={[{ label: R.appData, value: appData }]} />}
       </section>
       <section className="g-glass bt-card" aria-label={T.watchdog}>
         <h2 className="bt-h">{T.watchdog}</h2>
