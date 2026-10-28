@@ -100,3 +100,58 @@ it("names diff lines while preserving literal hunks navigation drafts and empty 
   expect(screen.getByRole("button", { name: "Datei src/a.ts" })).toHaveAttribute("aria-current", "true");
   expect(within(pane).getByText("const next = 3;")).toBeInTheDocument();
 });
+
+it("keeps one matching tabstop after committed focus navigation and selected path changes", async () => {
+  const files = [
+    { path: "src/first.ts", old_path: null, additions: 2, deletions: 0, binary: false, hunks: [
+      { header: "@@ -0,0 +1,2 @@", lines: [
+        { kind: "add", content: "first line", old_line: null, new_line: 1 },
+        { kind: "add", content: "second line", old_line: null, new_line: 2 },
+      ] },
+    ] },
+    { path: "src/second.ts", old_path: null, additions: 2, deletions: 0, binary: false, hunks: [
+      { header: "@@ -9,0 +10,2 @@", lines: [
+        { kind: "add", content: "tenth line", old_line: null, new_line: 10 },
+        { kind: "add", content: "eleventh line", old_line: null, new_line: 11 },
+      ] },
+    ] },
+  ];
+  let deliverDiff!: (value: unknown) => void;
+  const response = new Promise((resolve) => { deliverDiff = resolve; });
+  invoke.mockImplementation((command: string) => {
+    if (command === "get_worker_diff") return response;
+    if (command === "list_diff_comments") return Promise.resolve([]);
+    if (command === "get_worker_readiness") return Promise.resolve({ lifecycle: "exited", readiness: "blocked", blockers: [] });
+    if (command === "get_setup_trust_view") return Promise.resolve(null);
+    throw new Error(`Unexpected command: ${command}`);
+  });
+  render(<DiffView workerId="ordered-lines-worker" branch="review/ordered-lines" />);
+  await act(async () => deliverDiff({ base_branch: "main", files, stat: "" }));
+
+  const pane = screen.getByRole("region", { name: "Diff-Zeilen" });
+  const first = within(pane).getByRole("button", { name: "Kommentar zu Zeile 1" });
+  const second = within(pane).getByRole("button", { name: "Kommentar zu Zeile 2" });
+  expect([first.tabIndex, second.tabIndex]).toEqual([0, -1]);
+  act(() => first.focus());
+  expect(first).toHaveFocus();
+  fireEvent.keyDown(first, { key: "ArrowDown" });
+  expect(second).toHaveFocus();
+  expect([first.tabIndex, second.tabIndex]).toEqual([-1, 0]);
+
+  const nextFile = screen.getByRole("button", { name: "Datei src/second.ts" });
+  act(() => nextFile.focus());
+  fireEvent.click(nextFile);
+  expect(nextFile).toHaveAttribute("aria-current", "true");
+  expect(nextFile).toHaveFocus();
+  const tenth = within(pane).getByRole("button", { name: "Kommentar zu Zeile 10" });
+  const eleventh = within(pane).getByRole("button", { name: "Kommentar zu Zeile 11" });
+  expect([tenth.tabIndex, eleventh.tabIndex]).toEqual([0, -1]);
+  act(() => tenth.focus());
+  expect(tenth).toHaveFocus();
+  fireEvent.keyDown(tenth, { key: "ArrowDown" });
+  expect(eleventh).toHaveFocus();
+  expect([tenth.tabIndex, eleventh.tabIndex]).toEqual([-1, 0]);
+  fireEvent.keyDown(eleventh, { key: "Home" });
+  expect(tenth).toHaveFocus();
+  expect([tenth.tabIndex, eleventh.tabIndex]).toEqual([0, -1]);
+});
