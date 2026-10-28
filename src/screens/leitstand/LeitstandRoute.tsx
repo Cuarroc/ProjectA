@@ -139,8 +139,8 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
         setCreating(null);
         createdProject.current = project;
         setProjectNames((names) => names ? new Map(names).set(project.id, project.name) : names);
+        focusVersion.current = creating + 1;
         writeActiveProjectId(project.id);
-        focusVersion.current = selectionVersion.current;
       }} />}
     </div>
   );
