@@ -48,15 +48,18 @@ reference. Where a detail contradicts these ten, the ten win.
    date and command output; whoever takes a claim over re-checks it. Before
    every worker start, run the start check: observed model, remaining limit,
    free RAM, running cargo builds.
-10. **Safety stays with the user.** Secret scan before every commit; secrets
-    never go into files, logs or commits. Money, installs, releases and
-    deleting require a valid concrete user authorization, and every cleanup
-    starts with a backup. A release needs the user's yes, unless a standing
-    written approval of the user covers it (e.g. patch releases), recorded in
-    the coordinator's permission record; minor and major releases always need
-    a fresh yes. Preserve already granted authorizations; do not ask
-    again for routine execution within that scope. Bundle essential questions
-    in normal chat and record decisions in `docs/PLAN.md`; no AskUser windows.
+10. **Safety by three tiers.** Secret scan before every commit; secrets
+    never go into files, logs or commits. Tier 1 (reversible): act freely.
+    Tier 2 (deleting, force-push, server changes): Root acts without asking
+    only with a verified restore path for the exact pre-change state (incl.
+    concurrent remote changes), a log entry (time, action, reason, restore
+    path) and restore material kept 24 h; unproven recovery is tier 3. Tier 3
+    (the user's explicit yes only): money and paid services, rotating or
+    revoking secrets, public releases and release-triggering `v*` tags. A
+    recorded standing approval may cover patch releases; minor and major
+    always need a fresh yes. Preserve granted authorizations; do not ask
+    again within that scope. Bundle essential questions in normal chat and
+    record decisions in `docs/PLAN.md`; no AskUser windows.
 
 ## Start with current evidence
 
@@ -77,7 +80,7 @@ The [full section](docs/development/AGENTS_REFERENCE.md#reviews-and-advisors) is
 
 ## Bounded goals and approved adaptation
 
-Root priority/acceptance; Chief alone dispatches; one execution owner. Reconcile orders/native goals/PLAN first; blocker cause/evidence/owner/next step. Never weaken acceptance; user scope/cost/permissions.
+Root priority/acceptance; the Stabschef alone dispatches and keeps docs/PLAN.md (Chief = user's independent Projektassistent, no dispatcher); one execution owner; the PM cuts packages and refills below five suitable prepared ones. Reconcile orders/native goals/PLAN first; blocker cause/evidence/owner/next step. Never weaken acceptance; user scope/cost/permissions.
 Binding: [reference](docs/development/AGENTS_REFERENCE.md#bounded-goals-and-approved-adaptation).
 
 ## Development loop
@@ -95,7 +98,7 @@ The [full section](docs/development/AGENTS_REFERENCE.md#checks) is binding.
 ### Build slots
 
 Worktrees: CARGO_TARGET_DIR (main target/warm slot), CARGO_BUILD_JOBS=1; never CARGO_PROFILE_*.
-Check free RAM; at most 3 builds (2 when tight).
+Free RAM: CLI checks from 1.5 GB, builds/gates from 4 GB; else heavy work: server or wait. At most 3 builds on the PC (2 when tight).
 The [full section](docs/development/AGENTS_REFERENCE.md#build-slots) is binding.
 
 ## Pull requests and CI minutes
@@ -115,13 +118,13 @@ Binding: [reference](docs/development/AGENTS_REFERENCE.md#merging-mergify-queue-
 
 ## Record and learn
 
-PR text=record (rule 7); npm run hq:lesson -- search BEFORE debugging; --run <runId>; decisions: docs/decisions.md; no tracked secrets; backup before deleting.
+PR text=record (rule 7); npm run hq:lesson -- search BEFORE debugging; --run <runId>; decisions: docs/decisions.md; no tracked secrets; restore path before deleting (rule 10).
 Binding: [reference](docs/development/AGENTS_REFERENCE.md#record-and-learn).
 
 ## Task operators
 
 1 main/brief: PRÜFEN BELEGEN MESSEN RECHERCHIEREN ERFRAGEN ENTWERFEN VORSCHLAGEN ENTSCHEIDEN(named owner) UMSETZEN NACHBESSERN REVIEWEN(non-author family) INTEGRIEREN(coordinator only) PFLEGEN BERICHTEN ÜBERGEBEN BLOCKIERT MELDEN
-Read-only: no commit; user: money/install/delete/release/security/scope; no new authority
+Read-only: no commit; user: tier 3 (rule 10) and product scope; no new authority
 OPERATOR AUTHORITY GOAL NON-GOALS BASE FILES/SEAM SIZE RED-FIRST ACCEPTANCE TIER/REVIEW REPORT OVERLAP
 [Full section](docs/development/AGENTS_REFERENCE.md#task-operators) binds.
 
