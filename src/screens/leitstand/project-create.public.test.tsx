@@ -213,3 +213,18 @@ it("focuses the stable Leitstand heading after current creation closes the sheet
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Fabrik" }));
 });
+
+it("preserves focus when a creation subscriber makes a newer selection", async () => {
+  const finish = deferCreation();
+  render(<><button>New selection</button><LeitstandRoute /></>);
+  const form = await open();
+  fill();
+  fireEvent.click(form.getByRole("button", { name: "Anlegen" }));
+  const target = screen.getByRole("button", { name: "New selection" });
+  const unsubscribe = subscribeActiveProject((id) => {
+    if (id === "garden") { writeActiveProjectId("other"); target.focus(); }
+  });
+  try { await finish(); } finally { unsubscribe(); }
+  expect(readActiveProjectId()).toBe("other");
+  expect(document.activeElement).toBe(target);
+});
