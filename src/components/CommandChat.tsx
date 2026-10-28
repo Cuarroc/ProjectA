@@ -105,7 +105,7 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
   const canSend = !disabled && !chat.sending && text.trim() !== "";
 
   return (
-    <>
+    <div className="command-chat">
       {historyOpen ? (
         <div className="command-chat-history">
           {chat.messages.length === 0 ? (
@@ -188,6 +188,6 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
           {texts.send}
         </Button>
       </div>
-    </>
+    </div>
   );
 }
