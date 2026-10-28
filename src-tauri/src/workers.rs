@@ -3037,13 +3037,21 @@ pub async fn apply_reattach(
 
 /// Append a message to a worker's log, ignoring a failed write.
 pub fn log_message(store: &Store, worker_id: &str, role: &str, content: &str) {
+    #[cfg(test)]
+    let done = store.register_test_log_write();
     let store = store.clone();
     let worker_id = worker_id.to_string();
     let role = role.to_string();
     let content = content.to_string();
     tauri::async_runtime::spawn(async move {
-        if let Err(err) = store.insert_message(&worker_id, &role, &content).await {
+        let result = store.insert_message(&worker_id, &role, &content).await;
+        if let Err(err) = &result {
             eprintln!("projecta: {err}");
+        }
+        #[cfg(test)]
+        {
+            drop(store);
+            let _ = done.send(result.map(|_| ()));
         }
     });
 }

@@ -307,25 +307,6 @@
             .collect()
     }
 
-    /// Poll the log until `found` holds: the outcome callback logs
-    /// fire-and-forget through `workers::log_message`, the same way the
-    /// questions.rs tests wait for it.
-    async fn wait_for_log(
-        store: &super::Store,
-        worker_id: &str,
-        what: &str,
-        found: impl Fn(&[(String, String)]) -> bool,
-    ) -> Vec<(String, String)> {
-        for _ in 0..200 {
-            let log = roles(store, worker_id).await;
-            if found(&log) {
-                return log;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
-        panic!("{worker_id} never logged {what}");
-    }
-
     /// Reopen the settled database through a fresh store and read the worker's
     /// log, then close that reader and remove the fixture's own temp directory
     /// once, checked.
@@ -340,6 +321,17 @@
             .into_iter()
             .map(|m| (m.role, m.content))
             .collect()
+    }
+
+    /// The producer is done: wait for its fire-and-forget log writes
+    /// (`workers::log_message`), close the pool, then read the log back.
+    async fn settled_log(
+        dir: crate::testutil::TempDir,
+        store: super::Store,
+        worker_id: &str,
+    ) -> Vec<(String, String)> {
+        store.close_test_pool().await;
+        reopened_log(dir, worker_id).await
     }
 
     async fn seam_fixture(label: &str) -> (crate::testutil::TempDir, super::Store) {
@@ -793,7 +785,7 @@
     /// callback once the guard proves the delivery.
     #[tokio::test]
     async fn the_sent_text_is_logged_as_a_user_turn_only_after_proven_delivery() {
-        let (_dir, store) = seam_fixture("log-after-delivery").await;
+        let (dir, store) = seam_fixture("log-after-delivery").await;
         let typist = Typist::default();
 
         super::deliver_to_worker(&typist, &store, "wk-1", "pty-wk-1", "mach weiter", None)
@@ -804,7 +796,7 @@
         );
 
         typist.confirm(super::DeliveryOutcome::Delivered);
-        let log = wait_for_log(&store, "wk-1", "the user turn", |log| !log.is_empty()).await;
+        let log = settled_log(dir, store, "wk-1").await;
         assert_eq!(
             log,
             vec![(
@@ -819,14 +811,14 @@
     /// never happened.
     #[tokio::test]
     async fn an_escalation_persists_the_undelivered_text_with_the_next_step() {
-        let (_dir, store) = seam_fixture("escalation-net").await;
+        let (dir, store) = seam_fixture("escalation-net").await;
         let typist = Typist::default();
 
         super::deliver_to_worker(&typist, &store, "wk-1", "pty-wk-1", "mach weiter", None)
             .expect("delivery starts");
         typist.confirm(super::DeliveryOutcome::Escalated);
 
-        let log = wait_for_log(&store, "wk-1", "the escalation note", |log| !log.is_empty()).await;
+        let log = settled_log(dir, store, "wk-1").await;
         assert_eq!(log.len(), 1, "exactly one note, no phantom user turn");
         let (role, content) = &log[0];
         assert_eq!(role, crate::store::MSG_SYSTEM);
