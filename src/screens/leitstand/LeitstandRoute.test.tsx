@@ -128,8 +128,8 @@ describe("Leitstand route behind D1", () => {
     render(<LeitstandRoute />);
     const step = within(await screen.findByRole("status")).getByRole("button", { name: "Projekt anlegen" });
     fireEvent.click(step);
-    // The old sidebar with "Projekt hinzufügen" is only shown on the Werkzeuge tab.
-    expect(window.location.hash).toBe("#/leitstand/werkzeuge");
+    expect(await screen.findByRole("dialog", { name: "Projekt anlegen" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("");
   });
 
   it("main view keeps the cards and says so when a refresh fails", async () => {

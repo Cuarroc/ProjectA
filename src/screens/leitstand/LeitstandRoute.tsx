@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { readActiveProjectId, subscribeActiveProject } from "../../lib/activeProject";
+import { readActiveProjectId, subscribeActiveProject, writeActiveProjectId } from "../../lib/activeProject";
 import { listAgentProfiles, listProjects } from "../../lib/ipc";
 import { useBoard } from "../../lib/useBoard";
 import { useQuestions } from "../../lib/useQuestions";
@@ -9,16 +9,17 @@ import { TabLinks } from "../../design/layout/Tabs";
 import "../../design/layout/layout.css";
 import "../../design/inputs/inputs.css";
 import { useT } from "../../i18n/useT";
-import type { AgentProfile } from "../../types";
+import type { AgentProfile, Project } from "../../types";
 import { LeitstandCards } from "./LeitstandCards";
 import { FlowTab } from "./flow/FlowTab";
 import { NeedsYou } from "./needs/NeedsYou";
 import { BETRIEB_ROUTE, FABRIK_PATH, TOOLS_PATH, trim } from "../../shell/mount/routing";
+import { ProjectCreateSheet } from "../../shell/header/ProjectCreateSheet";
 
 export const MAIN_PATH = "/leitstand";
 export const CLASSIC_PATH = "/leitstand/klassisch";
 
-/** The first steps only navigate: adding a project lives in the old sidebar on Werkzeuge, the queue form on Betrieb; nothing starts here (DS-T-05). */
+/** The queue action navigates to Betrieb; project creation stays in this view. */
 const go = (target: string) => void (window.location.hash = `#${target}`);
 
 /** Relative ages ("seit 4 min") move on minute scale. */
@@ -42,10 +43,27 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   const fabrik = here === FABRIK_PATH || here === "/leitstand/fluss";
   const t = useT();
   const [projectId, setProjectId] = useState(readActiveProjectId);
+  const [creating, setCreating] = useState<number | null>(null);
+  const selectionVersion = useRef(0);
+  const createdProject = useRef<Project | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusVersion = useRef<number | null>(null);
+  useEffect(() => {
+    if (focusVersion.current === selectionVersion.current) heading.current?.focus();
+    focusVersion.current = null;
+  }, [creating, projectId]);
   // The picker and the old app publish a choice through the module's event.
   useEffect(() => {
     setProjectId(readActiveProjectId());
-    return subscribeActiveProject(setProjectId);
+    const unsubscribe = subscribeActiveProject((id) => {
+      selectionVersion.current += 1;
+      setCreating(null);
+      setProjectId(id);
+    });
+    return () => {
+      selectionVersion.current += 1;
+      unsubscribe();
+    };
   }, []);
   const board = useBoard(projectId, true);
   const questions = useQuestions(projectId, !fabrik);
@@ -60,8 +78,12 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
       () => live && setProfilesFailed(true),
     );
     listProjects().then(
-      (list) => live && setProjectNames(new Map(list.map((project) => [project.id, project.name]))),
-      () => live && setProjectNames(null),
+      (list) => {
+        if (!live) return;
+        const created = createdProject.current;
+        setProjectNames(new Map([...list.map((project) => [project.id, project.name] as const), ...(created ? [[created.id, created.name] as const] : [])]));
+      },
+      () => live && setProjectNames((names) => names ?? null),
     );
     const timer = window.setInterval(() => setNow(Date.now() / 1000), TICK_MS);
     return () => {
@@ -86,9 +108,9 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
   const unread = board.cards.length === 0;
   return (
     <div className="g-lr">
-      <div className="g-lr-head"><h1>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
+      <div className="g-lr-head"><h1 ref={heading} tabIndex={-1}>{t("nav.leitstand")}</h1><LeitstandTabs path={MAIN_PATH} /></div>
       <div className="g-lr-body">
-        {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} action={{ label: t("leitstand.addProject"), onClick: () => go(TOOLS_PATH) }} /></div> : (
+        {projectId === null ? <div role="status"><HonestState kind="empty" title={t("leitstand.noProject")} hint={t("leitstand.noProjectHintMain")} action={{ label: t("leitstand.addProject"), onClick: () => setCreating(selectionVersion.current) }} /></div> : (
           <div className="g-lr-main">
             {profilesFailed && <div role="status"><HonestState kind="offline" title={t("leitstand.profilesFailed")} hint={t("leitstand.profilesHint")} /></div>}
             {board.loading && unread ? <div className="ls-none" role="status"><p>{t("leitstand.loading")}</p></div>
@@ -111,6 +133,15 @@ export default function LeitstandRoute({ path = MAIN_PATH }: { path?: string }) 
           <NeedsYou key={`${projectId}:${questions.scope}`} projectId={projectId} projectNames={projectNames} questions={questions} workers={board.cards.map((c) => c.worker)} />
         </div>
       </div>
+      {creating !== null && <ProjectCreateSheet onClose={() => setCreating(null)} onCreated={(project) => {
+        // A newer choice or unmount invalidates this result, even if the choice returns to empty.
+        if (creating !== selectionVersion.current) return;
+        setCreating(null);
+        createdProject.current = project;
+        setProjectNames((names) => names ? new Map(names).set(project.id, project.name) : names);
+        focusVersion.current = creating + 1;
+        writeActiveProjectId(project.id);
+      }} />}
     </div>
   );
 }
