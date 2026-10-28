@@ -1,7 +1,7 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
-import { measure, ratchet } from './design-gate.mjs';
+import { fixture, measure, ratchet } from './design-gate.mjs';
 
 let browser, page;
 before(async () => {
@@ -13,6 +13,45 @@ async function inspect(html) {
   await page.setContent(`<style>body{margin:0}.box{background:#eee} .row{height:40px}</style>${html}`);
   return page.evaluate(measure);
 }
+
+test('mounted CommandChat preserves visible actions without increasing original route nesting', async () => {
+  const { createServer } = await import('vite');
+  const previousMocks = process.env.VITE_TAURI_MOCKS;
+  process.env.VITE_TAURI_MOCKS = 'true';
+  const server = await createServer({ server: { host: '127.0.0.1', port: 0, hmr: false }, logLevel: 'error' });
+  try {
+    await server.listen();
+    for (const theme of ['light', 'dark']) {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', colorScheme: theme });
+      try {
+        await context.addInitScript(fixture, { items: 0, theme });
+        const mounted = await context.newPage();
+        await mounted.clock.setFixedTime(new Date('2026-10-19T00:00:00Z'));
+        // Literal counts from the original 86401bd8 route captures, not a recomputed ceiling.
+        for (const [route, ceiling] of [['/beweise/diff', 14], ['/einstellungen/klassisch', 42]]) {
+          await mounted.goto(`http://127.0.0.1:${server.httpServer.address().port}/#${route}`, { waitUntil: 'networkidle' });
+          await mounted.getByRole('textbox', { name: 'Aufgabe an den Orchestrator' }).waitFor();
+          await mounted.evaluate(() => document.fonts.ready);
+          for (const name of ['Verlauf', 'Im Dialog öffnen', 'Senden']) {
+            const action = mounted.getByRole('button', { name, exact: true });
+            assert.equal(await action.isVisible(), true, `${route} ${name}`);
+            if (await action.isEnabled()) {
+              await action.focus();
+              assert.equal(await action.evaluate(el => el === document.activeElement), true);
+            }
+          }
+          const result = await mounted.evaluate(measure);
+          assert.ok(result.nesting.length <= ceiling, `${route} ${theme}: ${result.nesting.length} > ${ceiling}`);
+        }
+      } finally { await context.close(); }
+    }
+  } finally {
+    try { await server.close(); } finally {
+      if (previousMocks === undefined) delete process.env.VITE_TAURI_MOCKS;
+      else process.env.VITE_TAURI_MOCKS = previousMocks;
+    }
+  }
+});
 
 test('600px panel with two 40px rows has 520px slack', async () => {
   const result = await inspect('<section class="box" style="height:600px"><div class="row"><button style="height:40px">One</button></div><div class="row"><button style="height:40px">Two</button></div></section>');
