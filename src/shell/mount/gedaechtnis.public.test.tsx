@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -68,6 +68,8 @@ it("mounts project lessons on the existing route and approves only the edited te
   expect(row(1).getByRole("button", { name: "Übernehmen" })).toBeEnabled();
   await act(async () => pending.resolve(undefined));
   expect(screen.queryByText("Original insight")).toBeNull();
+  expect(screen.getAllByRole("textbox", { name: "Lektion bearbeiten" })).toHaveLength(1);
+  expect(row().getByRole("textbox")).toHaveValue("Second insight");
   expect(screen.getByText("Ins Playbook übernommen.")).toBeVisible();
   expect(calls("approve_learning")).toHaveLength(1);
 });
@@ -170,4 +172,28 @@ it("keeps hidden recovery and legacy drafts while resetting lessons on route vis
   const before = mocks.invoke.mock.calls.length;
   await act(async () => late.resolve([note]));
   expect(mocks.invoke.mock.calls).toHaveLength(before);
+});
+
+it("drops old project reads and prunes drafts for vanished lessons", async () => {
+  const old = deferred();
+  read = () => old.promise;
+  mount();
+  expect(calls("list_learnings")).toHaveLength(1);
+  await act(async () => writeActiveProjectId("p2"));
+  const third = { ...note, id: "l3", content: "Third insight" };
+  read = async () => [note, second, third];
+  await act(async () => writeActiveProjectId("p1"));
+  await screen.findByText("Original insight");
+  await act(async () => old.resolve([{ ...note, content: "Old read" }]));
+  expect(screen.queryByText("Old read")).toBeNull();
+  edit(1, "Vanished draft");
+  read = async () => [third];
+  fireEvent.click(row().getByRole("button", { name: "Verwerfen" }));
+  await waitFor(() => expect(screen.getAllByRole("textbox", { name: "Lektion bearbeiten" })).toHaveLength(1));
+  expect(row().getByRole("textbox")).toHaveValue("Third insight");
+  read = async () => [second];
+  fireEvent.click(row().getByRole("button", { name: "Verwerfen" }));
+  await screen.findByDisplayValue("Second insight");
+  expect(screen.queryByDisplayValue("Vanished draft")).toBeNull();
+  expect(calls("reject_learning")).toEqual([["reject_learning", { id: "l1" }], ["reject_learning", { id: "l3" }]]);
 });
