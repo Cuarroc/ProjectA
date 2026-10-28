@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { formatMessageTime, roleLabel, type OrchestratorChat } from "../lib/orchestratorChat";
+import { commandChatTexts as texts } from "./commandchat/texts";
 
 interface CommandChatProps {
   chat: OrchestratorChat;
@@ -21,7 +22,7 @@ interface CommandChatProps {
 function EmptyChat() {
   return (
     <div className="command-chat-empty">
-      <p>Noch keine Nachrichten. Schick dem Orchestrator eine Aufgabe.</p>
+      <p>{texts.empty}</p>
     </div>
   );
 }
@@ -124,9 +125,11 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
           )}
         </div>
       ) : null}
-      {chat.error ? <p className="command-chat-error">{chat.error}</p> : null}
+      {chat.error ? (
+        <p className="command-chat-error" role="alert">{chat.error}</p>
+      ) : null}
       {disabled ? (
-        <p className="command-chat-hint">Kein Projekt aktiv — wähle links ein Projekt.</p>
+        <p className="command-chat-hint">{texts.noProject}</p>
       ) : null}
       <div className="command-chat-bar">
         <button
@@ -135,19 +138,19 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
           onClick={() => setHistoryOpen((open) => !open)}
           disabled={disabled}
           aria-expanded={historyOpen}
-          title="Verlauf des Orchestrators"
+          title={texts.historyTitle}
         >
-          <span className="command-chat-chevron">{historyOpen ? "▾" : "▸"}</span>
-          Verlauf
+          <span className="command-chat-chevron" aria-hidden="true">{historyOpen ? "▾" : "▸"}</span>
+          {texts.history}
         </button>
         <textarea
           ref={inputRef}
           name="command-chat-input"
           className="command-chat-input"
-          aria-label="Aufgabe an den Orchestrator"
+          aria-label={texts.input}
           rows={2}
           value={text}
-          placeholder="Aufgabe an den Orchestrator … (Enter sendet, Shift+Enter neue Zeile)"
+          placeholder={texts.placeholder}
           disabled={disabled || chat.sending}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={handleKeyDown}
@@ -156,18 +159,19 @@ export default function CommandChat({ chat, projectId, onOpenConversation }: Com
           type="button"
           className="command-chat-expand"
           onClick={onOpenConversation}
-          title="Im Dialog öffnen"
-          aria-label="Im Dialog öffnen"
+          title={texts.openConversation}
+          aria-label={texts.openConversation}
         >
           ⤢
         </button>
         <button
           type="button"
           className="command-chat-send"
+          aria-label={texts.send}
           disabled={!canSend}
           onClick={() => void handleSend()}
         >
-          {chat.sending ? "Sendet …" : "Senden"}
+          {chat.sending ? texts.sending : texts.send}
         </button>
       </div>
     </div>
