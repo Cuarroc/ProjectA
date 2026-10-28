@@ -60,7 +60,7 @@ keep explicit enqueueing until fresh evidence resolves it. Merge
 those `conflict`): merge, never rebase or force-push.
 
 - `review-ok` label: a PR enters the queue only with it. Only Root (the
-  orchestrator; the Chief as its deputy) sets it, bound to the head SHA that
+  orchestrator; the Stabschef as its explicitly designated deputy) sets it, bound to the head SHA that
   was reviewed (a later push voids it), after the review disposition is
   complete and no high finding is open. The setter's own model family does
   not matter; the review does: the required verdicts must come from model
@@ -345,16 +345,19 @@ fixing a bug and consider a lint/gate for the error class.
 
 ## Bounded goals and approved adaptation
 
-Root owns delivery priority and acceptance; Chief alone dispatches and replans
-operations. While the Chief is unavailable (e.g. its provider is out of quota),
-the coordinator (Root) may edit `docs/PLAN.md`. Each package has one execution owner. First reconcile prior orders,
+Root owns delivery priority and final acceptance. The Stabschef alone dispatches,
+replans operations and maintains `docs/PLAN.md`; the Chief is the user's independent
+Projektassistent, not a second dispatcher. The PM prepares bounded packages and
+refills the suitable reserve below five. Root may temporarily maintain the plan
+when the Stabschef is unavailable; record the handover and preserve one writer.
+Each package has one execution owner. First reconcile prior orders,
 actual native goals, running assignments and the canonical PLAN; stored rules,
 delivered mail and expired leases are not evidence of execution or process end.
 
 Each agent checks its own harness goal functions and confirms its own native
 goal: result and benefit, parent goal, ticket and owner, scope and limits,
 verifiable acceptance, dependencies and next step. Root's goal ends at its
-bounded acceptance; Chief's coordination goal derives worker goals. Avoid
+bounded acceptance; the Stabschef's coordination goal derives worker goals. Avoid
 micro-goals and endless goals. A worker can complete at its checked handover;
 the parent stays open until its own acceptance. Implemented, tested, reviewed,
 accepted, merged and usable are distinct states.
@@ -368,7 +371,7 @@ Re-check and update your own native goal at relevant changes and milestones;
 complete only after fulfillment. If objective editing is unsupported, record
 the change and tool limit in the ticket/handover; do not invent an API.
 
-Within approved work, Chief may change method, order, slicing, assignment or
+Within approved work, the Stabschef may change method, order, slicing, assignment or
 execution location. Record trigger and evidence, previous state, change,
 remaining duties and acceptance, next step and owner in the ticket/PLAN.
 Never weaken acceptance to finish. New product goals, scope, cost and permissions

@@ -23,7 +23,10 @@ per provider: `docs/setup/README.md`. Check your machine with
 4. Only one lane at a time may edit the seams `src-tauri/src/api.rs`, `main.rs`,
    `store.rs` + `store/`, `bin/pa.rs`. Declare ownership before touching them.
 5. Reconcile previous orders, live assignments and actual native goals first.
-   Root owns priority/acceptance, Chief alone dispatches; one execution owner.
+   Root owns priority/final acceptance; the Stabschef alone dispatches and maintains
+   docs/PLAN.md; the Chief is the independent Projektassistent, not a dispatcher.
+   The PM prepares bounded packages and refills the suitable reserve below five.
+   Keep one execution owner per package.
    Confirm your own native goal with real create/get output, or record verified
    function unavailability plus the ticket goal. Include result/benefit, parent,
    ticket/owner, scope/limits, acceptance, dependencies and next step. A checked
@@ -160,7 +163,7 @@ AGENTS.md; a family shared with the author never counts.
    refresh it; only to resolve a real conflict — merge, never rebase or
    force-push. The queue requires the `review-ok` label on the PR head
    (`.mergify.yml` queue condition `label = review-ok`, CI-HARDEN-02); only Root
-   (Chief as deputy) sets it, bound to the reviewed head SHA, only when the required review
+   (Stabschef as explicitly designated deputy) sets it, bound to the reviewed head SHA, only when the required review
    verdicts come from model families other than the author's; the setter must not count
    its own review as the independent one when it shares the author's family.
    Labels: `do-not-merge` keeps a PR out of the queue; `priority`
