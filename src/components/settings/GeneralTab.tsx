@@ -19,6 +19,7 @@ import {
 import type { Project } from "../../types";
 import PreviewToggle from "../../shell/mount/PreviewToggle";
 import DigestFields from "./digest/DigestFields";
+import StuckFields from "./stuck/StuckFields";
 import { RadioGroup } from "../../design/forms/RadioGroup";
 import { T as fontText } from "./fonts/texts";
 
@@ -266,37 +267,13 @@ export default function GeneralTab({
 
       <SessionBufferDelete />
 
-      <div className="settings-field">
-        <label className="field-label" htmlFor="settings-stuck-minutes">
-          Stuck-Diagnose (Minuten)
-        </label>
-        <div className="settings-port-row">
-          <input
-            id="settings-stuck-minutes"
-            className="field"
-            inputMode="numeric"
-            placeholder="Standard: 10"
-            value={stuckInput}
-            onChange={(event) => setStuckInput(event.target.value)}
-          />
-          <button
-            type="button"
-            className="button-primary"
-            disabled={savingStuck}
-            onClick={handleSaveStuck}
-          >
-            {savingStuck ? "…" : "Speichern"}
-          </button>
-        </div>
-        <p className="settings-hint">
-          Wie lange ein laufender Worker <em>gleichzeitig</em> ohne Terminal-Ausgabe
-          und ohne Änderung in seinem Worktree bleiben darf, bevor die Karte als
-          „vermutlich festgefahren“ auf needs_you landet. Beides zusammen ist der
-          Punkt: wer liest und denkt, schreibt nichts ins Terminal; wer kompiliert,
-          schreibt keine Dateien. Ein leeres Feld nimmt den Standard.
-        </p>
-        {stuckError ? <span className="settings-error">{stuckError}</span> : null}
-      </div>
+      <StuckFields
+        stuckInput={stuckInput}
+        setStuckInput={setStuckInput}
+        savingStuck={savingStuck}
+        handleSaveStuck={handleSaveStuck}
+        stuckError={stuckError}
+      />
 
       <fieldset className="settings-field" disabled={savingRouting}>
         <legend className="field-label" id="settings-product-mode-label">
