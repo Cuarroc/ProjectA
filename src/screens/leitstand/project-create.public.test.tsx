@@ -13,7 +13,9 @@ let projects: typeof created[];
 const calls = () => vi.mocked(invoke).mock.calls.filter(([command]) => command === "create_project");
 const dialog = () => screen.getByRole("dialog", { name: "Projekt anlegen" });
 async function open() {
-  fireEvent.click(await screen.findByRole("button", { name: "Projekt anlegen" }));
+  const trigger = await screen.findByRole("button", { name: "Projekt anlegen" });
+  trigger.focus();
+  fireEvent.click(trigger);
   return within(await screen.findByRole("dialog", { name: "Projekt anlegen" }));
 }
 function fill() {
