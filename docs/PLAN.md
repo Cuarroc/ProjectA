@@ -329,7 +329,7 @@ Die Betriebsregel aus N5 ist durch Root bestätigt: nach zwei Fehlversuchen Befu
 
 | ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
 |---|---|---|---|---|---|---|---|---|
-| MS0-V36-NACHTRAG | Angenommenen Textnachtrag quellengetreu aufnehmen und kanonisch referenzieren | Stabschef; Root nimmt den festen Kopf ab | Roots Textannahme; serielles PLAN-Schreibfenster | Server-Gates | C | In Prüfung: Text angenommen, Kandidatenabnahme und Merge offen | Bytegleicher Nachtrag, eigene prepush-Gates, ≤300 RAW; keine Produkt-, native, Installations- oder Nutzerabnahme | #204 |
+| MS0-V36-NACHTRAG | Angenommenen Textnachtrag quellengetreu aufnehmen und kanonisch referenzieren | Stabschef; Root nimmt den festen Kopf ab | Roots Textannahme; serielles PLAN-Schreibfenster | Server-Gates | C | Erledigt mit Merge von PR #2009: quellengetreuer Textnachtrag und kanonischer Verweis geliefert | Bytegleicher Nachtrag, eigene prepush-Gates, ≤300 RAW; keine Produkt-, native, Installations- oder Nutzerabnahme | #204 |
 
 ### DOC-1b — kanonischer Nachtrag 21.10.2026
 
