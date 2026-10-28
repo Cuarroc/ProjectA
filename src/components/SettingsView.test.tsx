@@ -349,10 +349,10 @@ describe("SettingsView global state resync", () => {
     stateReads.getBudgets.mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 50, sevenDayPct: 80 }])
       .mockResolvedValueOnce([{ profileId: "codex", fiveHourPct: 60, sevenDayPct: 90 }]);
     render(<SettingsView {...PROPS} profiles={[profile]} project={project("pj-a")} />);
-    expect(await screen.findByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("10");
+    expect(await screen.findByRole("textbox", { name: "Stuck-Diagnose (Minuten)" })).toHaveValue("10");
 
     fireEvent.focus(window);
-    await waitFor(() => expect(screen.getByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("20"));
+    await waitFor(async () => expect(await screen.findByRole("textbox", { name: "Stuck-Diagnose (Minuten)" })).toHaveValue("20"));
     expect(screen.getByRole("switch", { name: "Tages-Digest schreiben" })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: "Reliable" })).toBeChecked();
     fireEvent.click(screen.getByRole("tab", { name: "Agent-Kategorien" }));
