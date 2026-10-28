@@ -353,7 +353,7 @@ describe("SettingsView global state resync", () => {
 
     fireEvent.focus(window);
     await waitFor(() => expect(screen.getByLabelText("Stuck-Diagnose (Minuten)")).toHaveValue("20"));
-    expect(screen.getByRole("checkbox", { name: "Tages-Digest schreiben" })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: "Tages-Digest schreiben" })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: "Reliable" })).toBeChecked();
     fireEvent.click(screen.getByRole("tab", { name: "Agent-Kategorien" }));
     expect(screen.getByLabelText("5 h")).toHaveValue("60");

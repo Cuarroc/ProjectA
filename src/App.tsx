@@ -399,7 +399,10 @@ function AppContent({ routePath, onGoalRoute }: Partial<LegacyRouteProps> = {}) 
     writeActiveProjectId(activeProjectId);
   }, [activeProjectId]);
   // The Glass header's project picker publishes its choice through this module.
-  useEffect(() => subscribeActiveProject(setActiveProjectId), []);
+  useEffect(() => subscribeActiveProject((id) => {
+    setActiveProjectId(id);
+    if (bootstrapReady) void refreshProjects();
+  }), [bootstrapReady, refreshProjects]);
 
   const handleCreateProject = useCallback(async (name: string, repoPath: string) => {
     setProjectsError(null);

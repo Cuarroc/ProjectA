@@ -5058,7 +5058,6 @@ scripts/contrast-check.mjs. */
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--bg);
 }
 
 .settings-tabs {

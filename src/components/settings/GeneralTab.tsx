@@ -15,10 +15,12 @@ import {
   type FontSettings,
   type TerminalFontId,
   type UiDensity,
-  type UiFontSize,
 } from "../../lib/settings";
 import type { Project } from "../../types";
 import PreviewToggle from "../../shell/mount/PreviewToggle";
+import DigestFields from "./digest/DigestFields";
+import { RadioGroup } from "../../design/forms/RadioGroup";
+import { T as fontText } from "./fonts/texts";
 
 /**
  * State and handlers stay in `SettingsView` (they share effects with the other
@@ -143,24 +145,16 @@ export default function GeneralTab({
         <p className="settings-hint">Passt Abstände und Bedienelemente in der App an.</p>
       </fieldset>
       <fieldset className="settings-field settings-density">
-        <legend className="field-label">Schriftgröße der App</legend>
-        <div className="settings-density-options">
-          {(["small", "normal", "large"] as const).map((value) => (
-            <label className="settings-check" key={value}>
-              <input
-                type="radio"
-                name="settings-ui-font-size"
-                value={value}
-                checked={fonts.uiFontSize === value}
-                onChange={() => {
-                  saveUiFontSize(value);
-                  onFontsChange({ ...fonts, uiFontSize: value as UiFontSize });
-                }}
-              />
-              <span>{value === "small" ? "Klein" : value === "normal" ? "Normal" : "Groß"}</span>
-            </label>
-          ))}
-        </div>
+        <legend className="field-label">{fontText.label}</legend>
+        <RadioGroup
+          aria-label={fontText.label}
+          options={fontText.options}
+          value={fonts.uiFontSize}
+          onChange={(value) => {
+            saveUiFontSize(value);
+            onFontsChange({ ...fonts, uiFontSize: value });
+          }}
+        />
       </fieldset>
       <div className="settings-field">
         <label className="field-label" htmlFor="settings-terminal-font">
@@ -236,23 +230,11 @@ export default function GeneralTab({
         </details>
       </div>
 
-      <label className="settings-check">
-        <input
-          type="checkbox"
-          name="digest-enabled"
-          checked={digestEnabled}
-          onChange={(event) => handleToggleDigest(event.target.checked)}
-        />
-        <span>Tages-Digest schreiben</span>
-      </label>
-      <p className="settings-hint">
-        Schreibt einmal pro Stunde für den Tag, der bereits vorbei ist, eine
-        Markdown-Seite nach <code>&lt;repo&gt;/.pa/memory/digests/</code> — Board-Stand,
-        Tagesverlauf, Worker-Aktivität, Quota und Budget. Kein Agent, keine Tokens:
-        alles kommt aus Daten, die ProjectA ohnehin hat. <code>.pa/</code> ist
-        gitignored, die Seiten sind Lesestoff für den Vault.
-      </p>
-        {digestError ? <span className="settings-error">{digestError}</span> : null}
+      <DigestFields
+        digestEnabled={digestEnabled}
+        handleToggleDigest={handleToggleDigest}
+        digestError={digestError}
+      />
 
       <fieldset className="settings-field">
         <legend className="field-label">Umgebung der Agenten</legend>
