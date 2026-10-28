@@ -321,6 +321,16 @@ Quelle: Root-Aufträge vom 26.10.2026; enger Schnitt: [v2-Unterplan §10](plan/v
 | V2-UAT1a-CHECKLIST-DRAFT | Inhaltlich abgenommenen Entwurf der Nutzer-Klick-Checkliste festhalten | Stabs pflegt Metadaten; Root nimmt den Inhalt ab | V2-ACC1b-PREP-ROUTES; Backlog #320 | PC | C | Erledigt nach Merge dieser Metadaten: nur inhaltlich abgenommene Vorbereitung | Genau 10 geprüfte Nutzeraktionen mit Status-/Stoppregeln und berichtigter Beweise-Sichtbarkeit; geprüftes Dokument SHA-256 `53fa07cf…b671f1f`, Inhalt am 27.10.2026 durch Root abgenommen (msg-0mvqw16fe-b573cbce). Kein tatsächliches Durchklicken, nativer Betrieb, Installation, UAT oder Endkarte erfolgt | #320; 2cee86c4-c83e-4200-9d08-0bbe2fa4232d |
 | V2-REL-PREP | Release-Vorbereitung nur als Entwurf außerhalb des Repos: Changelog-Text und Dateiliste der Versionsänderung 2.0.0 | Agent (Entwurf); der Nutzer entscheidet | V2-UAT-1a-NEW | Server | C | Blockiert: wartet auf die Checkliste | Entwurf liegt außerhalb des Repos; kein Versions-PR, kein Tag. Der Versions-PR kommt erst nach frischem Ja in der Endkarte (AGENTS.md Regel 10, K5); Release-Sperre bleibt | – |
 
+### MS-0 — angenommener Textnachtrag zu v3.6 (28.10.2026)
+
+Root nahm den [Nachtrag zu v3.6](plan/v2.0/nachtrag-v3.6-2026-10-28.md) am 28.10.2026 an: N1 mindestens 12 px für alle App-Texte ohne 11-px-Ausnahme; N2 Rollenwortlaut; N3 sieben F2-Begriffe; N4 Abendbericht gegen 20:00 Berlin. Der Text steht bytegleich im Dokument (9827 Bytes, SHA256 `a2b21d4785bb9b5c2c83b71a9329329cf3020550198231a874786622393924b0`).
+Der Unterplan v3.6 (`f4696eb5…5720`) und sein Root-Auftrag (`18c91341…8366`) bleiben unverändert. Der Eintrag ersetzt den privaten Nachtragsentwurf; die vollständige MS-0-Paketliste ist damit noch nicht geliefert. Kein Schriftumbau, Dienst, Auslöser oder neue geschützte Befugnis aus dem Textnachtrag.
+Die Betriebsregel aus N5 ist durch Root bestätigt: nach zwei Fehlversuchen Befund an Root, dessen Entscheidung Fortsetzen/Teilen/Verwerfen, erst danach Stabs-Dispatch; unabhängige gesunde Pakete laufen weiter.
+
+| ID | Ziel | Owner | Hängt ab von | Ort | Stufe | Status | Abnahme | Ticket |
+|---|---|---|---|---|---|---|---|---|
+| MS0-V36-NACHTRAG | Angenommenen Textnachtrag quellengetreu aufnehmen und kanonisch referenzieren | Stabschef; Root nimmt den festen Kopf ab | Roots Textannahme; serielles PLAN-Schreibfenster | Server-Gates | C | In Prüfung: Text angenommen, Kandidatenabnahme und Merge offen | Bytegleicher Nachtrag, eigene prepush-Gates, ≤300 RAW; keine Produkt-, native, Installations- oder Nutzerabnahme | #204 |
+
 ### DOC-1b — kanonischer Nachtrag 21.10.2026
 
 DOC-1b ist geliefert; externe Gesamtakzeptanz und Quellenabgleich bleiben bei DOC-9.
