@@ -4,24 +4,24 @@ Plan-ID: V36-M0-P2. This prepares the approved v3.6 section 4 rights sheet and s
 
 Source fingerprint: `f4696eb52f57f43bf6021d19f332391b5874b0356b39de1fb4e957fa33e55720`. The draft records the STANDARD boundaries without publishing private conversations or choosing a new product target.
 
-## One rights sheet for Elias, before the protected step
+## One rights sheet for the user, before the protected step
 
-Root prepares one concrete sheet for Elias before the first actual protected run, by MS-3 before MS-4. Until Elias decides that sheet, the product Orchestrator executes nothing autonomously. Afterward, only individually listed actions within a valid authorization may run. A general label such as “stage 1 in the project” is insufficient.
+Root prepares one concrete sheet for the user before the first actual protected run, by MS-3 before MS-4. Until the user decides that sheet, the product Orchestrator executes nothing autonomously. Afterward, only individually listed actions within a valid authorization may run. A general label such as “stage 1 in the project” is insufficient.
 
 | Sheet field | Draft requirement | Current state / next owner |
 |---|---|---|
-| Projects and target objects | Bind the exact newly requested product, named root, allowed objects and intended artifacts. Product Git stays in `produkt/`, control in sibling `.projecta/`; existing projects stay in place. Resolve actual targets/links/Git control paths and preserve existing files. | Actual target not chosen; Root fills from Elias' concrete request before effect. |
+| Projects and target objects | Bind the exact newly requested product, named root, allowed objects and intended artifacts. Product Git stays in `produkt/`, control in sibling `.projecta/`; existing projects stay in place. Resolve actual targets/links/Git control paths and preserve existing files. | Actual target not chosen; Root fills from the user's concrete request before effect. |
 | Existing execution paths | List only actually available and explicitly admitted locations and combinations. No new key, remote-control capability, account, service or paid provider follows from this sheet. | Root binds available paths and their observed evidence. |
 | Executor | The core is the single execution route; the product Orchestrator submits typed project-bound requests. UI/helpers cannot bypass admission or accept their own result. | Interface implementation and actual boundary evidence still open. |
-| Individually proposed automatic actions | Scoped reads of allowed inputs, reports, narrowly bounded healing with a report, and explicitly requested new-product directory/Git/template creation. Classify and justify each action separately. | Proposals only; exact actions, objects and limits need Elias' sheet decision. |
+| Individually proposed automatic actions | Scoped reads of allowed inputs, reports, narrowly bounded healing with a report, and explicitly requested new-product directory/Git/template creation. Classify and justify each action separately. | Proposals only; exact actions, objects and limits need the user's sheet decision. |
 | Concrete protected decisions | Money/paid services, secret changes, releases/tags, installs, rights changes, disabling protection and deletions retain their applicable concrete user authorization. Autonomy never enlarges it. | Root preserves valid prior grants and bundles only the actually missing decision. |
 | Revocation | Immediately prevent new effects; halt running steps with an independently observed process/stop receipt. Distinguish requested stop, confirmed stop and completed effects; show the applicable return path. | Build and verify before activation; no automatic rollback claim. |
 | Operating model | Authorized local user and admitted existing execution locations; no added multi-user operation, phone pairing or permanent operation from this draft. Concurrency and action limits belong to the concrete sheet. | Root binds actual target/action limits; first-flow proof uses one active admitted request. |
-| Technical trust | Root/architecture bind identity and trusted authority, safe admission and evidence. Writable rules, checksums, labels, cwd and same-user CLI are not proof of isolation. | No cryptographic choice or infrastructure approval is asked of Elias by this draft. |
+| Technical trust | Root/architecture bind identity and trusted authority, safe admission and evidence. Writable rules, checksums, labels, cwd and same-user CLI are not proof of isolation. | No cryptographic choice or infrastructure approval is asked of the user by this draft. |
 
 If the sheet has not been decided when the MS-4 real flow is due, only that effectful track waits with “Decision required: rights sheet”. Inert cards/data, simulated tests and unrelated authorized work continue through their normal gates. Silence is not consent.
 
-The app approval channel is a separately built feature. Effective grants remain inactive until built, accepted, operating and covered by Elias' concrete activation instruction. This does not reopen an already answered channel/design decision or grant general execution rights.
+The app approval channel is a separately built feature. Effective grants remain inactive until built, accepted, operating and covered by the user's concrete activation instruction. This does not reopen an already answered channel/design decision or grant general execution rights.
 
 ## Common request, effect and receipt boundary
 
@@ -61,6 +61,6 @@ Files remains a passive reader with the correct two roots, viewer-specific read 
 
 Stabs is the sole dispatcher, file/seam coordinator and PLAN writer; PM prepares cuts, Chief independently checks, Root prioritizes and accepts. Existing valid concrete Motion/updater/install permissions retain their exact scope and prerequisites; this draft neither revokes nor enlarges them. The standing K5 patch-release approval retains its documented scope; minor/major releases, including v2.0.0, still need fresh user approval. NAV-0/MS-4, real protection, user data and current development-loop constraints remain binding. Parked work is not resumed by a rights draft.
 
-After this bounded source contract is merged and Root accepts the remaining MS-0 duties, Root hands catalog, matrix and thresholds once to Alfred and verifies he read them. That reading is an observed duty, not an assumed delivery receipt. Only then MS-1; before relevant R2 image approval, only types/data/text and inactive Gallery components, preserving active views/global tokens.
+After this bounded source contract is merged and Root accepts the remaining MS-0 duties, Root hands catalog, matrix and thresholds once to the user's independent assistant and verifies he read them. That reading is an observed duty, not an assumed delivery receipt. Only then MS-1; before relevant R2 image approval, only types/data/text and inactive Gallery components, preserving active views/global tokens.
 
 NICHT ABGEDECKT: actual rights-sheet decision, trusted-channel implementation, protected path enforcement, actual tool/model runs, native stop/revocation/backup effect, installation, runtime, visual/user acceptance and parent MS-0/product completion. Each remains with its named implementation/acceptance owner.
