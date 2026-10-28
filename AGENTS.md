@@ -48,18 +48,19 @@ reference. Where a detail contradicts these ten, the ten win.
    date and command output; whoever takes a claim over re-checks it. Before
    every worker start, run the start check: observed model, remaining limit,
    free RAM, running cargo builds.
-10. **Safety by three tiers.** Secret scan before every commit; secrets
-    never go into files, logs or commits. Tier 1 (reversible): act freely.
-    Tier 2 (deleting, force-push, server changes): Root acts without asking
-    only with a verified restore path for the exact pre-change state (incl.
-    concurrent remote changes), a log entry (time, action, reason, restore
+10. **Safety by three tiers.** Secret scan before every commit; no
+    secrets in files, logs or commits. Tier 1 (reversible): act freely.
+    Tier 2 (deleting, force-push, server changes): Root acts unasked
+    only with a verified restore path to the exact pre-change state despite
+    concurrent remote changes, a log entry (time, action, reason, restore
     path) and restore material kept 24 h; unproven recovery is tier 3. Tier 3
-    (the user's explicit yes only): money and paid services, rotating or
-    revoking secrets, public releases and release-triggering `v*` tags. A
-    recorded standing approval may cover patch releases; minor and major
-    always need a fresh yes. Preserve granted authorizations; do not ask
-    again within that scope. Bundle essential questions in normal chat and
-    record decisions in `docs/PLAN.md`; no AskUser windows.
+    (the user's explicit yes only): money and paid services, installs,
+    rights/security changes, rotating or revoking secrets, public releases
+    and `v*` release tags. A standing approval in the
+    coordinator's permission record may cover patch releases; minor and
+    major always need a fresh yes. Preserve granted authorizations; do not
+    ask again within that scope. Questions: normal chat, bundled; decisions:
+    `docs/PLAN.md`; no AskUser windows.
 
 ## Start with current evidence
 
