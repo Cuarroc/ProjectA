@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
+import { Button } from "../design/controls/Button";
+import { Field } from "../design/forms/Field";
+import { Textarea } from "../design/inputs/Input";
 import { commentLineOf, useWorkerDiff } from "../lib/diff";
 import { classifyDiff, reviewClassInfo } from "../lib/reviewClass";
 import {
@@ -16,6 +19,7 @@ import {
 } from "../lib/ipc";
 import type { DiffComment, DiffFile, DiffLine, SetupTrustView, WorkerReadiness } from "../types";
 
+import { commentTexts } from "./diff/comments/texts";
 import { DiffFileList } from "./diff/DiffFileList";
 import { DiffLineContent, DiffLines } from "./diff/DiffLines";
 
@@ -868,41 +872,42 @@ function DiffLineRow({
 
       {open && target !== null ? (
         <div className="diff-comment-box">
-          <textarea
-            className="field field-textarea"
-            rows={3}
-            autoFocus
-            placeholder={`Kommentar zu Zeile ${target}…`}
-            aria-label={`Kommentar zu Zeile ${target}`}
-            value={draft}
-            disabled={busy}
-            onChange={(event) => onDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault();
-                onCancel();
-                return;
-              }
-              if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-                event.preventDefault();
-                onSubmit();
-              }
-            }}
-          />
-          {error ? <p className="modal-error">{error}</p> : null}
+          <Field label={commentTexts.label(target)} hint={commentTexts.hint} error={error}>
+            {(control) => (
+              <Textarea
+                {...control}
+                rows={3}
+                autoFocus
+                placeholder={commentTexts.placeholder(target)}
+                value={draft}
+                disabled={busy}
+                onChange={(event) => onDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    onCancel();
+                    return;
+                  }
+                  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    onSubmit();
+                  }
+                }}
+              />
+            )}
+          </Field>
           <div className="diff-comment-box-actions">
-            <span className="empty-hint">Strg+Enter sendet</span>
-            <button type="button" className="button-ghost" disabled={busy} onClick={onCancel}>
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              className="button-primary"
+            <Button variant="ghost" disabled={busy} onClick={onCancel}>
+              {commentTexts.cancel}
+            </Button>
+            <Button
+              variant="primary"
+              loading={busy}
               disabled={busy || draft.trim() === ""}
               onClick={onSubmit}
             >
-              {busy ? "…" : "Kommentieren"}
-            </button>
+              {commentTexts.post}
+            </Button>
           </div>
         </div>
       ) : null}
