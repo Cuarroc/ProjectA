@@ -15,11 +15,12 @@ import {
   type FontSettings,
   type TerminalFontId,
   type UiDensity,
-  type UiFontSize,
 } from "../../lib/settings";
 import type { Project } from "../../types";
 import PreviewToggle from "../../shell/mount/PreviewToggle";
 import DigestFields from "./digest/DigestFields";
+import { RadioGroup } from "../../design/forms/RadioGroup";
+import { T as fontText } from "./fonts/texts";
 
 /**
  * State and handlers stay in `SettingsView` (they share effects with the other
@@ -144,24 +145,16 @@ export default function GeneralTab({
         <p className="settings-hint">Passt Abstände und Bedienelemente in der App an.</p>
       </fieldset>
       <fieldset className="settings-field settings-density">
-        <legend className="field-label">Schriftgröße der App</legend>
-        <div className="settings-density-options">
-          {(["small", "normal", "large"] as const).map((value) => (
-            <label className="settings-check" key={value}>
-              <input
-                type="radio"
-                name="settings-ui-font-size"
-                value={value}
-                checked={fonts.uiFontSize === value}
-                onChange={() => {
-                  saveUiFontSize(value);
-                  onFontsChange({ ...fonts, uiFontSize: value as UiFontSize });
-                }}
-              />
-              <span>{value === "small" ? "Klein" : value === "normal" ? "Normal" : "Groß"}</span>
-            </label>
-          ))}
-        </div>
+        <legend className="field-label">{fontText.label}</legend>
+        <RadioGroup
+          aria-label={fontText.label}
+          options={fontText.options}
+          value={fonts.uiFontSize}
+          onChange={(value) => {
+            saveUiFontSize(value);
+            onFontsChange({ ...fonts, uiFontSize: value });
+          }}
+        />
       </fieldset>
       <div className="settings-field">
         <label className="field-label" htmlFor="settings-terminal-font">
