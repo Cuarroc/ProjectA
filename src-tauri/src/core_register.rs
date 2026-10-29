@@ -88,6 +88,30 @@ pub enum ValueSchema {
     Boolean,
     Text { min_chars: usize, max_chars: usize },
 }
+impl ValueSchema {
+    fn valid(self) -> bool {
+        match self {
+            Self::Integer { min, max } => min <= max,
+            Self::Boolean => true,
+            Self::Text {
+                min_chars,
+                max_chars,
+            } => min_chars <= max_chars,
+        }
+    }
+    fn accepts(self, value: &Value) -> bool {
+        match self {
+            Self::Integer { min, max } => value.as_i64().is_some_and(|n| (min..=max).contains(&n)),
+            Self::Boolean => value.is_boolean(),
+            Self::Text {
+                min_chars,
+                max_chars,
+            } => value
+                .as_str()
+                .is_some_and(|s| (min_chars..=max_chars).contains(&s.chars().count())),
+        }
+    }
+}
 /// Declaration only, never a measured baseline or permission to self-apply.
 #[derive(Clone, Copy, Debug)]
 pub enum MetricDescriptor {
@@ -210,6 +234,9 @@ impl<'a> Register<'a> {
             || setting.owner.is_none()
             || setting.area.trim().is_empty()
             || setting.effect_site.trim().is_empty()
+            || !setting.value_schema.is_some_and(ValueSchema::valid)
+            || matches!(setting.metric, MetricDescriptor::Known { name, unit, .. }
+                if name.trim().is_empty() || unit.trim().is_empty())
         {
             return Err(Error::InvalidRegistry);
         }
@@ -251,6 +278,12 @@ impl<'a> Register<'a> {
             return Err(Error::InvalidRegistry);
         }
         let setting = self.setting(&change.scope, &change.key)?;
+        if !setting
+            .value_schema
+            .is_some_and(|schema| schema.accepts(&change.new))
+        {
+            return Err(Error::InvalidValue);
+        }
         if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
             && self.level(&change.scope, setting.area) == Level::Off
         {
