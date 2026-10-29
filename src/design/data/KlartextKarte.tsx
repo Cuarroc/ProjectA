@@ -40,7 +40,7 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
     "problem-triangle": "bad", "pause-circle": undefined, "dashed-circle": undefined } as const)[p.shape];
   const meta = p.beleg && proofMeta?.sourceId === p.beleg.sourceId && proofMeta.identity === p.beleg.identity
     && proofMeta.observedAt === p.beleg.observedAt ? proofMeta : undefined;
-  const proof = p.raw.beleg, source = p.raw.source;
+  const proof = p.beleg, source = p.raw.source;
   useEffect(() => {
     const key = `${id}:${p.zustand}`;
     if (last.current === key) return;
@@ -66,7 +66,7 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
       <div data-field={fromYouField}><dt>{de["klartext.card.fromYou"]}</dt><dd>{vonDir}<Button variant="primary" loading={loading} onClick={() => onInspect(id)}>{de["klartext.card.inspect"]}</Button></dd></div>
     </dl>
     <dl className="g-kl__facts">{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? de["effect.unknown"]}</dd></div>)}
-      <div><dt>{de["klartext.card.source"]}</dt><dd>{source?.id ?? de["effect.unknown"]}<br /><code>{proof?.identity ?? source?.identity ?? de["effect.unknown"]}</code></dd></div>
+      <div><dt>{de["klartext.card.source"]}</dt><dd>{source?.id ?? de["effect.unknown"]}<br /><code>{source?.identity ?? de["effect.unknown"]}</code></dd></div>
       <div><dt>{de["effect.authority"]}</dt><dd>{de["klartext.card.rights"].replace("{level}", String(level))}</dd></div>
     </dl>
     <footer><details open={detailsOpen}><summary aria-expanded={detailsOpen} aria-controls={`${uid}-technical`} onClick={e => { e.preventDefault(); onDetailsChange(id, !detailsOpen); }}>{de["klartext.card.details"]}</summary>

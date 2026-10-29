@@ -92,6 +92,10 @@ it("composes five Klartext lines one action and remembered keyboard details with
     expect(screen.getAllByText("Kein nutzbarer Beleg.").length).toBeGreaterThan(0);
     expect(screen.queryByText("Fertig mit Beleg")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    // projection contract: stale proof is not usable
+    expect(card.querySelector('[data-field="beleg"] > span:last-child')).toHaveTextContent(/^Frische unbekannt Unbekannt$/);
+    expect(card.querySelector('[data-field="beleg"] time')).not.toHaveTextContent(beleg.observedAt);
+    expect(card.querySelector(".g-kl__facts code")).toHaveTextContent(identity);
   }
   view.rerender(<Host {...props} proofMeta={{ ...beleg, gates: null }} facts={{ ...props.facts, count: null }} />);
   expect(screen.getByText("Gates unbekannt")).toBeVisible();
