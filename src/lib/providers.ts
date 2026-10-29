@@ -438,3 +438,52 @@ export function freeTierRemainingText(pool: FreeTierPool): string | null {
   if (pool.remainingPercent !== null) return `${pool.remainingPercent} % frei`;
   return null;
 }
+
+/** A fact that is either known or explicitly unknown; unknown is never 0, "" or free. */
+export type ModelFact<T> =
+  | { readonly state: "known"; readonly value: T }
+  | { readonly state: "unknown" };
+
+/** What a caller reports about one run; every field is read by name, own data properties only. */
+export interface ModelFactsInput {
+  readonly providerId: string;
+  readonly harness: string;
+  /** Settings the user chose: a hint, never evidence of what ran. */
+  readonly configured?: { readonly model?: string | null; readonly effort?: string | null };
+  /** What a named source saw. `observedAt` is unix seconds. This does not authenticate the caller. */
+  readonly observed?: {
+    readonly providerId: string;
+    readonly harness: string;
+    readonly sourceId: string;
+    readonly model: string;
+    readonly observedAt: number;
+    readonly effort?: string | null;
+    readonly cost?: { readonly amount: number; readonly unit: string } | null;
+  } | null;
+}
+
+/** Explicit clock: `staleAfterSeconds` is the caller's own window, there is no built-in TTL. */
+export interface ModelFactsClock {
+  readonly nowSeconds: number;
+  readonly staleAfterSeconds: number;
+}
+
+export interface ModelFacts {
+  readonly configuredHint: { readonly model: string | null; readonly effort: string | null };
+  readonly observed:
+    | { readonly state: "unknown"; readonly reason: "missing" | "identity-mismatch" | "invalid" | "future" }
+    | {
+        readonly state: "observed";
+        /** `stale` is non-current: the model is reported, not presented as live. */
+        readonly freshness: "current" | "stale";
+        readonly sourceId: string;
+        readonly model: string;
+        readonly observedAt: number;
+        readonly effort: ModelFact<string>;
+        readonly cost: ModelFact<{ readonly amount: number; readonly unit: string }>;
+      };
+}
+
+export function projectModelFacts(_input: ModelFactsInput, _clock: ModelFactsClock): ModelFacts {
+  return { configuredHint: { model: null, effort: null }, observed: { state: "unknown", reason: "missing" } };
+}
