@@ -68,10 +68,10 @@ it("projects claims without evidence as Unbelegt and preserves independent board
       [{ ...quiet, evidenceStatus: "vorgeschlagen", needsUser: true }, "Wartet auf dich", "Wartet auf dich", "diamond-dot"],
       [{ ...quiet, evidenceStatus: "vorgeschlagen" }, "Ruhig", "Ruhig", "pause-circle"],
       [{ ...quiet, operatingStatus: "running", stopRequested: true }, "Läuft", "Stopp angefordert", "open-arc"],
-      [{ ...quiet, operatingStatus: "running", stopRequested: true, stopConfirmed: true }, "Ruhig", "gestoppt", "pause-circle"],
-      [{ ...quiet, operatingStatus: "unknown" }, "Unbelegt", "unbekannt", "dashed-circle"],
-      [{ ...quiet, operatingStatus: "new-status" }, "Unbelegt", "unbekannt", "dashed-circle"],
-      [{ ...quiet, evidenceStatus: "unbekannt" }, "Unbelegt", "unbekannt", "dashed-circle"],
+      [{ ...quiet, operatingStatus: "running", stopRequested: true, stopConfirmed: true }, "Ruhig", "Gestoppt", "pause-circle"],
+      [{ ...quiet, operatingStatus: "unknown" }, "Unbelegt", "Unbekannt", "dashed-circle"],
+      [{ ...quiet, operatingStatus: "new-status" }, "Unbelegt", "Unbekannt", "dashed-circle"],
+      [{ ...quiet, evidenceStatus: "unbekannt" }, "Unbelegt", "Unbekannt", "dashed-circle"],
     ] as const;
     for (const [input, zustand, label, shape] of matrix) {
       const result = projectKlartext(input as KlartextInput);
@@ -79,7 +79,7 @@ it("projects claims without evidence as Unbelegt and preserves independent board
       expect(result.belegGrund).toEqual(expect.any(String));
     }
     const unknown = projectKlartext({ ...completed, operatingStatus: "future", evidenceStatus: "future" });
-    expect(unknown).toMatchObject({ operatingStatus: "unknown", evidenceStatus: "unbekannt", zustand: "Unbelegt", label: "unbekannt" });
+    expect(unknown).toMatchObject({ operatingStatus: "unknown", evidenceStatus: "unbekannt", zustand: "Unbelegt", label: "Unbekannt" });
     expect(unknown.raw).toMatchObject({ operatingStatus: "future", evidenceStatus: "future" });
     expect([formForColumn("working"), formForColumn("needs_you"), formForColumn("in_review"),
       formForColumn("ready_to_merge"), formForColumn("done")]).toEqual(["run", "need", "rev", "ok", "done"]);

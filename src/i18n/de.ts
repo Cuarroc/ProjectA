@@ -131,6 +131,8 @@ export const de = {
   "klartext.unproven": "Unbelegt",
   "klartext.stopRequested": "Stopp angefordert",
   "klartext.noProof": "Kein nutzbarer Beleg.",
+  "klartext.unknownLabel": "Unbekannt",
+  "klartext.stopped": "Gestoppt",
   "hall.role.plan": "Planung",
   "hall.role.build": "Umsetzung",
   "hall.role.check": "Prüfung",

@@ -74,7 +74,7 @@ export function projectKlartext(input: KlartextInput): KlartextProjection {
 
   if (operatingStatus === "unknown" || evidenceStatus === "unbekannt") {
     zustand = de["klartext.unproven"];
-    label = "unbekannt";
+    label = de["klartext.unknownLabel"];
   } else if (operatingStatus === "completed") {
     if (beleg) return { ...data, zustand: de["klartext.done"], label: de["klartext.done"],
       shape: shapes[de["klartext.done"]], beleg };
@@ -82,7 +82,7 @@ export function projectKlartext(input: KlartextInput): KlartextProjection {
   } else if (operatingStatus === "error") {
     zustand = de["klartext.problem"];
   } else if (input.stopConfirmed === true) {
-    label = "gestoppt";
+    label = de["klartext.stopped"];
   } else if (operatingStatus === "running") {
     zustand = de["state.run"];
     if (input.stopRequested === true) label = de["klartext.stopRequested"];
