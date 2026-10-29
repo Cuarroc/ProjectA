@@ -1,7 +1,7 @@
 // DS-X-14: the one catalogue of design components. `registry.coverage.test.ts`
 // keeps it in step with the component exports (function, const, default) under src/design.
 
-export type ComponentFamily = "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "icons" | "inputs" | "layout" | "state" | "surface";
+export type ComponentFamily = "chat" | "controls" | "data" | "fabrik" | "forms" | "gallery" | "hall" | "icons" | "inputs" | "layout" | "state" | "surface";
 
 export interface ComponentEntry {
   /** The exported function name. */
@@ -19,6 +19,11 @@ export interface ComponentEntry {
 }
 
 export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
+  {
+    name: "EffectCard", family: "chat", variants: ["prepare, grant (inert)"], states: ["ready, empty, loading, error, needs-user, stale authority"],
+    a11y: "Six definition rows per proposed effect; native buttons; grant is always disabled; local request callbacks only.",
+    text: "src/i18n/de.ts effect.*; proposal facts supplied by the caller, unknowns remain explicit.",
+  },
   {
     name: "Button", family: "controls",
     variants: ["\"primary\", \"secondary\", \"tint\", \"ghost\", \"danger\"; size sm, md, lg"], states: ["disabled", "loading"],

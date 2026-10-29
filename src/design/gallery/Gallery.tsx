@@ -140,6 +140,7 @@ function Body({ page }: { page: Page }) {
       <ul className="g-gal-grid">{Object.keys(GLYPHS).map((n) => <li key={n} className="g-gal-icon"><Icon name={n as keyof typeof GLYPHS} /><code>{n}</code></li>)}</ul>
     );
     case "hall": return <ProbeHall />;
+    case "chat":
     case "controls":
     case "inputs": return renderStories(page);
     default: return (
@@ -172,7 +173,7 @@ export function Gallery() {
           <h2>{de["gallery.components"]}</h2>
           <ul>{FAMILIES.map(link)}</ul>
         </nav>
-        <section className="g-gal-page g-glass" aria-label={label(page)}>
+        <section className={`g-gal-page g-glass${page === "chat" ? " g-effect-gallery" : ""}`} aria-label={label(page)}>
           <h2>{label(page)}</h2>
           <Body page={page} />
         </section>
