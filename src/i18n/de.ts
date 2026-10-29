@@ -138,6 +138,7 @@ export const de = {
   "klartext.card.fromYouField": "vonDir", // Stable DOM identity, bound to its literal type in KlartextKarte.
   "klartext.card.labelSeparator": ": ",
   "klartext.card.stateSeparator": " · ",
+  "klartext.card.factSeparator": ", ",
   "klartext.card.inspect": "Ansehen",
   "klartext.card.details": "Technische Details",
   "klartext.card.explain": "Erklär mir das",

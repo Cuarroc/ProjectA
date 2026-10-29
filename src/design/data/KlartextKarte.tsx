@@ -76,7 +76,7 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
       <div data-field={fromYouField}><dt>{de["klartext.card.fromYou"]}</dt><dd>{vonDir}<Button variant="primary" loading={loading} onClick={() => onInspect(id)}>{de["klartext.card.inspect"]}</Button></dd></div>
     </dl>
     <dl className="g-kl__facts">{allUnknown
-      ? <div className="g-kl__unknown"><dt>{rows.map(([label]) => label).join(de["gallery.stateSeparator"])}</dt><dd>{de["effect.unknown"]}</dd></div>
+      ? <div className="g-kl__unknown"><dt>{rows.map(([label]) => label).join(de["klartext.card.factSeparator"])}</dt><dd>{de["effect.unknown"]}</dd></div>
       : rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? de["effect.unknown"]}</dd></div>)}
       <div><dt>{de["klartext.card.source"]}</dt><dd>{source?.id ?? de["effect.unknown"]}<br /><code>{source?.identity ?? de["effect.unknown"]}</code></dd></div>
       <div><dt>{de["klartext.card.rightsLevel"]}</dt><dd>{de["klartext.card.rights"].replace("{level}", String(level))}</dd></div>
