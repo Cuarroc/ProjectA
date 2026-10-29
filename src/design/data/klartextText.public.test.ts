@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { formatKlartext, type KlartextTextInput } from "./klartextText";
+import { formatKlartext, type KlartextTextInput } from "../../i18n/klartextTemplates";
 import type { KlartextInput } from "./klartext";
 
 it("formats twenty word data sentences without invented counts or proof", () => {
