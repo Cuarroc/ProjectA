@@ -250,6 +250,7 @@ export const de = {
   "start.retry": "Erneut versuchen",
   "gallery.family.chat": "Wirkungsvorschau",
   "effect.title": "Wirkungsvorschau",
+  "effect.summary": "{total} Wirkungen, {risk} ohne belegten Rückweg",
   "effect.what": "Was",
   "effect.where": "Wo",
   "effect.count": "Wie viele",
