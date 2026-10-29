@@ -7,7 +7,7 @@ import { Gallery } from "../gallery/Gallery";
 
 vi.hoisted(() => {
   const NativeFormat = Intl.DateTimeFormat;
-  vi.spyOn(Intl, "DateTimeFormat").mockImplementation((locale, options) => new NativeFormat(locale, { ...options, timeZone: "Europe/Berlin" }));
+  vi.spyOn(Intl, "DateTimeFormat").mockImplementation(function (locale, options) { return new NativeFormat(locale, { ...options, timeZone: "Europe/Berlin" }); });
 });
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -48,16 +48,17 @@ it("renders message kind source status and time and announces only completed par
     view.rerender(draw({ ...props, observedAtSeconds })); expect(article.querySelector("time")).toHaveTextContent("Zeit unbekannt");
     expect(article.querySelector("time")).not.toHaveAttribute("datetime");
   }
+  view.rerender(draw({ ...props, observedAtSeconds: 1793188200 })); expect(article.querySelector("time")).toHaveTextContent("28.10. 12:50");
   const proof = { sourceId: "demo", identity: "revision-1", observedAt: "2026-10-29T11:50:00Z", freshness: "fresh" as const };
   const status = { operatingStatus: "completed", evidenceStatus: "bewiesen", boardForm: "ok" as const,
     source: { id: "demo", identity: "revision-1", checkedAt: "2026-10-29T11:51:00Z" }, beleg: proof };
-  view.rerender(draw({ ...props, status })); expect(article).toHaveTextContent("Fertig mit Beleg"); expect(article).toHaveTextContent("Beispielbeleg: frisch");
+  view.rerender(draw({ ...props, status })); expect(article).toHaveTextContent("Fertig mit Beleg"); expect(article).toHaveTextContent("Beleg: frisch");
   for (const beleg of [{ ...proof, freshness: "stale" as const }, { ...proof, freshness: "unknown" as const }, { ...proof, identity: "other" }, undefined]) {
     view.rerender(draw({ ...props, status: { ...status, beleg } })); expect(article).toHaveTextContent("Unbelegt");
     expect(article).toHaveTextContent("Kein aktueller Beleg"); expect(article).not.toHaveTextContent("Fertig mit Beleg");
   }
   view.rerender(draw({ ...props, status: { operatingStatus: "unknown", evidenceStatus: "unbekannt", boardForm: "unknown" } }));
-  expect(article).toHaveTextContent("Stand wird geprüft");
+  expect(article).toHaveTextContent("Unbekannt");
   const text = 'Nachrichtenherkunftsüberprüfungsauftrag <img src=x onerror="alert(1)"> javascript:alert(1) $(touch demo)';
   view.rerender(draw({ ...props, text, error: "Verlauf konnte nicht gelesen werden.", nextStep: "Quelle prüfen; keinen zweiten Auftrag starten." }));
   expect(article).toHaveTextContent(text); expect(article).toHaveTextContent("Verlauf konnte nicht gelesen werden.");

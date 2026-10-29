@@ -20,6 +20,11 @@ export interface ComponentEntry {
 
 export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   {
+    name: "OrchestratorMessage", family: "chat", variants: ["question, order, idea, approval-request, system; tab, voice, file"], states: ["loading, error, unknown time, fresh/stale/missing/mismatched proof"],
+    a11y: "Native disclosure; five shapes and words; literal text; polite additions only for newly completed paragraph IDs; no draft or transport ownership.",
+    text: "src/i18n/de.ts orchestratorMessage.*; pure U09 projection; source facts and completed paragraphs supplied by caller.",
+  },
+  {
     name: "EffectCard", family: "chat", variants: ["prepare, grant (inert)"], states: ["ready, empty, loading, error, needs-user, stale authority"],
     a11y: "Six definition rows per proposed effect; native buttons; grant is always disabled; local request callbacks only.",
     text: "src/i18n/de.ts effect.*; proposal facts supplied by the caller, unknowns remain explicit.",
