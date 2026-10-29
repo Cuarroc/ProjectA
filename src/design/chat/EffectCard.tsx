@@ -42,8 +42,8 @@ export function EffectCard({ effects, mode = "prepare", state = "ready", onPrepa
         <div><dt>{de["effect.what"]}</dt><dd>{known(effect.action)}</dd></div>
         <div><dt>{de["effect.where"]}</dt><dd>{known(effect.target).split("/").map((part, i, parts) => <span className="g-effect-token" key={i}>{part}{i < parts.length - 1 ? "/" : ""}</span>)}; {de["effect.project"]}: {known(effect.project)}; {de["effect.recipient"]}: {known(effect.recipient)}</dd></div>
         <div><dt>{de["effect.count"]}</dt><dd className={typeof count === "string" ? "g-effect-risk" : undefined}>{count}</dd></div>
-        <div><dt>{de["effect.return"]}</dt><dd className={!proven ? "g-effect-risk" : undefined}>{de[proven ? "effect.proven" : effect.returnPath.kind === "irreversible" ? "effect.irreversible" : "effect.unproven"]}{effect.returnPath.description ? `: ${effect.returnPath.description}` : ""}</dd></div>
-        <div><dt>{de["effect.authority"]}</dt><dd><Chip className="g-effect-authority"><span aria-hidden="true">□</span>{authority ? `${authority.state === "current" ? de["effect.readonly"] : de["effect.stale"]}: ${known(authority.label)}; ${known(authority.scope)}` : de["effect.noAuthority"]}</Chip></dd></div>
+        <div><dt>{de["effect.return"]}</dt><dd className={!proven ? "g-effect-risk" : undefined}>{de[proven ? "effect.proven" : effect.returnPath.kind === "irreversible" ? "effect.irreversible" : "effect.unproven"]}{effect.returnPath.description ? <>: {effect.returnPath.description}</> : ""}</dd></div>
+        <div><dt>{de["effect.authority"]}</dt><dd><Chip className="g-effect-authority"><span aria-hidden="true">□</span>{authority ? <>{authority.state === "current" ? de["effect.readonly"] : de["effect.stale"]}: {known(authority.label)}; {known(authority.scope)}</> : de["effect.noAuthority"]}</Chip></dd></div>
         <div><dt>{de["effect.no"]}</dt><dd>{known(effect.noConsequence)}</dd></div>
       </dl></li>;
     })}</ol>}

@@ -12,7 +12,7 @@
 .g-effect .g-effect-authority { height: auto; min-height: var(--g-space-8); white-space: normal; overflow: visible; border-color: var(--g-ink2); }
 .g-effect-actions { display: flex; flex-wrap: wrap; gap: var(--g-space-4); }
 .g-effect .g-btn { border-color: var(--g-ink2); }
-.g-effect .g-btn:disabled { opacity: 1; color: var(--g-ink2); background: var(--g-tint); cursor: not-allowed; }
+.g-effect .g-btn:disabled { color: var(--g-ink2); background: var(--g-tint); cursor: not-allowed; }
 .g-effect .g-btn:focus-visible { outline: var(--g-focus); outline-offset: var(--g-focus-offset); }
 .g-effect-gallery .g-gal-sample { font: var(--g-t-note); }
 .g-effect-gallery .g-gal-cell { min-width: 0; width: 100%; }
