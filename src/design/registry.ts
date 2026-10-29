@@ -20,6 +20,12 @@ export interface ComponentEntry {
 
 export const COMPONENT_REGISTRY: readonly ComponentEntry[] = [
   {
+    name: "KlartextKarte", family: "data", variants: ["full, compact"],
+    states: ["six projected states; unknown proof/counts; loading; controlled details"],
+    a11y: "Ordered card name; atomic polite transitions; native disclosure and explanation Popover with focus return.",
+    text: "src/i18n/de.ts klartext.card.*; trusted projection and data-derived caller facts. Inspection only.",
+  },
+  {
     name: "EffectCard", family: "chat", variants: ["prepare, grant (inert)"], states: ["ready, empty, loading, error, needs-user, stale authority"],
     a11y: "Six definition rows per proposed effect; native buttons; grant is always disabled; local request callbacks only.",
     text: "src/i18n/de.ts effect.*; proposal facts supplied by the caller, unknowns remain explicit.",
