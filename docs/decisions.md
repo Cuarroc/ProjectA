@@ -294,3 +294,37 @@ Der [PLAN](PLAN.md#entscheidungs-inbox) führt offene Entscheidungen und den neu
 
 Elias hat laut Root28.10.~14:57Z Planv3.6 (UnterplanSHA256 f4696eb52f57f43bf6021d19f332391b5874b0356b39de1fb4e957fa33e55720, AuftragSHA256 18c91341ccf8703f044f764054f01646e4c39d02c6b82bf12e97e0b5c6318366) und Satz2 freigegeben: nach allen STANDARD-Zeilen bauen lassen. Der volle Orchestrator und der Kern bleiben in v2.0.0; der erste echte neue Produktablauf ist Reihenfolge, kein kleinerer Umfang. Kanonische Paketliste: [PLAN MS0](PLAN.md#ms-0-v36--freigegebener-paketkatalog-28102026).
 Jetzt MS0 nur Dokumente; Stabschef schreibt/verteilt allein, Root nimmt ab. Zielpostfach Wartet auf dich; nur Plan-/Beschlusstexte hier, de.ts erstMS4. Keine Änderung des bestehenden NAV0-Repoentscheids: Satz3 ist nicht erteilt, das spätere MS4-Paket bleibt gesperrt bis genau dieser Voraussetzung. Keine neuen Installations-/Rechte-/Lösch-/Releasebefugnisse aus der Planfreigabe; konkrete frühere Zusagen behalten ihren Umfang. v2.0.0 braucht frisches eigenes Ja, K5-Patchregel bleibt.
+
+## 2026-10-29 — V36-K00 current Core architecture dispositions
+
+Status: proposed current design, pending Root's fixed-head acceptance and two independent architecture/security assessments. Authority: approved v3.6 full-Core scope and bounded V36-K00 under parent #204; no execution or rights grant. Source: [current contract](plan/v2.0/core-authority-contract.md#k00--current-architecture-and-threat-design-2026-10-29), original `core.md:1–83`, `plan.md:364–381,420–431` and the seven [original ADRs](archive/decisions-2026-10/journal.md#2026-10-13--v2-arch-0-architecture-sketch). Repository reading basis: `b16456260b9fd08cdcf853616d97b280e5c4be3e`; approved source fingerprint and original line ranges are in the contract. Historical proposals/anchors remain intact.
+
+### ADR-V2-01/02 — Preserve one value owner; refine durable recovery
+
+**What?** Retain registry, typed requests and append-only journal design; reuse current `core_register.rs` as the pure model. Add durable request identity/revision reservation and effect-intent/receipt reconciliation at Store integration; real values stay in their domain tables. A measured 24 h trial retains its key; rollback must validate authority, applied revision and concurrent work.
+**Why?** `Register` already checks owner, levels and trusted effect classes, but its mutable memory is not cross-process dedupe or a real setting writer. Current `settings::set_setting` upserts directly. Missing baseline, uncertain external outcome or conflict cannot justify successful application/return.
+**Reverse?** Before enrolling an adapter unable to reconcile/compensate safely, keep that action proposal-only and revise its contract; never release an unresolved key or invent a second value store. CORE-1/3/4 and ST-K1 own public proof.
+
+### ADR-V2-03/04 — Refine authority without granting it
+
+**What?** Retain fixed Rust protected classes/default off and persona ceiling intersections; bind actor/run/project/target/action/diff/revision/expiry from trusted adapters. Reconcile existing `approval_grants` instead of creating competing approval truth. Preserve P2's ungranted sheet, valid specific prior authorizations and separately built/accepted/operating/activated user channel.
+**Why?** Scoped API credentials, broad descriptor access, verdict proof and persona click-proof types have different trust boundaries. The current pure checks and single-use Store permit do not prove effect enforcement or human identity; writable labels/text never do.
+**Reverse?** Only an explicitly accepted new trusted channel or an unrepresentable persona relationship warrants a revised scoped contract and negative tests before activation. No self-approval/elevation or new pairing right follows. CORE-2, B17/18/19, API-K/MN-K and C02 own integration.
+
+### ADR-V2-05 — Retain durable trigger/webhook requirements
+
+**What?** Retain UTC occurrence identity, six firings per rolling hour, no-effect dry run, raw-body HMAC and durable receipt/body-digest dedupe. EX-2 owns the proposed receiver, B15/ST-C1 the persistence; authenticated input submits to the same admission/effect boundary and never supplies approval.
+**Why?** Current `webhook_sig::ZustellungsBuch` is bounded memory; a signature is not freshness. Trigger/signature helpers are not evidence of a connected durable receiver or permission to open an endpoint.
+**Reverse?** A provider protocol requiring different signed freshness/retention needs an explicit tested adapter revision, preserving replay tombstones and authority. Key changes and reachability keep their separate authorization; no activation here.
+
+### ADR-V2-06 — Retain one engine and candidate evidence
+
+**What?** Preserve one order/work/proof/review/approval/delivery state machine, existing run/candidate evidence identities and atomic invalidation; ordinary orders need explicit mapping without enabling continuous mode. Events notify authorized readers, never approve/start. One product Core identity can span modules/processes, without a rival owner or product AgentsRoom mailbox.
+**Why?** Current Store invalidates candidate evidence/reviews, while `approval_authority()` remains unavailable; source metadata or a shared name cannot accept delivery. Approved v3.6 unparked full Core, including error→report→healing; the seven-day optimizer remains MS-6 with separate activation.
+**Reverse?** ST-B1 must first demonstrate an incompatibility and record a migration ADR before replacing evidence storage, preserving references and one authority. RUN-3/C05/10 prove actual non-author acceptance under current AGENTS rule 5, superseding the archived weaker review-count wording.
+
+### ADR-V2-07 / ADR-A7 — Preserve serial schema and atomic events
+
+**What?** Keep `store.rs` plus `store/` as one serial lane; domain modules own SQL, API/Tauri delegate. Retain ApiBackend in `main.rs` under A1/F1 through M4. ST-B1 compatibility precedes Core schema integration; backup, upgrade/old-row proof and table/event atomicity belong to each later package. No migration number allocated here.
+**Why?** Current `Store::migrate` owns one backup/migration sequence and `begin_write` acquires the writer lock before reads; module/process separation does not separate schema or transaction ownership. Current planning's post-write audit is explicitly insufficient as the Core atomic-event pattern.
+**Reverse?** Only the original measured lane-wait proposal plus an explicit rule-6 change and schema/concurrency proof can permit parallel Store writers; splitting files alone cannot. ARCH-0/SEC-0 assessments remain pending with Root; this dated refinement certifies no runtime/security behavior.
