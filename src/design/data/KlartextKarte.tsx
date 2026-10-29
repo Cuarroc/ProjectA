@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { formatClock, formatDayMonth } from "../../lib/time";
 import { de } from "../../i18n/de";
 import { Button } from "../controls/Button";
 import { Popover } from "../layout/Popover";
@@ -41,6 +42,8 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
   const meta = p.beleg && proofMeta?.sourceId === p.beleg.sourceId && proofMeta.identity === p.beleg.identity
     && proofMeta.observedAt === p.beleg.observedAt ? proofMeta : undefined;
   const proof = p.beleg, source = p.raw.source;
+  const checkedAt = source?.checkedAt, observedAt = proof?.observedAt;
+  const checkedDate = new Date(checkedAt ?? NaN), observedDate = new Date(observedAt ?? NaN);
   useEffect(() => {
     const key = `${id}:${p.zustand}`;
     if (last.current === key) return;
@@ -54,20 +57,29 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
     [de["effect.what"], facts.effect], [de["effect.authority"], facts.authority], [de["effect.return"], facts.return],
     [de["klartext.card.progress"], facts.progress], [de["klartext.card.quota"], facts.quota],
   ];
+  const allUnknown = rows.every(([, value]) => value == null || value === de["effect.unknown"]);
   return <article className={`g-kl${compact ? " g-kl--compact" : ""}`} data-shape={p.shape} aria-label={name}>
     <h3 data-field="satz">{satz}</h3>
-    <div className="g-kl__state" data-field="zustand"><StateMark form={form} label={p.label === p.zustand ? p.label : `${p.zustand}${de["klartext.card.stateSeparator"]}${p.label}`} /><time>{source?.checkedAt ?? de["effect.unknown"]}</time></div>
+    <div className="g-kl__state" data-field="zustand"><StateMark form={form} label={p.label === p.zustand ? p.label : `${p.zustand}${de["klartext.card.stateSeparator"]}${p.label}`} />{checkedAt && Number.isFinite(checkedDate.getTime()) && <time dateTime={checkedAt}>
+      {formatDayMonth(checkedDate)} {formatClock(checkedDate)}
+    </time>}</div>
     <div className="g-kl__proof" data-field="beleg"><span>{proofText}</span>{meta?.gates
       ? <ProofChip gates={meta.gates} href={meta.href} /> : <span>{de["klartext.card.gatesUnknown"]}</span>}
-      <span>{de[`klartext.card.${proof?.freshness ?? "unknown"}`]} <time>{proof?.observedAt ?? de["effect.unknown"]}</time></span>
+      <span>{de[`klartext.card.${proof?.freshness ?? "unknown"}`]}
+        {observedAt && Number.isFinite(observedDate.getTime()) && <time dateTime={observedAt}>
+          {" "}{formatDayMonth(observedDate)} {formatClock(observedDate)}
+        </time>}
+      </span>
     </div>
     <dl className="g-kl__lines">
       <div data-field="naechstes"><dt>{de["klartext.card.next"]}</dt><dd>{naechstes}</dd></div>
       <div data-field={fromYouField}><dt>{de["klartext.card.fromYou"]}</dt><dd>{vonDir}<Button variant="primary" loading={loading} onClick={() => onInspect(id)}>{de["klartext.card.inspect"]}</Button></dd></div>
     </dl>
-    <dl className="g-kl__facts">{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? de["effect.unknown"]}</dd></div>)}
+    <dl className="g-kl__facts">{allUnknown
+      ? <div className="g-kl__unknown"><dt>{rows.map(([label]) => label).join(de["gallery.stateSeparator"])}</dt><dd>{de["effect.unknown"]}</dd></div>
+      : rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? de["effect.unknown"]}</dd></div>)}
       <div><dt>{de["klartext.card.source"]}</dt><dd>{source?.id ?? de["effect.unknown"]}<br /><code>{source?.identity ?? de["effect.unknown"]}</code></dd></div>
-      <div><dt>{de["effect.authority"]}</dt><dd>{de["klartext.card.rights"].replace("{level}", String(level))}</dd></div>
+      <div><dt>{de["klartext.card.rightsLevel"]}</dt><dd>{de["klartext.card.rights"].replace("{level}", String(level))}</dd></div>
     </dl>
     <footer><details open={detailsOpen}><summary aria-expanded={detailsOpen} aria-controls={`${uid}-technical`} onClick={e => { e.preventDefault(); onDetailsChange(id, !detailsOpen); }}>{de["klartext.card.details"]}</summary>
       <p id={`${uid}-technical`}>{technical}</p></details>

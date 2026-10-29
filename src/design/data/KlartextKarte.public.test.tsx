@@ -44,7 +44,7 @@ it("composes five Klartext lines one action and remembered keyboard details with
     recipient: "Unbekannt", effect: "Unbekannt", authority: "Unbekannt", return: "Unbekannt", progress: "Unbekannt", quota: null };
   view.rerender(<Host {...props} projection={projectKlartext({ operatingStatus: "quiet", evidenceStatus: "gemeldet", boardForm: "rev" })} facts={unknown} />);
   expect(card.querySelectorAll(".g-kl__facts > div")).toHaveLength(3);
-  expect(screen.getByText("Umfang, Ziel, Projekt, Wie viele, Empfänger, Was passiert, Befugnis, Rückweg, Fortschritt, Kontingent")).toBeVisible();
+  expect(screen.getByText("Umfang, Ziel, Projekt, Wie viele, Empfänger, Was, Befugnis, Rückweg, Fortschritt, Kontingent")).toBeVisible();
   expect(card.querySelectorAll("time")).toHaveLength(0);
   expect(card.querySelector('[data-field="beleg"]')).not.toHaveTextContent("Frische unbekannt Unbekannt");
   expect(screen.getByText("Prüfstand unbekannt")).toBeVisible();
