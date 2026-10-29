@@ -31,9 +31,11 @@ export function EffectCard({ effects, mode = "prepare", state = "ready", onPrepa
   const hint = useId();
   const request = () => ({ effectIds: effects.map((effect) => effect.id) });
   const available = effects.length > 0 && (state === "ready" || state === "needs-user");
+  const risks = effects.filter((effect) => effect.returnPath.kind !== "proven" || !effect.returnPath.description?.trim()).length;
   return <section className="g-effect" aria-label={de["effect.title"]}>
     <h3>{de["effect.title"]}</h3>
-    {state !== "ready" && <p role={state === "error" ? "alert" : "status"}>{de[`effect.${state}`]}</p>}
+    {effects.length > 1 && <p>{de["effect.summary"].replace("{total}", String(effects.length)).replace("{risk}", String(risks))}</p>}
+    {state !== "ready" && <p className={state === "error" ? "g-effect-error" : undefined} role={state === "error" ? "alert" : "status"}>{de[`effect.${state}`]}</p>}
     {effects.length === 0 ? <p>{de["effect.empty"]}</p> : <ol>{effects.map((effect) => {
       const count = typeof effect.count === "number" && Number.isSafeInteger(effect.count) && effect.count >= 0 ? effect.count : de["effect.unknown"];
       const proven = effect.returnPath.kind === "proven" && !!effect.returnPath.description?.trim();
