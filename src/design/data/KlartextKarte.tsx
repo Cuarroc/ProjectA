@@ -33,8 +33,9 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
   compact, loading, detailsOpen, onDetailsChange, technical, onInspect }: KlartextKarteProps) {
   const uid = useId(), [explanation, setExplanation] = useState(false), [announcement, setAnnouncement] = useState("");
   const last = useRef("");
+  const fromYouField: "vonDir" = de["klartext.card.fromYouField"];
   const proofText = p.beleg ? de["klartext.card.hasProof"] : p.belegGrund;
-  const name = `${p.zustand}. ${satz} ${proofText} ${de["klartext.card.fromYou"]}: ${vonDir}`;
+  const name = `${p.zustand}. ${satz} ${proofText} ${de["klartext.card.fromYou"]}${de["klartext.card.labelSeparator"]}${vonDir}`;
   const form = ({ "open-arc": "run", "diamond-dot": "need", "check-circle": "done",
     "problem-triangle": "bad", "pause-circle": undefined, "dashed-circle": undefined } as const)[p.shape];
   const meta = p.beleg && proofMeta?.sourceId === p.beleg.sourceId && proofMeta.identity === p.beleg.identity
@@ -45,7 +46,7 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
     if (last.current === key) return;
     last.current = key;
     setAnnouncement(p.zustand === de["klartext.need"] || p.zustand === de["klartext.problem"]
-      ? `${name} ${de["klartext.card.next"]}: ${naechstes}` : "");
+      ? `${name} ${de["klartext.card.next"]}${de["klartext.card.labelSeparator"]}${naechstes}` : "");
   }, [id, p.zustand, name, naechstes]);
   const rows = [
     [de["klartext.card.scope"], facts.scope], [de["klartext.card.target"], facts.target],
@@ -55,14 +56,14 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
   ];
   return <article className={`g-kl${compact ? " g-kl--compact" : ""}`} data-shape={p.shape} aria-label={name}>
     <h3 data-field="satz">{satz}</h3>
-    <div className="g-kl__state" data-field="zustand"><StateMark form={form} label={p.label === p.zustand ? p.label : `${p.zustand} · ${p.label}`} /><time>{source?.checkedAt ?? de["effect.unknown"]}</time></div>
+    <div className="g-kl__state" data-field="zustand"><StateMark form={form} label={p.label === p.zustand ? p.label : `${p.zustand}${de["klartext.card.stateSeparator"]}${p.label}`} /><time>{source?.checkedAt ?? de["effect.unknown"]}</time></div>
     <div className="g-kl__proof" data-field="beleg"><span>{proofText}</span>{meta?.gates
       ? <ProofChip gates={meta.gates} href={meta.href} /> : <span>{de["klartext.card.gatesUnknown"]}</span>}
       <span>{de[`klartext.card.${proof?.freshness ?? "unknown"}`]} <time>{proof?.observedAt ?? de["effect.unknown"]}</time></span>
     </div>
     <dl className="g-kl__lines">
       <div data-field="naechstes"><dt>{de["klartext.card.next"]}</dt><dd>{naechstes}</dd></div>
-      <div data-field="vonDir"><dt>{de["klartext.card.fromYou"]}</dt><dd>{vonDir}<Button variant="primary" loading={loading} onClick={() => onInspect(id)}>{de["klartext.card.inspect"]}</Button></dd></div>
+      <div data-field={fromYouField}><dt>{de["klartext.card.fromYou"]}</dt><dd>{vonDir}<Button variant="primary" loading={loading} onClick={() => onInspect(id)}>{de["klartext.card.inspect"]}</Button></dd></div>
     </dl>
     <dl className="g-kl__facts">{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? de["effect.unknown"]}</dd></div>)}
       <div><dt>{de["klartext.card.source"]}</dt><dd>{source?.id ?? de["effect.unknown"]}<br /><code>{proof?.identity ?? source?.identity ?? de["effect.unknown"]}</code></dd></div>
@@ -72,7 +73,8 @@ export function KlartextKarte({ id, satz, projection: p, naechstes, vonDir, fact
       <p id={`${uid}-technical`}>{technical}</p></details>
       <Popover open={explanation} onOpenChange={setExplanation} align="end" panelClassName="g-kl__explanation"
         trigger={trigger => <button {...trigger} type="button" className="g-btn g-btn--ghost" onClick={() => setExplanation(!explanation)}>{de["klartext.card.explain"]}</button>}>
-        {(["what", "why", "do"] as const).map(section => <section key={section}><h4>{de[`klartext.card.${section}`]}</h4><p>{de[`klartext.card.${section}Text`]}</p></section>)}
+        {([ ["klartext.card.what", "klartext.card.whatText"], ["klartext.card.why", "klartext.card.whyText"],
+          ["klartext.card.do", "klartext.card.doText"] ] as const).map(([heading, text]) => <section key={heading}><h4>{de[heading]}</h4><p>{de[text]}</p></section>)}
         <p>{de["klartext.card.explanationSource"]}</p><Button onClick={() => setExplanation(false)}>{de["action.close"]}</Button>
       </Popover>
     </footer>

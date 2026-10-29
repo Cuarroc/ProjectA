@@ -135,6 +135,9 @@ export const de = {
   "klartext.stopped": "Gestoppt",
   "klartext.card.next": "Nächstes",
   "klartext.card.fromYou": "Von dir",
+  "klartext.card.fromYouField": "vonDir", // Stable DOM identity, bound to its literal type in KlartextKarte.
+  "klartext.card.labelSeparator": ": ",
+  "klartext.card.stateSeparator": " · ",
   "klartext.card.inspect": "Ansehen",
   "klartext.card.details": "Technische Details",
   "klartext.card.explain": "Erklär mir das",
