@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { EffectCard, type EffectCardProps, type ProposedEffect } from "./EffectCard";
+import { Gallery } from "../gallery/Gallery";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -74,4 +75,10 @@ it("shows six effect lines and never grants or dispatches from prepare or reject
   expect(screen.getByRole("button", { name: "Anfrage vorbereiten" })).toBeDisabled();
   expect(prepare).toHaveBeenCalledTimes(1); expect(reject).toHaveBeenCalledTimes(1);
   expect(forbidden).not.toHaveBeenCalled(); expect(invoke).not.toHaveBeenCalled(); expect(fetchCall).not.toHaveBeenCalled();
+  cleanup();
+  render(<Gallery />);
+  fireEvent.click(screen.getByRole("button", { name: "Wirkungsvorschau" }));
+  expect(screen.getByRole("article", { name: "EffectCard" })).toBeVisible();
+  expect(within(screen.getByRole("article", { name: "EffectCard" })).getAllByRole("region", { name: "Wirkungsvorschau" })).toHaveLength(3);
+  expect(screen.getByText("Beispieldaten")).toBeVisible();
 });
