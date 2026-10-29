@@ -40,7 +40,55 @@ export type KlartextProjection = ProjectionData & (
   | ({ readonly zustand: Exclude<KlartextState, "Fertig mit Beleg"> } & ProofOrReason)
 );
 
+function knownIdentity(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "" && value !== "unknown";
+}
+
+function usableProof(input: KlartextInput): KlartextProof | undefined {
+  const { beleg, source } = input;
+  if (input.evidenceStatus !== "bewiesen" || !beleg || !source
+    || beleg.freshness !== "fresh" || !knownIdentity(source.id) || !knownIdentity(source.identity)
+    || beleg.sourceId !== source.id || beleg.identity !== source.identity
+    || typeof beleg.observedAt !== "string" || typeof source.checkedAt !== "string") return undefined;
+  const observed = Date.parse(beleg.observedAt);
+  const checked = Date.parse(source.checkedAt);
+  // Freshness is supplied by the source; timestamps only establish a known, consistent order.
+  return Number.isFinite(observed) && Number.isFinite(checked) && observed <= checked ? beleg : undefined;
+}
+
+const shapes: Record<KlartextState, ProjectionData["shape"]> = {
+  "Läuft": "open-arc", "Wartet auf dich": "diamond-dot", "Fertig mit Beleg": "check-circle",
+  "Problem": "problem-triangle", "Ruhig": "pause-circle", "Unbelegt": "dashed-circle",
+};
+
 export function projectKlartext(input: KlartextInput): KlartextProjection {
-  return { raw: input, operatingStatus: "unknown", evidenceStatus: "unbekannt",
-    zustand: "Ruhig", label: "Ruhig", shape: "pause-circle", belegGrund: "Nicht implementiert." };
+  const operatingStatus: OperatingStatus = ["running", "completed", "error", "quiet"].includes(input.operatingStatus)
+    ? input.operatingStatus as OperatingStatus : "unknown";
+  const evidenceStatus: EvidenceStatus = ["bewiesen", "gemeldet", "vorgeschlagen"].includes(input.evidenceStatus)
+    ? input.evidenceStatus as EvidenceStatus : "unbekannt";
+  const data = { raw: input, operatingStatus, evidenceStatus };
+  const beleg = usableProof(input);
+  let zustand: Exclude<KlartextState, "Fertig mit Beleg"> = "Ruhig";
+  let label: string | undefined;
+
+  if (operatingStatus === "unknown" || evidenceStatus === "unbekannt") {
+    zustand = "Unbelegt";
+    label = "unbekannt";
+  } else if (operatingStatus === "completed") {
+    if (beleg) return { ...data, zustand: "Fertig mit Beleg", label: "Fertig mit Beleg",
+      shape: shapes["Fertig mit Beleg"], beleg };
+    zustand = "Unbelegt";
+  } else if (operatingStatus === "error") {
+    zustand = "Problem";
+  } else if (input.stopConfirmed === true) {
+    label = "gestoppt";
+  } else if (operatingStatus === "running") {
+    zustand = "Läuft";
+    if (input.stopRequested === true) label = "Stopp angefordert";
+  } else if (evidenceStatus === "vorgeschlagen" && input.needsUser === true) {
+    zustand = "Wartet auf dich";
+  }
+
+  return { ...data, zustand, label: label ?? zustand, shape: shapes[zustand],
+    ...(beleg && operatingStatus !== "unknown" ? { beleg } : { belegGrund: "Kein nutzbarer Beleg." }) };
 }
