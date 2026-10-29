@@ -27,6 +27,33 @@ it("composes five Klartext lines one action and remembered keyboard details with
   }
   const view = render(<Host {...props} />);
   const card = screen.getByRole("article");
+  expect([...card.querySelectorAll(".g-kl__facts dt")].filter(el => el.textContent === "Befugnis")).toHaveLength(1);
+  expect(screen.getByText("Rechtestufe", { exact: true })).toBeVisible();
+  const clockSource = { ...source, checkedAt: new Date(2026, 9, 29, 12, 0).toISOString() };
+  const clockProof = { ...beleg, observedAt: new Date(2026, 9, 29, 11, 59).toISOString() };
+  view.rerender(<Host {...props} projection={projectKlartext({ ...raw, source: clockSource, beleg: clockProof })} />);
+  expect(card.querySelector('[data-field="zustand"] time')).toHaveTextContent(/^29\.10\. 12:00$/);
+  expect(card.querySelector('[data-field="beleg"] time')).toHaveTextContent(/^29\.10\. 11:59$/);
+  for (const checkedAt of ["", "invalid-date"]) {
+    view.rerender(<Host {...props} projection={projectKlartext({ ...raw, source: { ...source, checkedAt } })} />);
+    expect(card.querySelectorAll("time")).toHaveLength(0);
+    expect(card.querySelector('[data-field="beleg"]')).toHaveTextContent("Frische unbekannt");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  }
+  const unknown = { scope: "Unbekannt", target: "Unbekannt", project: "Unbekannt", count: null,
+    recipient: "Unbekannt", effect: "Unbekannt", authority: "Unbekannt", return: "Unbekannt", progress: "Unbekannt", quota: null };
+  view.rerender(<Host {...props} projection={projectKlartext({ operatingStatus: "quiet", evidenceStatus: "gemeldet", boardForm: "rev" })} facts={unknown} />);
+  expect(card.querySelectorAll(".g-kl__facts > div")).toHaveLength(3);
+  expect(screen.getByText("Umfang, Ziel, Projekt, Wie viele, Empfänger, Was, Befugnis, Rückweg, Fortschritt, Kontingent")).toBeVisible();
+  expect(card.querySelectorAll("time")).toHaveLength(0);
+  expect(card.querySelector('[data-field="beleg"]')).not.toHaveTextContent("Frische unbekannt Unbekannt");
+  expect(screen.getByText("Prüfstand unbekannt")).toBeVisible();
+  view.rerender(<Host {...props} facts={{ ...unknown, count: 0, quota: "0 Schritte nötig" }} />);
+  expect(screen.getByText("0", { exact: true })).toBeVisible();
+  expect(screen.getByText("0 Schritte nötig", { exact: true })).toBeVisible();
+  view.rerender(<Host {...props} />);
+  expect(card.querySelector('[data-field="zustand"] time')).toHaveAttribute("datetime", "2026-10-29T12:00:00Z");
+  expect(card.querySelector('[data-field="beleg"] time')).toHaveAttribute("datetime", "2026-10-29T11:59:00Z");
   expect(card).toHaveAccessibleName("Fertig mit Beleg. Der Agent prüft den Entwurf. Beleg vorhanden. Von dir: Empfohlen: Bericht ansehen.");
   expect([...card.querySelectorAll("[data-field]")].map(el => el.getAttribute("data-field"))).toEqual(["satz", "zustand", "beleg", "naechstes", "vonDir"]);
   expect(screen.getByText("Fertig mit Beleg")).toBeVisible();
@@ -35,7 +62,7 @@ it("composes five Klartext lines one action and remembered keyboard details with
     view.rerender(<Host {...props} compact={compact} />);
     for (const text of ["Ein Bericht", "berichte/entwurf.md", "Demo-Projekt", "2", "Lokale Ansicht", "Öffnet nur die Ansicht",
       "Wartet auf dein Ja im Chat", "Ansicht schließen", "1 von 2 Schritten", "2 Schritte nötig", "Rechtestufe 3, nur Ansicht",
-      "gate-local", "2026-10-29T12:00:00Z", "2026-10-29T11:59:00Z", "Aktuell", identity]) {
+      "gate-local", "Aktuell", identity]) {
       const el = screen.getAllByText(text, { exact: false }).find(el => !el.closest("details"));
       expect(el, text).toBeVisible();
     }
@@ -93,12 +120,12 @@ it("composes five Klartext lines one action and remembered keyboard details with
     expect(screen.queryByText("Fertig mit Beleg")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     // projection contract: stale proof is not usable
-    expect(card.querySelector('[data-field="beleg"] > span:last-child')).toHaveTextContent(/^Frische unbekannt Unbekannt$/);
-    expect(card.querySelector('[data-field="beleg"] time')).not.toHaveTextContent(beleg.observedAt);
+    expect(card.querySelector('[data-field="beleg"] > span:last-child')).toHaveTextContent(/^Frische unbekannt$/);
+    expect(card.querySelector('[data-field="beleg"] time')).not.toBeInTheDocument();
     expect(card.querySelector(".g-kl__facts code")).toHaveTextContent(identity);
   }
   view.rerender(<Host {...props} proofMeta={{ ...beleg, gates: null }} facts={{ ...props.facts, count: null }} />);
-  expect(screen.getByText("Gates unbekannt")).toBeVisible();
+  expect(screen.getByText("Prüfstand unbekannt")).toBeVisible();
   expect(screen.getAllByText("Unbekannt").length).toBeGreaterThan(0);
   expect(screen.queryByText("Gates 0/0")).not.toBeInTheDocument();
   expect(screen.getByText(identity)).toBeVisible();
