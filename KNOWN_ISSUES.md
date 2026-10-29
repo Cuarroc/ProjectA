@@ -114,6 +114,85 @@ Folgeauftrag `d2d1a8a8-0882-435e-902b-c3cad4e695fb` bleibt offen, niedrig,
 nur Prüfung; kein Fix in TASK/ASSIGN. Dieser Eintrag dokumentiert den CI-Befund;
 die bestehenden R908-Testzeitfenster sind damit nicht als neuer Fehler belegt.
 
+### Offener Testbefund: DiffView-Fokus und Tabstop (28.10.2026)
+
+Weiter **offen**, Stufe niedrig (Prüfbefund, Quellarbeit geparkt).
+In `src/components/DiffView.lines.public.test.tsx:60:54` wurde nach
+bestandener Fokusprüfung an Zeile 59 der Tabstop für Kommentarzeile 2
+erwartet, aber Kommentarzeile 1 empfangen. Das ist ein intermittierend
+beobachteter Testfehler; deterministische Ursache, Produktionsfehler im
+Browser und eine tatsächliche Korrektur sind unbekannt. Ein späterer PASS
+beweist weder einen harmlosen Flake noch Ursache oder Behebung; entsprechend
+der bestehenden KI-24-Semantik bleibt jedes Wiederauftreten ein eigener Befund.
+
+**Erster Rotbeleg:** [CI 40747970777, Versuch 1, Job 123026724940](https://github.com/Cuarroc/ProjectA/actions/runs/40747970777/job/123026724940),
+Kopf `87b6d4bdd7dd63a547fec1cd8ad2f5ed4d18fd02`, am 28.10.2026
+18:49:10Z: genau diese Assertion scheiterte; Fokus an Zeile 59 bestand.
+Der vorhandene grüne Versuch 2 hebt Versuch 1 nicht auf.
+
+**Zweiter Rotbeleg:** einmalige freigegebene Diagnose am 28.10.2026
+20:17:51–20:17:53Z mit
+`npm run test:unit -- src/components/DiffView.lines.public.test.tsx -t "names diff lines while preserving literal hunks navigation drafts and empty files"`:
+kompiliert, genau 1 Test ausgewählt, Exit 1, gleicher Befund.
+Basis `1ebdf490cde6b47121b4a2bb5fb7ad658963f727` und tatsächlicher
+Diagnose-Arbeitsbaumkopf `610654eceda7569a4396423518263b5f853d5ea0`
+hatten denselben vollständigen Git-Baum
+`1815231ec78e4c713031049de2ecb567837708be`; 1.884 Dateien und Index
+blieben unverändert. Diagnoseprotokoll-SHA256:
+`3f69ed13643036497c721fca117570a08edbc49a4477e9419aaedf060ad3fa4f`.
+Diese Einzelbeobachtung bestimmt weder Häufigkeit noch Ursache.
+
+**Dritter Rotbeleg:** erster normaler Push-Hook am später öffentlichen
+P1-Kopf `d9263f13a946f1b4c10b53ea0adba2c91eb7729b`: `fe-test`
+Exit 1, 1 von 1.861 Tests fehlgeschlagen, dieselbe Assertion.
+Die vorherige manuelle prepush-Bahn am gleichen Baum bestand (Exit 0, 279 s).
+Die abnehmende Projektkoordination erlaubte genau einen unveränderten
+normalen Push erneut; dessen echter Hook bestand (Versuch 2, Exit 0;
+Protokollkennung `normal-push.log`). Spätere CI am Kopf war grün;
+[PR #2013](https://github.com/Cuarroc/ProjectA/pull/2013) wurde als
+`75f65f52cf7a409b0d9f45fd4aed15222ae0216f` gemergt.
+Das erste lokale Hook-Protokoll hat in den übernommenen Belegen keine
+separate Run-/Job-ID oder genaue Uhrzeit; hier werden keine ergänzt.
+
+**Quellarbeit geparkt:** Versuch 1 auf Basis `1ebdf490` führte den
+ursprünglichen Selektor einmal aus: 1 Test, Exit 0, 1,59 s, keine act-Warnung;
+eigener Rotnachweis fehlte, deshalb Stopp ohne Fix. Versuch 2 ergänzte den
+55-zeiligen öffentlichen Kandidaten
+`keeps one matching tabstop after committed focus navigation and selected path changes`:
+einmal ausgewählt, 1 Test, Exit 0, 1,21 s. Er schließt anfänglichen Fokus
+in act ab und wechselt den ausgewählten Pfad; der ursprüngliche Test blieb
+unverändert und war nur durch den Namensselektor nicht ausgewählt.
+Der Kandidat deckt allein das ursprüngliche ungekapselte Fokus-Timing nicht
+ab und löste weder H1 noch H2 rot aus. Keine Korrektur, kein dritter Versuch.
+Die abnehmende Projektkoordination parkte nach beiden erfolglosen Rotnachweisen.
+
+Der unveränderte WIP liegt auf
+[`codex/flk-diffview-lines-fix-1` @ `f577fa994925ca6c8c369c52fa8ff1ed45a9a7a0`](https://github.com/Cuarroc/ProjectA/commit/f577fa994925ca6c8c369c52fa8ff1ed45a9a7a0):
+56 RAW (55 Testzeilen und 1 geparkte Planzeile),
+`No-Test: parked WIP candidate, not red`, normale Hooks Exit 0.
+Das ist gesicherter Beleg ohne PR, ohne red-first-Nachweis und ohne
+gemergte Produktionskorrektur. H1 (ausstehendes direktes Fokus-/Commit-Ordering)
+und H2 (Reset beim Pfadwechsel) bleiben Hypothesen. Wiederaufnahme nur durch
+einen neuen Zuschnitt der abnehmenden Projektkoordination mit neuer konkreter
+Hypothese und Beleg, etwa CI-ROT samt Trace oder separat freigegebener,
+begrenzter Messung zur Eingrenzung des Auslösers. Kein neuer Probe-,
+Benchmark- oder Laufzeitauftrag aus diesem Eintrag; ein echter Quellfix braucht
+deterministisches red-first und Stufe B mit zwei zulässigen Nicht-Autor-Familien.
+
+**Bestehende betriebliche Ausnahme der abnehmenden Projektkoordination:**
+Nur wenn ausschließlich die bekannte `DiffView.lines:60`-Assertion in CI
+oder einem **Push-Hook** scheitert **und** das Kandidaten-Delta keinerlei
+DiffView-Dateien berührt, ist **eine** dokumentierte Wiederholung mit den
+normalen echten Gates erlaubt. Jedes Auftreten erhält Run, Job, Protokoll,
+Kopf und Versuch; lokale Kennungen und ausdrücklich „nicht anwendbar“ ersetzen
+bei Hooks die nicht vorhandenen CI-IDs. CI-Wiederholungen auf Autor-PRs bleiben
+ausschließlich Sache der abnehmenden Projektkoordination. Keine allgemeine
+Wiederholung manueller prepush-Läufe, keine Schleife, kein Skip, keine
+Timeout-/Assertion-Änderung und kein Bypass. Ein PASS beweist weder Ursache
+noch Fix. Solange die offizielle main-CI grün ist, folgt aus diesem Befund
+kein Queue-Stopp; bei roter offizieller main-CI gilt unverändert AGENTS-Regel 8.
+Dieser Text hält eine bestehende Disposition fest und führt keinen Retry ein.
+
 ## Behoben
 
 Historische Befunde samt vollständigen Belegen stehen im
