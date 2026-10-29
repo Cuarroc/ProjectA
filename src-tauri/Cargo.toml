@@ -54,7 +54,7 @@ getrandom = "0.3"
 # crate is already in the tree at this exact version (tauri uses it), so naming
 # it here compiles nothing new.
 base64 = "0.22"
-tauri-plugin-updater = "2"
+tauri-plugin-updater = "2.14.1"
 tauri-plugin-process = "2"
 tauri-plugin-opener = "2"
 # W1-22: file logging. Redaction sits in its formatter (`logging::format_line`);
