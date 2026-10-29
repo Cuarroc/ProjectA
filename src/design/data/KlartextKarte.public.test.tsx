@@ -84,6 +84,10 @@ it("composes five Klartext lines one action and remembered keyboard details with
   expect(inspect).toHaveBeenCalledTimes(1);
   for (const bad of [undefined, { ...beleg, freshness: "stale" as const }, { ...beleg, identity: "another-identity" }, { ...beleg, freshness: "unknown" as const }]) {
     view.rerender(<Host {...props} projection={projectKlartext({ ...raw, beleg: bad, modelClaim: "Fertig" })} />);
+    if (bad?.identity === "another-identity") {
+      expect(card.querySelector('[data-field="beleg"]')).not.toHaveTextContent("Aktuell");
+      expect(card.querySelector(".g-kl__facts")).not.toHaveTextContent("another-identity");
+    }
     expect(screen.getByText("Unbelegt")).toBeVisible();
     expect(screen.getAllByText("Kein nutzbarer Beleg.").length).toBeGreaterThan(0);
     expect(screen.queryByText("Fertig mit Beleg")).not.toBeInTheDocument();
