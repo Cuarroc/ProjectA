@@ -34,7 +34,9 @@ const inputProps = (state: State, name: string) => ({ ...sampleProps(state, name
 const stories: Record<string, Story> = {
   OrchestratorMessage: { states: ["default", "loading", "error"], render: (s) => <OrchestratorMessage
     id={`demo-${s}`} kind={s === "error" ? "system" : "question"} role="agent" source="tab" example
-    status={{ operatingStatus: s === "error" ? "error" : "unknown", evidenceStatus: "gemeldet", boardForm: "unknown" }}
+    status={{ operatingStatus: s === "error" ? "error" : s === "loading" ? "running" : "completed", evidenceStatus: "bewiesen", boardForm: "unknown",
+      source: { id: "synthetic-message-example", identity: "synthetic-revision-1", checkedAt: "2026-10-29T11:51:00Z" },
+      beleg: { sourceId: "synthetic-message-example", identity: "synthetic-revision-1", observedAt: "2026-10-29T11:50:00Z", freshness: "fresh" } }}
     observedAtSeconds={null} text={de["orchestratorMessage.sampleText"]} nextStep={de["orchestratorMessage.sampleNext"]}
     loading={s === "loading"} error={s === "error" ? de["orchestratorMessage.sampleError"] : undefined} /> },
   EffectCard: { states: ["default", "loading", "error"], render: (s) => <EffectCard state={s === "default" ? "ready" : s === "loading" ? "loading" : "error"} effects={[{ id: "demo", action: de["effect.sampleAction"], target: de["effect.sampleTarget"], project: sample, count: null, returnPath: { kind: "unproven" }, noConsequence: de["effect.sampleNo"] }]} /> },
