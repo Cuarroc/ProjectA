@@ -484,6 +484,78 @@ export interface ModelFacts {
       };
 }
 
-export function projectModelFacts(_input: ModelFactsInput, _clock: ModelFactsClock): ModelFacts {
-  return { configuredHint: { model: null, effort: null }, observed: { state: "unknown", reason: "missing" } };
+/** Own data property only: getters and inherited members of untrusted input are never run. */
+function ownField(object: unknown, key: string): unknown {
+  const descriptor =
+    typeof object === "object" && object !== null ? Object.getOwnPropertyDescriptor(object, key) : undefined;
+  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+}
+
+const nonBlank = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() !== "" ? value : null;
+const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+/**
+ * Keep configured hints apart from source-stamped observations. Pure: no clock,
+ * IPC or Provider state is read, and nothing is selected or launched. Anything
+ * not positively evidenced stays unknown.
+ */
+export function projectModelFacts(input: ModelFactsInput, clock: ModelFactsClock): ModelFacts {
+  const configured = ownField(input, "configured");
+  const configuredHint = {
+    model: nonBlank(ownField(configured, "model")),
+    effort: nonBlank(ownField(configured, "effort")),
+  };
+  const unknown = (reason: "missing" | "identity-mismatch" | "invalid" | "future"): ModelFacts => ({
+    configuredHint,
+    observed: { state: "unknown", reason },
+  });
+  const observed = ownField(input, "observed");
+  if (observed === undefined || observed === null) return unknown("missing");
+  const providerId = nonBlank(ownField(input, "providerId"));
+  const harness = nonBlank(ownField(input, "harness"));
+  if (
+    providerId === null ||
+    harness === null ||
+    ownField(observed, "providerId") !== providerId ||
+    ownField(observed, "harness") !== harness
+  ) {
+    return unknown("identity-mismatch");
+  }
+  const sourceId = nonBlank(ownField(observed, "sourceId"));
+  const model = nonBlank(ownField(observed, "model"));
+  const observedAt = ownField(observed, "observedAt");
+  const nowSeconds = ownField(clock, "nowSeconds");
+  const staleAfterSeconds = ownField(clock, "staleAfterSeconds");
+  if (
+    sourceId === null ||
+    model === null ||
+    !finite(observedAt) ||
+    observedAt <= 0 ||
+    !finite(nowSeconds) ||
+    !finite(staleAfterSeconds) ||
+    staleAfterSeconds < 0
+  ) {
+    return unknown("invalid");
+  }
+  if (observedAt > nowSeconds) return unknown("future");
+  const effort = nonBlank(ownField(observed, "effort"));
+  const cost = ownField(observed, "cost");
+  const amount = ownField(cost, "amount");
+  const unit = nonBlank(ownField(cost, "unit"));
+  return {
+    configuredHint,
+    observed: {
+      state: "observed",
+      freshness: nowSeconds - observedAt > staleAfterSeconds ? "stale" : "current",
+      sourceId,
+      model,
+      observedAt,
+      effort: effort === null ? { state: "unknown" } : { state: "known", value: effort },
+      cost:
+        finite(amount) && amount >= 0 && unit !== null
+          ? { state: "known", value: { amount, unit } }
+          : { state: "unknown" },
+    },
+  };
 }
