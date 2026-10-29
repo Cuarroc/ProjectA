@@ -1,6 +1,7 @@
 .g-effect { color: var(--g-ink); font: var(--g-t-body); max-width: 75ch; min-width: 0; }
 .g-effect h3 { font: var(--g-t-heading); margin: 0 0 var(--g-space-7); }
 .g-effect p { margin: var(--g-space-6) 0; }
+.g-effect .g-effect-error { color: var(--g-bad); }
 .g-effect ol { list-style: none; padding: 0; margin: 0; }
 .g-effect li + li { margin-top: var(--g-space-8); padding-top: var(--g-space-7); border-top: 1px solid var(--g-line); }
 .g-effect dl { margin: 0; }

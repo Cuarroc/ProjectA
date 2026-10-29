@@ -7,6 +7,37 @@ import { Gallery } from "../gallery/Gallery";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
+it("summarizes multiple effects and return risks before the list", () => {
+  const returns: ProposedEffect["returnPath"][] = [
+    { kind: "proven", description: "Sicherung geprüft" },
+    { kind: "proven", description: "Sicherung geprüft" },
+    { kind: "proven", description: "Sicherung geprüft" },
+    { kind: "proven", description: "Sicherung geprüft" },
+    { kind: "proven", description: "Sicherung geprüft" },
+    { kind: "proven", description: "Sicherung geprüft" },
+    { kind: "irreversible" }, { kind: "unproven" }, { kind: "unproven", description: "Zu prüfen" },
+    { kind: "proven" }, { kind: "proven", description: "" }, { kind: "proven", description: "   " },
+  ];
+  const effects = returns.map((returnPath, i) => ({ id: String(i), action: "Demo speichern", returnPath, noConsequence: "Demo bleibt erhalten." }));
+  const view = render(<EffectCard effects={effects} />);
+  const summary = screen.getByText("12 Wirkungen, 6 ohne belegten Rückweg", { exact: true });
+  expect(summary).toBeVisible();
+  expect(screen.getByRole("heading", { name: "Wirkungsvorschau" }).nextElementSibling).toBe(summary);
+  expect(summary.nextElementSibling).toBe(screen.getByRole("list"));
+  expect(screen.getAllByRole("listitem")).toHaveLength(12);
+  expect(screen.getAllByText("Nicht belegt", { exact: false })).toHaveLength(5);
+  expect(screen.getByText("Nicht rückgängig", { exact: true })).toBeVisible();
+  view.rerender(<EffectCard effects={effects.slice(0, 2)} />);
+  expect(screen.getByText("2 Wirkungen, 0 ohne belegten Rückweg", { exact: true })).toBeVisible();
+  view.rerender(<EffectCard effects={effects.slice(6, 8)} />);
+  expect(screen.getByText("2 Wirkungen, 2 ohne belegten Rückweg", { exact: true })).toBeVisible();
+  for (const singleOrEmpty of [effects.slice(0, 1), []]) {
+    view.rerender(<EffectCard effects={singleOrEmpty} />);
+    expect(screen.queryByText(/Wirkungen, .* ohne belegten Rückweg/)).toBeNull();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(singleOrEmpty.length);
+  }
+});
+
 it("shows six effect lines and never grants or dispatches from prepare or reject", () => {
   const fetchCall = vi.spyOn(globalThis, "fetch");
   const prepare = vi.fn(), reject = vi.fn(), forbidden = vi.fn();
