@@ -25,11 +25,13 @@ it("renders message kind source status and time and announces only completed par
   expect(article.querySelector("time")).toHaveAttribute("datetime", "2026-10-29T11:50:00.000Z");
   expect(article.querySelector("time")).toHaveTextContent("12:50");
   expect(article).toHaveTextContent("Die Prüfung be");
+  expect(article).not.toHaveClass("has-error"); expect(article.querySelector(".body")).toHaveAttribute("aria-busy", "true");
   const live = screen.getByRole("log"); expect(live).toHaveAttribute("aria-live", "polite"); expect(live).toBeEmptyDOMElement();
   const draft = document.createElement("textarea"); draft.value = "Entwurf behalten"; document.body.append(draft); draft.focus();
   view.rerender(draw({ ...props, text: "Die Prüfung beg" })); expect(live).toBeEmptyDOMElement(); expect(draft).toHaveFocus();
   const completed = { ...props, loading: false, text: "Die Prüfung beginnt.", completedParagraphs: [{ id: "p1", text: "Die Prüfung beginnt." }] };
   view.rerender(draw(completed)); expect(live).toHaveTextContent("Die Prüfung beginnt."); expect(live.children).toHaveLength(1);
+  expect(article.querySelector(".body")).not.toHaveAttribute("aria-busy");
   const announcement = live.firstChild;
   view.rerender(draw({ ...completed, completedParagraphs: [{ ...completed.completedParagraphs[0] }], text: "Die Prüfung beginnt. Neu" }));
   expect(live.firstChild).toBe(announcement); expect(live.children).toHaveLength(1);
@@ -53,6 +55,15 @@ it("renders message kind source status and time and announces only completed par
   const status = { operatingStatus: "completed", evidenceStatus: "bewiesen", boardForm: "ok" as const,
     source: { id: "demo", identity: "revision-1", checkedAt: "2026-10-29T11:51:00Z" }, beleg: proof };
   view.rerender(draw({ ...props, status })); expect(article).toHaveTextContent("Fertig mit Beleg"); expect(article).toHaveTextContent("Beleg: frisch");
+  for (const freshness of ["fresh", "stale"] as const) {
+    view.rerender(draw({ ...props, example: true, status: { ...status, beleg: { ...proof, freshness } } }));
+    expect(within(article).getByText(freshness === "fresh" ? "Beispielbeleg: frisch" : "Beispielbeleg: veraltet · Kein aktueller Beleg")).toBeVisible();
+    const disclosure = article.querySelector("details")!; fireEvent.click(within(disclosure).getByText("Herkunft und Beleg"));
+    expect(disclosure).toHaveAttribute("open"); expect(within(disclosure).getByText(/Dies ist ein synthetischer Nachweis/)).toBeVisible();
+    if (freshness === "stale") { expect(article).toHaveTextContent("Unbelegt"); expect(article).not.toHaveTextContent("Fertig mit Beleg"); }
+    else expect(article).toHaveTextContent("Fertig mit Beleg");
+    fireEvent.click(within(disclosure).getByText("Herkunft und Beleg"));
+  }
   for (const beleg of [{ ...proof, freshness: "stale" as const }, { ...proof, freshness: "unknown" as const }, { ...proof, identity: "other" }, undefined]) {
     view.rerender(draw({ ...props, status: { ...status, beleg } })); expect(article).toHaveTextContent("Unbelegt");
     expect(article).toHaveTextContent("Kein aktueller Beleg"); expect(article).not.toHaveTextContent("Fertig mit Beleg");
@@ -61,6 +72,7 @@ it("renders message kind source status and time and announces only completed par
   expect(article).toHaveTextContent("Unbekannt");
   const text = 'Nachrichtenherkunftsüberprüfungsauftrag <img src=x onerror="alert(1)"> javascript:alert(1) $(touch demo)';
   view.rerender(draw({ ...props, text, error: "Verlauf konnte nicht gelesen werden.", nextStep: "Quelle prüfen; keinen zweiten Auftrag starten." }));
+  expect(article).toHaveClass("has-error");
   expect(article).toHaveTextContent(text); expect(article).toHaveTextContent("Verlauf konnte nicht gelesen werden.");
   expect(article).toHaveTextContent("Quelle prüfen; keinen zweiten Auftrag starten.");
   expect(article.querySelector("img, a, script, [data-hostile]")).toBeNull(); expect(draft).toHaveFocus(); expect(draft).not.toBeDisabled();
@@ -69,4 +81,23 @@ it("renders message kind source status and time and announces only completed par
   expect(network).not.toHaveBeenCalled(); expect(invoke).not.toHaveBeenCalled(); expect(hostile).not.toHaveBeenCalled(); draft.remove();
   cleanup(); render(<Gallery />); fireEvent.click(screen.getByRole("button", { name: "Wirkungsvorschau" }));
   expect(within(screen.getByRole("article", { name: "OrchestratorMessage" })).getAllByRole("article")).toHaveLength(3);
+});
+
+
+it("shows explicitly synthetic proof in the real Gallery message states", () => {
+  const network = vi.spyOn(globalThis, "fetch");
+  render(<Gallery />); fireEvent.click(screen.getByRole("button", { name: "Wirkungsvorschau" }));
+  const story = screen.getByRole("article", { name: "OrchestratorMessage" });
+  expect([...story.querySelectorAll("[data-force-state]")].map((cell) => cell.getAttribute("data-force-state"))).toEqual(["default", "loading", "error"]);
+  const messages = within(story).getAllByRole("article");
+  for (const [index, message] of messages.entries()) {
+    expect(within(message).getByText("Beispielbeleg: frisch")).toBeVisible();
+    const disclosure = message.querySelector("details")!; fireEvent.click(within(disclosure).getByText("Herkunft und Beleg"));
+    expect(within(disclosure).getByText(/Dies ist ein synthetischer Nachweis/)).toBeVisible();
+    expect(disclosure).toHaveTextContent("synthetic-message-example"); expect(disclosure).toHaveTextContent("synthetic-revision-1");
+    expect(message.classList.contains("has-error")).toBe(index === 2);
+    expect(message.querySelector(".body")?.getAttribute("aria-busy")).toBe(index === 1 ? "true" : null);
+    expect(message).toHaveTextContent(["Fertig mit Beleg", "Läuft", "Problem"][index]);
+  }
+  expect(network).not.toHaveBeenCalled(); expect(invoke).not.toHaveBeenCalled();
 });
