@@ -1,3 +1,4 @@
+import { de } from "../../i18n/de";
 import type { StateForm } from "../state/states";
 
 export type OperatingStatus = "running" | "completed" | "error" | "quiet" | "unknown";
@@ -57,8 +58,8 @@ function usableProof(input: KlartextInput): KlartextProof | undefined {
 }
 
 const shapes: Record<KlartextState, ProjectionData["shape"]> = {
-  "Läuft": "open-arc", "Wartet auf dich": "diamond-dot", "Fertig mit Beleg": "check-circle",
-  "Problem": "problem-triangle", "Ruhig": "pause-circle", "Unbelegt": "dashed-circle",
+  [de["state.run"]]: "open-arc", [de["klartext.need"]]: "diamond-dot", [de["klartext.done"]]: "check-circle",
+  [de["klartext.problem"]]: "problem-triangle", [de["klartext.quiet"]]: "pause-circle", [de["klartext.unproven"]]: "dashed-circle",
 };
 
 export function projectKlartext(input: KlartextInput): KlartextProjection {
@@ -68,27 +69,27 @@ export function projectKlartext(input: KlartextInput): KlartextProjection {
     ? input.evidenceStatus as EvidenceStatus : "unbekannt";
   const data = { raw: input, operatingStatus, evidenceStatus };
   const beleg = usableProof(input);
-  let zustand: Exclude<KlartextState, "Fertig mit Beleg"> = "Ruhig";
+  let zustand: Exclude<KlartextState, "Fertig mit Beleg"> = de["klartext.quiet"];
   let label: string | undefined;
 
   if (operatingStatus === "unknown" || evidenceStatus === "unbekannt") {
-    zustand = "Unbelegt";
+    zustand = de["klartext.unproven"];
     label = "unbekannt";
   } else if (operatingStatus === "completed") {
-    if (beleg) return { ...data, zustand: "Fertig mit Beleg", label: "Fertig mit Beleg",
-      shape: shapes["Fertig mit Beleg"], beleg };
-    zustand = "Unbelegt";
+    if (beleg) return { ...data, zustand: de["klartext.done"], label: de["klartext.done"],
+      shape: shapes[de["klartext.done"]], beleg };
+    zustand = de["klartext.unproven"];
   } else if (operatingStatus === "error") {
-    zustand = "Problem";
+    zustand = de["klartext.problem"];
   } else if (input.stopConfirmed === true) {
     label = "gestoppt";
   } else if (operatingStatus === "running") {
-    zustand = "Läuft";
-    if (input.stopRequested === true) label = "Stopp angefordert";
+    zustand = de["state.run"];
+    if (input.stopRequested === true) label = de["klartext.stopRequested"];
   } else if (evidenceStatus === "vorgeschlagen" && input.needsUser === true) {
-    zustand = "Wartet auf dich";
+    zustand = de["klartext.need"];
   }
 
   return { ...data, zustand, label: label ?? zustand, shape: shapes[zustand],
-    ...(beleg && operatingStatus !== "unknown" ? { beleg } : { belegGrund: "Kein nutzbarer Beleg." }) };
+    ...(beleg && operatingStatus !== "unknown" ? { beleg } : { belegGrund: de["klartext.noProof"] }) };
 }
