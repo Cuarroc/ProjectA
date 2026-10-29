@@ -1,3 +1,4 @@
+import { OrchestratorMessage } from "../chat/OrchestratorMessage";
 import type { ReactNode } from "react";
 import { EffectCard } from "../chat/EffectCard";
 import { de } from "../../i18n/de";
@@ -31,6 +32,13 @@ const inputProps = (state: State, name: string) => ({ ...sampleProps(state, name
 
 // Only the components' existing states are shown; this is fixture data, never app state.
 const stories: Record<string, Story> = {
+  OrchestratorMessage: { states: ["default", "loading", "error"], render: (s) => <OrchestratorMessage
+    id={`demo-${s}`} kind={s === "error" ? "system" : "question"} role="agent" source="tab" example
+    status={{ operatingStatus: s === "error" ? "error" : s === "loading" ? "running" : "completed", evidenceStatus: "bewiesen", boardForm: "unknown",
+      source: { id: "synthetic-message-example", identity: "synthetic-revision-1", checkedAt: "2026-10-29T11:51:00Z" },
+      beleg: { sourceId: "synthetic-message-example", identity: "synthetic-revision-1", observedAt: "2026-10-29T11:50:00Z", freshness: "fresh" } }}
+    observedAtSeconds={null} text={de["orchestratorMessage.sampleText"]} nextStep={de["orchestratorMessage.sampleNext"]}
+    loading={s === "loading"} error={s === "error" ? de["orchestratorMessage.sampleError"] : undefined} /> },
   EffectCard: { states: ["default", "loading", "error"], render: (s) => <EffectCard state={s === "default" ? "ready" : s === "loading" ? "loading" : "error"} effects={[{ id: "demo", action: de["effect.sampleAction"], target: de["effect.sampleTarget"], project: sample, count: null, returnPath: { kind: "unproven" }, noConsequence: de["effect.sampleNo"] }]} /> },
   Button: { states: PRESS, render: (s, name) => (s === "default" ? buttonVariants : buttonVariants.slice(0, 1)).map((variant) => <Button key={variant} {...sampleProps(s, name)} variant={variant} disabled={s === "disabled"}>{sample}</Button>) },
   IconButton: { states: [...PRESS, "loading"], render: (s, name) => <IconButton {...sampleProps(s, name)} aria-label={`${name} ${de[`gallery.state.${s}`]}`} disabled={s === "disabled"} loading={s === "loading"}><Icon name="check" /></IconButton> },
