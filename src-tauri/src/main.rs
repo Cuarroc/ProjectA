@@ -95,6 +95,8 @@ mod proc;
 mod process_capture;
 mod profiles;
 mod project_settings_cmds;
+#[cfg_attr(not(test), allow(dead_code))] // Inactive schema; runtime integration needs admission.
+mod project_shell;
 mod providers;
 mod pty;
 mod questions;
