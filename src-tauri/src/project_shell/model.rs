@@ -66,9 +66,10 @@ impl ProjectShell {
         if schema_version != SchemaVersion::V1 {
             return Err("ERR_REFUSED: unsupported project shell schema");
         }
-        if project_id
-            .chars()
-            .any(|c| c.is_control() || c.is_whitespace())
+        if project_id.is_empty()
+            || project_id
+                .chars()
+                .any(|c| c.is_control() || c.is_whitespace())
         {
             return Err("ERR_REFUSED: malformed project identity");
         }
