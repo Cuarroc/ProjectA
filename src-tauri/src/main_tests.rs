@@ -307,23 +307,31 @@
             .collect()
     }
 
-    /// Poll the log until `found` holds: the outcome callback logs
-    /// fire-and-forget through `workers::log_message`, the same way the
-    /// questions.rs tests wait for it.
-    async fn wait_for_log(
-        store: &super::Store,
+    /// Reopen the settled database through a fresh store and read the worker's
+    /// log, then close that reader and remove the fixture's own temp directory
+    /// once, checked.
+    async fn reopened_log(dir: crate::testutil::TempDir, worker_id: &str) -> Vec<(String, String)> {
+        let reader = super::Store::open(&dir.path().join("projecta.db"))
+            .await
+            .expect("reopen store");
+        let log = reader.list_messages(worker_id, None).await;
+        reader.close_test_pool().await;
+        std::fs::remove_dir_all(dir.path()).expect("remove own temp directory");
+        log.expect("messages")
+            .into_iter()
+            .map(|m| (m.role, m.content))
+            .collect()
+    }
+
+    /// The producer is done: wait for its fire-and-forget log writes
+    /// (`workers::log_message`), close the pool, then read the log back.
+    async fn settled_log(
+        dir: crate::testutil::TempDir,
+        store: super::Store,
         worker_id: &str,
-        what: &str,
-        found: impl Fn(&[(String, String)]) -> bool,
     ) -> Vec<(String, String)> {
-        for _ in 0..200 {
-            let log = roles(store, worker_id).await;
-            if found(&log) {
-                return log;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
-        panic!("{worker_id} never logged {what}");
+        store.close_test_pool().await;
+        reopened_log(dir, worker_id).await
     }
 
     async fn seam_fixture(label: &str) -> (crate::testutil::TempDir, super::Store) {
@@ -777,7 +785,7 @@
     /// callback once the guard proves the delivery.
     #[tokio::test]
     async fn the_sent_text_is_logged_as_a_user_turn_only_after_proven_delivery() {
-        let (_dir, store) = seam_fixture("log-after-delivery").await;
+        let (dir, store) = seam_fixture("log-after-delivery").await;
         let typist = Typist::default();
 
         super::deliver_to_worker(&typist, &store, "wk-1", "pty-wk-1", "mach weiter", None)
@@ -788,7 +796,7 @@
         );
 
         typist.confirm(super::DeliveryOutcome::Delivered);
-        let log = wait_for_log(&store, "wk-1", "the user turn", |log| !log.is_empty()).await;
+        let log = settled_log(dir, store, "wk-1").await;
         assert_eq!(
             log,
             vec![(
@@ -803,14 +811,14 @@
     /// never happened.
     #[tokio::test]
     async fn an_escalation_persists_the_undelivered_text_with_the_next_step() {
-        let (_dir, store) = seam_fixture("escalation-net").await;
+        let (dir, store) = seam_fixture("escalation-net").await;
         let typist = Typist::default();
 
         super::deliver_to_worker(&typist, &store, "wk-1", "pty-wk-1", "mach weiter", None)
             .expect("delivery starts");
         typist.confirm(super::DeliveryOutcome::Escalated);
 
-        let log = wait_for_log(&store, "wk-1", "the escalation note", |log| !log.is_empty()).await;
+        let log = settled_log(dir, store, "wk-1").await;
         assert_eq!(log.len(), 1, "exactly one note, no phantom user turn");
         let (role, content) = &log[0];
         assert_eq!(role, crate::store::MSG_SYSTEM);
@@ -822,6 +830,43 @@
             content.contains("nicht zugestellt") && content.contains("nachreichen"),
             "the note names the next step: {content}"
         );
+    }
+
+    /// The causal order behind the two tests above: the pool is closed only
+    /// after the registered log write finished. Every connection is held, so
+    /// the write cannot finish while the close is polled once.
+    #[tokio::test]
+    async fn an_escalation_waits_for_log_write_before_pool_close() {
+        let (dir, store) = seam_fixture("escalation-pool-close").await;
+        let typist = Typist::default();
+        let mut leases = Vec::new();
+        for _ in 0..store.pool_for_test().options().get_max_connections() {
+            leases.push(store.pool_for_test().acquire().await.expect("lease"));
+        }
+
+        super::deliver_to_worker(&typist, &store, "wk-1", "pty-wk-1", "mach weiter", None)
+            .expect("delivery starts");
+        typist.confirm(super::DeliveryOutcome::Escalated);
+
+        let closing = store.close_test_pool();
+        tokio::pin!(closing);
+        tokio::select! {
+            biased;
+            () = &mut closing => panic!("the pool closed while the log write was blocked"),
+            () = std::future::ready(()) => {}
+        }
+        assert!(
+            !store.test_pool_is_closed(),
+            "the pool was closed before the log write could finish"
+        );
+
+        drop(leases);
+        closing.await;
+        assert!(store.test_pool_is_closed());
+        let log = reopened_log(dir, "wk-1").await;
+        assert_eq!(log.len(), 1, "the blocked write landed exactly once");
+        assert_eq!(log[0].0, crate::store::MSG_SYSTEM);
+        assert!(log[0].1.contains("mach weiter"), "{}", log[0].1);
     }
 
     /// C-5: an escalation before any write means the readiness marker never

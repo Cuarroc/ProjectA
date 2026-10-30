@@ -68,6 +68,9 @@ pub(crate) mod supervisor;
 #[path = "store/team_assignments.rs"]
 pub mod team_assignments;
 #[cfg(test)]
+#[path = "store/test_log_completion.rs"]
+mod test_log_completion;
+#[cfg(test)]
 #[path = "store/write_lock_tests.rs"]
 mod write_lock_tests;
 pub use continuous::{
@@ -1039,19 +1042,11 @@ pub struct Store {
     review_evidence_lock: Arc<tokio::sync::Mutex<()>>,
     journal_watch: Arc<tokio::sync::OnceCell<journal_watch::JournalWatch>>,
     maintenance: Arc<MaintenanceState>,
+    #[cfg(test)]
+    log_writes: test_log_completion::LogWrites,
 }
 
 impl Store {
-    #[cfg(test)]
-    pub(crate) fn test_pool_is_closed(&self) -> bool {
-        self.pool.is_closed()
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn close_test_pool(&self) {
-        self.pool.close().await;
-    }
-
     /// Reserve the database for maintenance after current writes drain.
     #[allow(dead_code)] // W3-01b wires this store API into the application seam.
     pub async fn enter_maintenance(&self) -> Result<(), MaintenanceError> {
@@ -1146,6 +1141,8 @@ impl Store {
             review_evidence_lock: Arc::new(tokio::sync::Mutex::new(())),
             journal_watch: Arc::new(tokio::sync::OnceCell::new()),
             maintenance: Arc::new(MaintenanceState::default()),
+            #[cfg(test)]
+            log_writes: Default::default(),
         };
         let schema_changed = store.user_version().await? != target_schema_version();
         store.migrate(path).await?;
