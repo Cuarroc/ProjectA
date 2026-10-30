@@ -64,7 +64,7 @@ reference. Where a detail contradicts these ten, the ten win.
 
 ## Start with current evidence
 
-lage-jetzt; STAND.md; docs/PLAN.md only plan; bash scripts/sync.sh start; live gh pr list/git log origin/main; never launch desktop app to inspect; npm run dev:start-check exit 1/2/3: no start; observe actual model.
+lage-jetzt; STAND.md; docs/PLAN.md sole plan; bash scripts/sync.sh start; gh pr list/git log origin/main live; no desktop launch; npm run dev:start-check: 1/2/3 stop; actual model; [Design](docs/design/quality-gate.md).
 Binding: [reference](docs/development/AGENTS_REFERENCE.md#start-with-current-evidence).
 
 ## Ownership and proof

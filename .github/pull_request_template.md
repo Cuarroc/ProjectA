@@ -7,6 +7,7 @@ starts with "## Report" on package branches.
 
 ## Report
 Plan-ID: <PLAN-ID>
+**UI-relevant:** yes / no · **Reason:** <one sentence>.
 
 **Package:** <ID from docs/PLAN.md> · **Review tier:** A / B / C (AGENTS.md, rule 5)
 
