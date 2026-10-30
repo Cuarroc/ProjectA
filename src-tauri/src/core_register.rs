@@ -81,6 +81,48 @@ pub struct EffectCapability {
     pub effect_site: &'static str,
     pub class: EffectClass,
 }
+/// Code-declared JSON types and inclusive bounds; text counts Unicode scalars.
+#[derive(Clone, Copy, Debug)]
+pub enum ValueSchema {
+    Integer { min: i64, max: i64 },
+    Boolean,
+    Text { min_chars: usize, max_chars: usize },
+}
+impl ValueSchema {
+    fn valid(self) -> bool {
+        match self {
+            Self::Integer { min, max } => min <= max,
+            Self::Boolean => true,
+            Self::Text {
+                min_chars,
+                max_chars,
+            } => min_chars <= max_chars,
+        }
+    }
+    fn accepts(self, value: &Value) -> bool {
+        match self {
+            Self::Integer { min, max } => value.as_i64().is_some_and(|n| (min..=max).contains(&n)),
+            Self::Boolean => value.is_boolean(),
+            Self::Text {
+                min_chars,
+                max_chars,
+            } => value
+                .as_str()
+                .is_some_and(|s| (min_chars..=max_chars).contains(&s.chars().count())),
+        }
+    }
+}
+/// Declaration only, never a measured baseline or permission to self-apply.
+#[derive(Clone, Copy, Debug)]
+pub enum MetricDescriptor {
+    Unknown,
+    Known {
+        name: &'static str,
+        unit: &'static str,
+        /// Absolute nonnegative tolerance in the declared unit; zero is known.
+        tolerance: u64,
+    },
+}
 #[derive(Debug)]
 pub struct Setting {
     pub key: &'static str,
@@ -89,6 +131,9 @@ pub struct Setting {
     pub area: &'static str,
     pub risk_class: RiskClass,
     pub effect_site: &'static str,
+    /// None means unavailable and must refuse enrollment.
+    pub value_schema: Option<ValueSchema>,
+    pub metric: MetricDescriptor,
 }
 /// Trusted adapter input, never deserialized from request prose. None = helper.
 #[derive(Clone, Debug, PartialEq)]
@@ -145,6 +190,7 @@ pub struct JournalEntry {
 pub enum Error {
     Unregistered,
     InvalidRegistry,
+    InvalidValue,
     UnknownRequest,
     Forbidden,
     Waiting,
@@ -188,6 +234,9 @@ impl<'a> Register<'a> {
             || setting.owner.is_none()
             || setting.area.trim().is_empty()
             || setting.effect_site.trim().is_empty()
+            || !setting.value_schema.is_some_and(ValueSchema::valid)
+            || matches!(setting.metric, MetricDescriptor::Known { name, unit, .. }
+                if name.trim().is_empty() || unit.trim().is_empty())
         {
             return Err(Error::InvalidRegistry);
         }
@@ -229,6 +278,12 @@ impl<'a> Register<'a> {
             return Err(Error::InvalidRegistry);
         }
         let setting = self.setting(&change.scope, &change.key)?;
+        if !setting
+            .value_schema
+            .is_some_and(|schema| schema.accepts(&change.new))
+        {
+            return Err(Error::InvalidValue);
+        }
         if matches!(actor.authority, Some(Owner::Core | Owner::Rule))
             && self.level(&change.scope, setting.area) == Level::Off
         {
@@ -319,6 +374,127 @@ mod tests {
             area: "places",
             risk_class: RiskClass::Ordinary,
             effect_site: "queue::limit",
+            value_schema: Some(ValueSchema::Integer {
+                min: i64::MIN,
+                max: i64::MAX,
+            }),
+            metric: MetricDescriptor::Unknown,
+        }
+    }
+    #[test]
+    fn rejects_payloads_outside_registered_value_schema_before_journaling() {
+        use ValueSchema::*;
+        let a = actor(None);
+        for (schema, valid, invalid) in [
+            (
+                Integer { min: -2, max: 4 },
+                vec![json!(-2), json!(4)],
+                vec![json!(-3), json!(5), json!(1.0), json!(true), json!("2")],
+            ),
+            (
+                Boolean,
+                vec![json!(false), json!(true)],
+                vec![json!(0), json!("true")],
+            ),
+            (
+                Text {
+                    min_chars: 1,
+                    max_chars: 2,
+                },
+                vec![json!("é"), json!("ab")],
+                vec![json!(""), json!("abc"), json!(2), json!(false)],
+            ),
+        ] {
+            let settings = [Setting {
+                value_schema: Some(schema),
+                ..setting(Some(Owner::User))
+            }];
+            let mut r = Register::new(&settings, &[], &[]);
+            for value in valid {
+                let mut change = request(0);
+                change.new = value.clone();
+                let id = r.submit(change, &a, 10).unwrap();
+                assert_eq!(r.journal()[id].state, Requested);
+                assert_eq!(r.journal()[id].change.new, value);
+            }
+            let before = r.journal().to_vec();
+            for value in invalid
+                .into_iter()
+                .chain([json!(null), json!([]), json!({})])
+            {
+                let mut change = request(0);
+                change.new = value;
+                assert_eq!(
+                    r.submit(change, &a, 11),
+                    Err(Error::InvalidValue),
+                    "{schema:?}"
+                );
+                assert_eq!(r.journal(), before);
+            }
+        }
+        for (schema, metric) in [
+            (None, MetricDescriptor::Unknown),
+            (Some(Integer { min: 2, max: 1 }), MetricDescriptor::Unknown),
+            (
+                Some(Text {
+                    min_chars: 2,
+                    max_chars: 1,
+                }),
+                MetricDescriptor::Unknown,
+            ),
+            (
+                Some(Boolean),
+                MetricDescriptor::Known {
+                    name: " ",
+                    unit: "ms",
+                    tolerance: 0,
+                },
+            ),
+            (
+                Some(Boolean),
+                MetricDescriptor::Known {
+                    name: "queue wait",
+                    unit: "",
+                    tolerance: 0,
+                },
+            ),
+        ] {
+            let settings = [Setting {
+                value_schema: schema,
+                metric,
+                ..setting(Some(Owner::User))
+            }];
+            let mut r = Register::new(&settings, &[], &[]);
+            assert!(matches!(
+                r.setting("app", "queue.limit"),
+                Err(Error::InvalidRegistry)
+            ));
+            assert_eq!(r.submit(request(0), &a, 12), Err(Error::InvalidRegistry));
+            assert!(r.journal().is_empty());
+        }
+        for metric in [
+            MetricDescriptor::Unknown,
+            MetricDescriptor::Known {
+                name: "queue wait",
+                unit: "ms",
+                tolerance: 0,
+            },
+        ] {
+            let settings = [Setting {
+                metric,
+                ..setting(Some(Owner::User))
+            }];
+            let mut r = Register::new(&settings, &[], &[]);
+            assert!(matches!(
+                r.setting("app", "queue.limit").unwrap().metric,
+                MetricDescriptor::Unknown | MetricDescriptor::Known { tolerance: 0, .. }
+            ));
+            let mut change = request(0);
+            change.key = "not.registered".into();
+            assert_eq!(r.submit(change, &a, 13), Err(Error::Unregistered));
+            assert!(r.journal().is_empty());
+            assert_eq!(r.submit(request(0), &a, 14), Ok(0));
+            assert_eq!(r.journal()[0].state, Requested);
         }
     }
     fn actor(authority: Option<Owner>) -> Actor {
