@@ -12,6 +12,7 @@ import {
   providerDetailText,
   providerKindLabel,
   providerQuotaLabel,
+  projectModelFacts,
   providerUsageFillClass,
   routedProfilesForProvider,
   useFreeTierSummary,
@@ -332,5 +333,61 @@ describe("hooks", () => {
     const bad = renderHook(() => useFreeTierSummary());
     await waitFor(() => expect(bad.result.current.error).toBe("ipc down"));
     expect(bad.result.current.summary).toBeNull();
+  });
+});
+
+describe("projectModelFacts", () => {
+  const base = { providerId: "anthropic", harness: "claude-code" };
+  const configured = { model: "model-configured", effort: "high" };
+  const clock = { nowSeconds: 1000, staleAfterSeconds: 300 };
+  const seen = { ...base, sourceId: "session-1", model: "model-observed", observedAt: 900 };
+  const unknown = { state: "unknown" };
+  const hint = { model: "model-configured", effort: "high" };
+
+  it("keeps configured model hints distinct from observed evidence and unknown cost", () => {
+    expect(projectModelFacts({ ...base, configured }, clock)).toEqual({
+      configuredHint: hint,
+      observed: { state: "unknown", reason: "missing" },
+    });
+    const facts = projectModelFacts({ ...base, configured, observed: { ...seen, effort: null, cost: null } }, clock);
+    expect(facts).toEqual({
+      configuredHint: hint,
+      observed: { state: "observed", freshness: "current", sourceId: "session-1", model: "model-observed", observedAt: 900, effort: unknown, cost: unknown },
+    });
+    const zero = projectModelFacts({ ...base, observed: { ...seen, effort: "low", cost: { amount: 0, unit: "usd" } } }, clock);
+    expect(zero.observed).toMatchObject({
+      effort: { state: "known", value: "low" },
+      cost: { state: "known", value: { amount: 0, unit: "usd" } },
+    });
+  });
+
+  it("leaves wrong-identity or future or malformed observations unknown and stale ones non-current", () => {
+    const run = (observed: object, now = clock) => projectModelFacts({ ...base, observed } as never, now).observed;
+    expect(run({ ...seen, providerId: "openrouter" })).toEqual({ state: "unknown", reason: "identity-mismatch" });
+    expect(run({ ...seen, harness: "codex" })).toEqual({ state: "unknown", reason: "identity-mismatch" });
+    expect(run({ ...seen, observedAt: 1001 })).toEqual({ state: "unknown", reason: "future" });
+    for (const bad of [{ observedAt: 0 }, { observedAt: NaN }, { sourceId: " " }, { model: "" }]) {
+      expect(run({ ...seen, ...bad })).toEqual({ state: "unknown", reason: "invalid" });
+    }
+    expect(run(seen, { nowSeconds: NaN, staleAfterSeconds: 300 })).toEqual({ state: "unknown", reason: "invalid" });
+    expect(run({ ...seen, observedAt: 700 })).toMatchObject({ freshness: "current" });
+    expect(run({ ...seen, observedAt: 699 })).toMatchObject({ freshness: "stale", model: "model-observed" });
+    for (const cost of [{ amount: -1, unit: "usd" }, { amount: 0 }, { amount: "0", unit: "usd" }, { unit: "usd" }]) {
+      expect(run({ ...seen, cost })).toMatchObject({ cost: unknown });
+    }
+  });
+
+  it("never runs getters or copies unrelated fields of untrusted evidence", () => {
+    let reads = 0;
+    const boom = (): never => {
+      reads += 1;
+      throw new Error("getter ran");
+    };
+    const hostile = { ...seen, secret: "sk-leak", get effort() { return boom(); }, get cost() { return boom(); } };
+    const facts = projectModelFacts({ ...base, observed: hostile, get configured() { return boom(); } }, clock);
+    expect(reads).toBe(0);
+    expect(facts.configuredHint).toEqual({ model: null, effort: null });
+    expect(facts.observed).toMatchObject({ effort: unknown, cost: unknown });
+    expect(JSON.stringify(facts)).not.toContain("sk-leak");
   });
 });
