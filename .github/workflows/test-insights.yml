@@ -68,7 +68,7 @@ jobs:
 
       - name: Test Insights - linux nextest
         if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/linux-nextest.xml') != '' }}
-        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        uses: mergifyio/gha-mergify-ci@392d123d84a27960993927aec1f2cbb059fb95c1 # v27
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           job_name: gates (linux)
@@ -76,7 +76,7 @@ jobs:
 
       - name: Test Insights - linux vitest
         if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/linux-vitest.xml') != '' }}
-        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        uses: mergifyio/gha-mergify-ci@392d123d84a27960993927aec1f2cbb059fb95c1 # v27
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           job_name: gates (linux)
@@ -84,7 +84,7 @@ jobs:
 
       - name: Test Insights - windows nextest 1/2
         if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/windows-1-nextest.xml') != '' }}
-        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        uses: mergifyio/gha-mergify-ci@392d123d84a27960993927aec1f2cbb059fb95c1 # v27
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           job_name: windows tests (windows_1)
@@ -92,7 +92,7 @@ jobs:
 
       - name: Test Insights - windows nextest 2/2
         if: ${{ env.MERGIFY_UPLOAD == 'true' && hashFiles('reports/windows-2-nextest.xml') != '' }}
-        uses: mergifyio/gha-mergify-ci@ce0d6bef01217d90fb9e908e6966b0f6f4ea26d5 # v26
+        uses: mergifyio/gha-mergify-ci@392d123d84a27960993927aec1f2cbb059fb95c1 # v27
         with:
           token: ${{ secrets.MERGIFY_TOKEN }}
           job_name: windows tests (windows_2)
